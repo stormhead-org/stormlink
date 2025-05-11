@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+option go_package = "stormlink/server/grpc/user/protobuf;protobuf";
+
+import "google/api/annotations.proto";
+
+// Сервис для работы с пользователями
+service UserService {
+  // Метод регистрации
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/register"
+      body: "*"
+    };
+  }
+}
+
+// Запрос для регистрации
+message RegisterUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+// Ответ на регистрацию
+message RegisterUserResponse {
+  string user_id = 1;
+  string message = 2;
+}

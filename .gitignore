@@ -21,5 +21,10 @@
 go.work
 go.work.sum
 
+# ent orm generate files
+server/ent/
+!server/ent/schema/
+!server/ent/cmd/generate.go
+
 # env file
 .env
