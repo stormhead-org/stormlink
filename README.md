@@ -22,6 +22,7 @@
 <br />
 - Для работы с PostgreSQL использует Ent ORM
 <br />
+<br />
 <p align="center">
 <strong>Stormic</strong> - мой пет-проект, который я делаю в свободное время.
 </p>

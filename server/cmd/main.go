@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"entgo.io/ent/dialect/sql/schema"
 	"flag"
 	"fmt"
 	"log"
@@ -11,15 +10,20 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"stormlink/server/grpc/auth"
 	"stormlink/server/grpc/user"
+
+	"entgo.io/ent/dialect/sql/schema"
 
 	gwruntime "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 
-	_ "github.com/lib/pq"
 	"stormlink/server/ent"
-	"stormlink/server/grpc/user/protobuf"
+	authpb "stormlink/server/grpc/auth/protobuf"
+	userpb "stormlink/server/grpc/user/protobuf"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -66,8 +70,13 @@ func main() {
 
 	// Инициализация gRPC сервера
 	grpcServer := grpc.NewServer()
+
 	userService := user.NewUserService(client)
-	protobuf.RegisterUserServiceServer(grpcServer, userService)
+	userpb.RegisterUserServiceServer(grpcServer, userService)
+
+	authService := auth.NewAuthService(client)
+	authpb.RegisterAuthServiceServer(grpcServer, authService)
+
 
 	// gRPC listener (на 9090)
 	go func() {
@@ -86,10 +95,16 @@ func main() {
 	gwmux := gwruntime.NewServeMux()
 
 	// Подключаем grpc-gateway хендлеры
-	err = protobuf.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:9090", []grpc.DialOption{grpc.WithInsecure()})
+	err = userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:9090", []grpc.DialOption{grpc.WithInsecure()})
 	if err != nil {
-		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер: %v", err)
+		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер UserService: %v", err)
 	}
+
+	err = authpb.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, "localhost:9090", []grpc.DialOption{grpc.WithInsecure()})
+	if err != nil {
+	log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер AuthService: %v", err)
+	}
+
 
 	// HTTP сервер (на 8080)
 	log.Println("🌐 HTTP-сервер (grpc-gateway) запущен на :8080")

@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"golang.org/x/crypto/bcrypt"
 	"stormlink/server/ent"
-	"stormlink/server/grpc/user/protobuf" // корректный импорт proto
+	"stormlink/server/grpc/user/protobuf"
 	"stormlink/server/utils"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -44,7 +45,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 
 	// Возвращаем успешный ответ
 	return &protobuf.RegisterUserResponse{
-		UserId:  strconv.Itoa(newUser.ID), // если ID int
+		UserId:  strconv.Itoa(newUser.ID),
 		Message: "User registered successfully",
 	}, nil
 }
