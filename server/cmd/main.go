@@ -4,12 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/time/rate"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
-	"runtime"
 	"stormlink/server/grpc/auth"
 	"stormlink/server/grpc/user"
 	"stormlink/server/middleware"
@@ -27,12 +29,46 @@ import (
 	_ "github.com/lib/pq"
 )
 
+func initEnv() {
+	err := godotenv.Load("server/.env")
+	if err != nil {
+		log.Println("⚠️  .env файл не найден")
+	}
+}
+
+// chainInterceptors объединяет несколько interceptors в один
+func chainInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		// Если нет interceptors, просто вызываем handler
+		if len(interceptors) == 0 {
+			return handler(ctx, req)
+		}
+
+		// Создаем цепочку, начиная с последнего interceptor
+		var chainHandler grpc.UnaryHandler = handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			current := interceptors[i]
+			// Формируем новый handler, который вызывает текущий interceptor
+			chainHandler = func(currentCtx context.Context, currentReq interface{}, currentInfo *grpc.UnaryServerInfo, next grpc.UnaryHandler) grpc.UnaryHandler {
+				return func(ctx context.Context, req interface{}) (interface{}, error) {
+					return current(ctx, req, currentInfo, next)
+				}
+			}(ctx, req, info, chainHandler)
+		}
+
+		// Вызываем первый handler в цепочке
+		return chainHandler(ctx, req)
+	}
+}
+
 func main() {
 	// Путь к .env
-	_, currentFile, _, _ := runtime.Caller(0)
-	projectRoot := filepath.Join(filepath.Dir(currentFile), "../..")
-
-	_ = godotenv.Load(filepath.Join(projectRoot, "server/.env"))
+	initEnv()
 
 	// Подключение к БД
 	dsn := fmt.Sprintf(
@@ -69,9 +105,18 @@ func main() {
 		log.Println("✅ Миграция завершена.")
 	}
 
+	// Инициализация RateLimiter: 1 запрос в секунду, burst 3
+	rl := middleware.NewRateLimiter(rate.Limit(1), 3)
+
+	// Комбинируем middleware
+	chain := []grpc.UnaryServerInterceptor{
+		middleware.RateLimitInterceptor(rl), // Сначала rate limiting
+		middleware.GRPCAuthInterceptor,      // Затем авторизация
+	}
+
 	// Инициализация gRPC сервера
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(middleware.GRPCAuthInterceptor),
+		grpc.UnaryInterceptor(chainInterceptors(chain...)),
 	)
 
 	userService := user.NewUserService(client)
@@ -80,38 +125,57 @@ func main() {
 	authService := auth.NewAuthService(client)
 	authpb.RegisterAuthServiceServer(grpcServer, authService)
 
-
-	// gRPC listener (на 9090)
+	// gRPC listener (на 4000)
 	go func() {
-		listener, err := net.Listen("tcp", ":9090")
+		listener, err := net.Listen("tcp", ":4000")
 		if err != nil {
-			log.Fatalf("не удалось слушать порт 9090: %v", err)
+			log.Fatalf("не удалось слушать порт 4000: %v", err)
 		}
-		log.Println("📡 gRPC-сервер запущен на :9090")
+		log.Println("📡 gRPC-сервер запущен на :4000")
 		if err := grpcServer.Serve(listener); err != nil {
 			log.Fatalf("ошибка при запуске gRPC-сервера: %v", err)
 		}
 	}()
 
+	// Запуск Prometheus metrics эндпоинта
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println("📊 Prometheus запущен на :5080")
+		if err := http.ListenAndServe(":5080", nil); err != nil {
+			log.Fatalf("ошибка при запуске Prometheus metrics сервера: %v", err)
+		}
+	}()
+
 	// HTTP Gateway mux
 	ctx := context.Background()
-	gwmux := gwruntime.NewServeMux()
+	gwmux := gwruntime.NewServeMux(
+		gwruntime.WithErrorHandler(func(ctx context.Context, mux *gwruntime.ServeMux, marshaler gwruntime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
+			statusCode := codes.Unknown
+			if st, ok := status.FromError(err); ok {
+				statusCode = st.Code()
+			}
+			if statusCode == codes.ResourceExhausted {
+				http.Error(w, `{"error": "rate limit exceeded, try again later"}`, http.StatusTooManyRequests)
+				return
+			}
+			gwruntime.DefaultHTTPErrorHandler(ctx, mux, marshaler, w, r, err)
+		}),
+	)
 
 	// Подключаем grpc-gateway хендлеры
-	err = userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:9090", []grpc.DialOption{grpc.WithInsecure()})
+	err = userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithInsecure()})
 	if err != nil {
 		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер UserService: %v", err)
 	}
 
-	err = authpb.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, "localhost:9090", []grpc.DialOption{grpc.WithInsecure()})
+	err = authpb.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithInsecure()})
 	if err != nil {
-	log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер AuthService: %v", err)
+		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер AuthService: %v", err)
 	}
 
-
-	// HTTP сервер (на 8080)
-	log.Println("🌐 HTTP-сервер (grpc-gateway) запущен на :8080")
-	if err := http.ListenAndServe(":8080", gwmux); err != nil {
+	// HTTP сервер (на 4080)
+	log.Println("🌐 HTTP-сервер запущен на :4080")
+	if err := http.ListenAndServe(":4080", gwmux); err != nil {
 		log.Fatalf("ошибка при запуске HTTP-сервера: %v", err)
 	}
 }

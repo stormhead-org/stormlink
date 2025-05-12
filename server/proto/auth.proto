@@ -5,6 +5,7 @@ package auth;
 option go_package = "stormlink/server/grpc/auth/protobuf;protobuf";
 
 import "google/api/annotations.proto";
+import "validate/validate.proto";
 
 service AuthService {
   rpc Login (LoginRequest) returns (LoginResponse) {
@@ -13,14 +14,47 @@ service AuthService {
       body: "*"
     };
   };
+
+  // Метод для повторной отправки верификационного письма
+  rpc ResendVerificationEmail (ResendVerificationRequest) returns (ResendVerificationResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/resend-verification-email"
+      body: "*"
+    };
+  };
+
+  // Подтверждение почты при переходе по ссылке в письме
+  rpc VerifyEmail (VerifyEmailRequest) returns (VerifyEmailResponse) {
+    option (google.api.http) = {
+      get: "/v1/auth/verify-email/{token}"
+    };
+  }
 }
 
 message LoginRequest {
-  string email = 1;
-  string password = 2;
+  string email = 1 [(validate.rules).string.email = true];
+  string password = 2 [(validate.rules).string.min_len = 8];
 }
 
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
+}
+
+// Запрос для повторной отправки верификационного письма
+message ResendVerificationRequest {
+  string email = 1 [(validate.rules).string.email = true];
+}
+
+// Ответ на запрос повторной отправки верификационного письма
+message ResendVerificationResponse {
+  string message = 1;
+}
+
+message VerifyEmailRequest {
+  string token = 1 [(validate.rules).string.min_len = 1];
+}
+
+message VerifyEmailResponse {
+  string message = 1;
 }

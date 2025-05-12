@@ -2,12 +2,19 @@ package utils
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("your_secret_key_here")
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		panic("JWT_SECRET not set in environment")
+	}
+	return []byte(secret)
+}
 
 func GenerateAccessToken(userID int) (string, error) {
 	claims := jwt.MapClaims{
@@ -15,7 +22,7 @@ func GenerateAccessToken(userID int) (string, error) {
 		"exp":     time.Now().Add(15 * time.Minute).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(getJWTSecret())
 }
 
 func GenerateRefreshToken(userID int) (string, error) {
@@ -24,12 +31,12 @@ func GenerateRefreshToken(userID int) (string, error) {
 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(getJWTSecret())
 }
 
 func ParseToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+		return getJWTSecret(), nil
 	})
 	if err != nil || !token.Valid {
 		return nil, errors.New("invalid token")
@@ -60,4 +67,3 @@ func ParseAccessToken(tokenString string) (*AccessTokenClaims, error) {
 type AccessTokenClaims struct {
 	UserID int
 }
-

@@ -3,6 +3,7 @@ syntax = "proto3";
 option go_package = "stormlink/server/grpc/user/protobuf;protobuf";
 
 import "google/api/annotations.proto";
+import "validate/validate.proto";
 
 // Сервис для работы с пользователями
 service UserService {
@@ -17,9 +18,9 @@ service UserService {
 
 // Запрос для регистрации
 message RegisterUserRequest {
-  string name = 1;
-  string email = 2;
-  string password = 3;
+  string name = 1 [(validate.rules).string.min_len = 1, (validate.rules).string.max_len = 24];
+  string email = 2 [(validate.rules).string.email = true];
+  string password = 3 [(validate.rules).string.min_len = 8];
 }
 
 // Ответ на регистрацию

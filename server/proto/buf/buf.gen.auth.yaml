@@ -17,3 +17,7 @@ plugins:
     out: server/grpc/auth/openapi
     opt: logtostderr=true
     path: protoc-gen-openapiv2
+  - name: validate
+    out: server/grpc/auth/protobuf
+    opt: lang=go,paths=source_relative
+    path: protoc-gen-validate

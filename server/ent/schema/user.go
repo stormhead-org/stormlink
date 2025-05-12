@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -21,10 +22,13 @@ func (User) Fields() []ent.Field {
 		field.String("salt").NotEmpty(),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Bool("is_verified").Default(false), // Новое поле
 	}
 }
 
 // Edges of the User.
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("email_verifications", EmailVerification.Type), // Связь с EmailVerification
+	}
 }

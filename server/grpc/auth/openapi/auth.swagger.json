@@ -16,6 +16,37 @@
     "application/json"
   ],
   "paths": {
+    "/v1/auth/verify-email/{token}": {
+      "get": {
+        "summary": "Подтверждение почты при переходе по ссылке в письме",
+        "operationId": "AuthService_VerifyEmail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authVerifyEmailResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
     "/v1/users/login": {
       "post": {
         "operationId": "AuthService_Login",
@@ -40,6 +71,39 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/authLoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/users/resend-verification-email": {
+      "post": {
+        "summary": "Метод для повторной отправки верификационного письма",
+        "operationId": "AuthService_ResendVerificationEmail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authResendVerificationResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authResendVerificationRequest"
             }
           }
         ],
@@ -72,6 +136,32 @@
         }
       }
     },
+    "authResendVerificationRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        }
+      },
+      "title": "Запрос для повторной отправки верификационного письма"
+    },
+    "authResendVerificationResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "Ответ на запрос повторной отправки верификационного письма"
+    },
+    "authVerifyEmailResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -94,7 +184,6 @@
         "details": {
           "type": "array",
           "items": {
-            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
