@@ -40,3 +40,24 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 	}
 	return claims, nil
 }
+
+func ParseAccessToken(tokenString string) (*AccessTokenClaims, error) {
+	claims, err := ParseToken(tokenString)
+	if err != nil {
+		return nil, err
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		return nil, errors.New("user_id not found or invalid")
+	}
+
+	return &AccessTokenClaims{
+		UserID: int(userIDFloat),
+	}, nil
+}
+
+type AccessTokenClaims struct {
+	UserID int
+}
+

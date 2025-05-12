@@ -21,6 +21,9 @@
 go.work
 go.work.sum
 
+#googleapis
+proto
+
 # ent orm generate files
 server/ent/
 !server/ent/schema/

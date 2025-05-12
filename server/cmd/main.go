@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"stormlink/server/grpc/auth"
 	"stormlink/server/grpc/user"
+	"stormlink/server/middleware"
 
 	"entgo.io/ent/dialect/sql/schema"
 
@@ -69,7 +70,9 @@ func main() {
 	}
 
 	// Инициализация gRPC сервера
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.GRPCAuthInterceptor),
+	)
 
 	userService := user.NewUserService(client)
 	userpb.RegisterUserServiceServer(grpcServer, userService)
