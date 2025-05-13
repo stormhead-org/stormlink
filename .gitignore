@@ -22,11 +22,12 @@ go.work
 go.work.sum
 
 #googleapis
-proto
+proto/googleapis
 
 # ent orm generate files
-server/ent/
+server/ent/*
 !server/ent/schema/
+!server/ent/schema/**
 !server/ent/cmd/generate.go
 
 # env file

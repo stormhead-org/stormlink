@@ -3,12 +3,13 @@ package auth
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"stormlink/server/ent/emailverification"
 	"stormlink/server/ent/user"
 	"stormlink/server/utils"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"stormlink/server/grpc/auth/protobuf"
 )
@@ -31,16 +32,17 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	// Проверяем, верифицирован ли email
-	if !user.IsVerified {
-		return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
-	}
-
 	// Проверяем пароль
 	err = utils.ComparePassword(user.PasswordHash, password, user.Salt)
 	if err != nil {
 		return nil, fmt.Errorf("invalid credentials")
 	}
+
+	// TODO раскоментить при реализации верификации на фронте
+	// Проверяем, верифицирован ли email
+	// if !user.IsVerified {
+	// 	return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
+	// }
 
 	// Генерируем токены
 	accessToken, err := utils.GenerateAccessToken(user.ID)

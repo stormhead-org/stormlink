@@ -22,7 +22,7 @@ func (User) Fields() []ent.Field {
 		field.String("salt").NotEmpty(),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
-		field.Bool("is_verified").Default(false), // Новое поле
+		field.Bool("is_verified").Default(false),
 	}
 }
 

@@ -11,11 +11,12 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,40 +31,68 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
+	_ = sort.Sort
 )
-
-// define the regex for a UUID once up-front
-var _user_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 // Validate checks the field values on RegisterUserRequest with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *RegisterUserRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisterUserRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// RegisterUserRequestMultiError, or nil if none found.
+func (m *RegisterUserRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisterUserRequest) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if l := utf8.RuneCountInString(m.GetName()); l < 1 || l > 24 {
-		return RegisterUserRequestValidationError{
+		err := RegisterUserRequestValidationError{
 			field:  "Name",
 			reason: "value length must be between 1 and 24 runes, inclusive",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if err := m._validateEmail(m.GetEmail()); err != nil {
-		return RegisterUserRequestValidationError{
+		err = RegisterUserRequestValidationError{
 			field:  "Email",
 			reason: "value must be a valid email address",
 			cause:  err,
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if utf8.RuneCountInString(m.GetPassword()) < 8 {
-		return RegisterUserRequestValidationError{
+		err := RegisterUserRequestValidationError{
 			field:  "Password",
 			reason: "value length must be at least 8 runes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return RegisterUserRequestMultiError(errors)
 	}
 
 	return nil
@@ -118,6 +147,23 @@ func (m *RegisterUserRequest) _validateEmail(addr string) error {
 
 	return m._validateHostname(parts[1])
 }
+
+// RegisterUserRequestMultiError is an error wrapping multiple validation
+// errors returned by RegisterUserRequest.ValidateAll() if the designated
+// constraints aren't met.
+type RegisterUserRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisterUserRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisterUserRequestMultiError) AllErrors() []error { return m }
 
 // RegisterUserRequestValidationError is the validation error returned by
 // RegisterUserRequest.Validate if the designated constraints aren't met.
@@ -177,18 +223,53 @@ var _ interface {
 
 // Validate checks the field values on RegisterUserResponse with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *RegisterUserResponse) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on RegisterUserResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// RegisterUserResponseMultiError, or nil if none found.
+func (m *RegisterUserResponse) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *RegisterUserResponse) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
+
+	var errors []error
 
 	// no validation rules for UserId
 
 	// no validation rules for Message
 
+	if len(errors) > 0 {
+		return RegisterUserResponseMultiError(errors)
+	}
+
 	return nil
 }
+
+// RegisterUserResponseMultiError is an error wrapping multiple validation
+// errors returned by RegisterUserResponse.ValidateAll() if the designated
+// constraints aren't met.
+type RegisterUserResponseMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m RegisterUserResponseMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m RegisterUserResponseMultiError) AllErrors() []error { return m }
 
 // RegisterUserResponseValidationError is the validation error returned by
 // RegisterUserResponse.Validate if the designated constraints aren't met.
