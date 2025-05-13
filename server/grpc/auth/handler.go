@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"stormlink/server/ent/emailverification"
 	"stormlink/server/ent/user"
 	"stormlink/server/utils"
@@ -29,29 +28,29 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 		Where(user.EmailEQ(email)).
 		Only(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
 
 	// Проверяем пароль
 	err = utils.ComparePassword(user.PasswordHash, password, user.Salt)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
 
 	// TODO раскоментить при реализации верификации на фронте
-	// Проверяем, верифицирован ли email
-	// if !user.IsVerified {
-	// 	return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
-	// }
+	//Проверяем, верифицирован ли email
+	if !user.IsVerified {
+		return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
+	}
 
 	// Генерируем токены
 	accessToken, err := utils.GenerateAccessToken(user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("error generating access token: %v", err)
+		return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
 	}
 	refreshToken, err := utils.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("error generating refresh token: %v", err)
+		return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
 	}
 
 	return &protobuf.LoginResponse{

@@ -11,12 +11,11 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"google.golang.org/protobuf/types/known/anypb"
+	"github.com/golang/protobuf/ptypes"
 )
 
 // ensure the imports are used
@@ -31,68 +30,191 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = anypb.Any{}
-	_ = sort.Sort
+	_ = ptypes.DynamicAny{}
 )
 
-// Validate checks the field values on RegisterUserRequest with the rules
-// defined in the proto definition for this message. If any rules are
-// violated, the first error encountered is returned, or nil if there are no violations.
-func (m *RegisterUserRequest) Validate() error {
-	return m.validate(false)
-}
+// define the regex for a UUID once up-front
+var _user_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
-// ValidateAll checks the field values on RegisterUserRequest with the rules
-// defined in the proto definition for this message. If any rules are
-// violated, the result is a list of violation errors wrapped in
-// RegisterUserRequestMultiError, or nil if none found.
-func (m *RegisterUserRequest) ValidateAll() error {
-	return m.validate(true)
-}
-
-func (m *RegisterUserRequest) validate(all bool) error {
+// Validate checks the field values on User with the rules defined in the proto
+// definition for this message. If any rules are violated, an error is returned.
+func (m *User) Validate() error {
 	if m == nil {
 		return nil
 	}
 
-	var errors []error
+	// no validation rules for Id
+
+	// no validation rules for Name
+
+	// no validation rules for Email
+
+	// no validation rules for IsVerified
+
+	// no validation rules for CreatedAt
+
+	// no validation rules for UpdatedAt
+
+	return nil
+}
+
+// UserValidationError is the validation error returned by User.Validate if the
+// designated constraints aren't met.
+type UserValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UserValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UserValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UserValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UserValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UserValidationError) ErrorName() string { return "UserValidationError" }
+
+// Error satisfies the builtin error interface
+func (e UserValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUser.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UserValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UserValidationError{}
+
+// Validate checks the field values on UserResponse with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *UserResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetUser()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return UserResponseValidationError{
+				field:  "User",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// UserResponseValidationError is the validation error returned by
+// UserResponse.Validate if the designated constraints aren't met.
+type UserResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e UserResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e UserResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e UserResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e UserResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e UserResponseValidationError) ErrorName() string { return "UserResponseValidationError" }
+
+// Error satisfies the builtin error interface
+func (e UserResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sUserResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = UserResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = UserResponseValidationError{}
+
+// Validate checks the field values on RegisterUserRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *RegisterUserRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
 
 	if l := utf8.RuneCountInString(m.GetName()); l < 1 || l > 24 {
-		err := RegisterUserRequestValidationError{
+		return RegisterUserRequestValidationError{
 			field:  "Name",
 			reason: "value length must be between 1 and 24 runes, inclusive",
 		}
-		if !all {
-			return err
-		}
-		errors = append(errors, err)
 	}
 
 	if err := m._validateEmail(m.GetEmail()); err != nil {
-		err = RegisterUserRequestValidationError{
+		return RegisterUserRequestValidationError{
 			field:  "Email",
 			reason: "value must be a valid email address",
 			cause:  err,
 		}
-		if !all {
-			return err
-		}
-		errors = append(errors, err)
 	}
 
 	if utf8.RuneCountInString(m.GetPassword()) < 8 {
-		err := RegisterUserRequestValidationError{
+		return RegisterUserRequestValidationError{
 			field:  "Password",
 			reason: "value length must be at least 8 runes",
 		}
-		if !all {
-			return err
-		}
-		errors = append(errors, err)
-	}
-
-	if len(errors) > 0 {
-		return RegisterUserRequestMultiError(errors)
 	}
 
 	return nil
@@ -147,23 +269,6 @@ func (m *RegisterUserRequest) _validateEmail(addr string) error {
 
 	return m._validateHostname(parts[1])
 }
-
-// RegisterUserRequestMultiError is an error wrapping multiple validation
-// errors returned by RegisterUserRequest.ValidateAll() if the designated
-// constraints aren't met.
-type RegisterUserRequestMultiError []error
-
-// Error returns a concatenation of all the error messages it wraps.
-func (m RegisterUserRequestMultiError) Error() string {
-	var msgs []string
-	for _, err := range m {
-		msgs = append(msgs, err.Error())
-	}
-	return strings.Join(msgs, "; ")
-}
-
-// AllErrors returns a list of validation violation errors.
-func (m RegisterUserRequestMultiError) AllErrors() []error { return m }
 
 // RegisterUserRequestValidationError is the validation error returned by
 // RegisterUserRequest.Validate if the designated constraints aren't met.
@@ -223,53 +328,18 @@ var _ interface {
 
 // Validate checks the field values on RegisterUserResponse with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, the first error encountered is returned, or nil if there are no violations.
+// violated, an error is returned.
 func (m *RegisterUserResponse) Validate() error {
-	return m.validate(false)
-}
-
-// ValidateAll checks the field values on RegisterUserResponse with the rules
-// defined in the proto definition for this message. If any rules are
-// violated, the result is a list of violation errors wrapped in
-// RegisterUserResponseMultiError, or nil if none found.
-func (m *RegisterUserResponse) ValidateAll() error {
-	return m.validate(true)
-}
-
-func (m *RegisterUserResponse) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
-
-	var errors []error
 
 	// no validation rules for UserId
 
 	// no validation rules for Message
 
-	if len(errors) > 0 {
-		return RegisterUserResponseMultiError(errors)
-	}
-
 	return nil
 }
-
-// RegisterUserResponseMultiError is an error wrapping multiple validation
-// errors returned by RegisterUserResponse.ValidateAll() if the designated
-// constraints aren't met.
-type RegisterUserResponseMultiError []error
-
-// Error returns a concatenation of all the error messages it wraps.
-func (m RegisterUserResponseMultiError) Error() string {
-	var msgs []string
-	for _, err := range m {
-		msgs = append(msgs, err.Error())
-	}
-	return strings.Join(msgs, "; ")
-}
-
-// AllErrors returns a list of validation violation errors.
-func (m RegisterUserResponseMultiError) AllErrors() []error { return m }
 
 // RegisterUserResponseValidationError is the validation error returned by
 // RegisterUserResponse.Validate if the designated constraints aren't met.

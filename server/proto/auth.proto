@@ -26,7 +26,7 @@ service AuthService {
   // Подтверждение почты при переходе по ссылке в письме
   rpc VerifyEmail (VerifyEmailRequest) returns (VerifyEmailResponse) {
     option (google.api.http) = {
-      get: "/v1/auth/verify-email/{token}"
+      get: "/v1/auth/verify-email"
     };
   }
 }

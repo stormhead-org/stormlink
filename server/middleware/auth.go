@@ -23,8 +23,10 @@ func GRPCAuthInterceptor(
 
 	// Публичные методы
 	publicMethods := map[string]bool{
-		"/auth.AuthService/Login": true,
-		"/UserService/RegisterUser": true,
+		"/auth.AuthService/Login":                   true,
+		"/UserService/RegisterUser":                 true,
+		"/auth.AuthService/VerifyEmail":             true,
+		"/auth.AuthService/ResendVerificationEmail": true,
 	}
 
 	if publicMethods[info.FullMethod] {
@@ -49,7 +51,7 @@ func GRPCAuthInterceptor(
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
 	}
 
-	newCtx := context.WithValue(ctx, "userID", claims.UserID)
+	// Устанавливаем userID как строку UUID
+	newCtx := context.WithValue(ctx, "userID", claims.UserID.String())
 	return handler(newCtx, req)
 }
-

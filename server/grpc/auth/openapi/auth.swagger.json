@@ -16,7 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/auth/verify-email/{token}": {
+    "/v1/auth/verify-email": {
       "get": {
         "summary": "Подтверждение почты при переходе по ссылке в письме",
         "operationId": "AuthService_VerifyEmail",
@@ -37,8 +37,8 @@
         "parameters": [
           {
             "name": "token",
-            "in": "path",
-            "required": true,
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],
@@ -184,7 +184,6 @@
         "details": {
           "type": "array",
           "items": {
-            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }

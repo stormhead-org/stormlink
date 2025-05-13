@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strconv"
+	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"stormlink/server/pkg/auth"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -14,16 +16,22 @@ import (
 	"stormlink/server/ent"
 	"stormlink/server/ent/user"
 	"stormlink/server/grpc/user/protobuf"
+	"stormlink/server/pkg/mapper"
+	"stormlink/server/usecase"
 	"stormlink/server/utils"
 )
 
 type UserService struct {
 	protobuf.UnimplementedUserServiceServer
 	client *ent.Client
+	uc     usecase.UserUsecase
 }
 
-func NewUserService(client *ent.Client) *UserService {
-	return &UserService{client: client}
+func NewUserService(client *ent.Client, uc usecase.UserUsecase) *UserService {
+	return &UserService{
+		client: client,
+		uc:     uc,
+	}
 }
 
 func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUserRequest) (*protobuf.RegisterUserResponse, error) {
@@ -92,7 +100,31 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 
 	// Возвращаем успешный ответ
 	return &protobuf.RegisterUserResponse{
-		UserId:  strconv.Itoa(newUser.ID),
+		UserId:  newUser.ID.String(),
 		Message: "User registered successfully. Please check your email to verify your account.",
+	}, nil
+}
+
+func (s *UserService) GetMe(ctx context.Context, _ *emptypb.Empty) (*protobuf.UserResponse, error) {
+	userIDStr, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID format: %v", err)
+	}
+
+	user, err := s.uc.GetUserByID(ctx, userID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, status.Errorf(codes.NotFound, "user not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
+	}
+
+	return &protobuf.UserResponse{
+		User: mapper.UserToProto(user),
 	}, nil
 }
