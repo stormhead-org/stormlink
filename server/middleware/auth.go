@@ -3,13 +3,14 @@ package middleware
 import (
 	"context"
 	"log"
-	"stormlink/server/utils"
 	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"stormlink/server/utils"
 )
 
 func GRPCAuthInterceptor(
@@ -18,7 +19,6 @@ func GRPCAuthInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
-	// Показываем gRPC в консоль, чтобы легче было ориентироваться в запросах
 	log.Println("🔎 Full method:", info.FullMethod)
 
 	// Публичные методы
@@ -30,26 +30,37 @@ func GRPCAuthInterceptor(
 	}
 
 	if publicMethods[info.FullMethod] {
-		// Не проверяем токен для публичных методов
 		log.Println("✅ Публичный метод, не требуется авторизация")
 		return handler(ctx, req)
 	}
 
+	// Извлекаем метаданные из контекста
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		log.Println("❌ [AuthInterceptor] Missing metadata")
 		return nil, status.Errorf(codes.Unauthenticated, "missing metadata")
 	}
 
-	authHeader := md["authorization"]
-	if len(authHeader) == 0 || !strings.HasPrefix(authHeader[0], "Bearer ") {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
+	// Проверяем заголовок Authorization
+	authHeader, ok := md["authorization"]
+	if !ok || len(authHeader) == 0 {
+		log.Println("❌ [AuthInterceptor] Missing Authorization header")
+		return nil, status.Errorf(codes.Unauthenticated, "missing or invalid token")
+	}
+	if !strings.HasPrefix(authHeader[0], "Bearer ") {
+		log.Println("❌ [AuthInterceptor] Invalid Authorization format:", authHeader[0])
+		return nil, status.Errorf(codes.Unauthenticated, "missing or invalid token")
 	}
 
 	tokenStr := strings.TrimPrefix(authHeader[0], "Bearer ")
+
+	// Валидируем токен
 	claims, err := utils.ParseAccessToken(tokenStr)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid token")
+		log.Println("❌ [AuthInterceptor] Invalid token:", err)
+		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
+	log.Println("✅ [AuthInterceptor] Token validated, userID:", claims.UserID)
 
 	// Устанавливаем userID как строку UUID
 	newCtx := context.WithValue(ctx, "userID", claims.UserID.String())

@@ -6,11 +6,19 @@ option go_package = "stormlink/server/grpc/auth/protobuf;protobuf";
 
 import "google/api/annotations.proto";
 import "validate/validate.proto";
+import "google/protobuf/empty.proto";
 
 service AuthService {
   rpc Login (LoginRequest) returns (LoginResponse) {
     option (google.api.http) = {
       post: "/v1/users/login"
+      body: "*"
+    };
+  };
+
+  rpc Logout (google.protobuf.Empty) returns (LogoutResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/logout"
       body: "*"
     };
   };
@@ -47,6 +55,10 @@ message LoginRequest {
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
+}
+
+message LogoutResponse {
+  string message = 1;
 }
 
 // Запрос на RefreshToken

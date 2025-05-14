@@ -2,8 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"golang.org/x/time/rate"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
 	"net/http"
@@ -13,10 +20,7 @@ import (
 	"stormlink/server/middleware"
 	"stormlink/server/usecase"
 	"stormlink/server/utils"
-
-	"golang.org/x/time/rate"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"time"
 
 	"entgo.io/ent/dialect/sql/schema"
 
@@ -24,7 +28,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 	"google.golang.org/grpc"
-
 	"stormlink/server/ent"
 	authpb "stormlink/server/grpc/auth/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
@@ -144,6 +147,13 @@ func main() {
 		}
 	}()
 
+	// Подключаемся к gRPC-серверу для кастомных хендлеров
+	grpcConn, err := grpc.Dial("localhost:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("не удалось подключиться к gRPC-серверу: %v", err)
+	}
+	defer grpcConn.Close()
+
 	// HTTP Gateway mux
 	ctx := context.Background()
 	gwmux := gwruntime.NewServeMux(
@@ -160,23 +170,132 @@ func main() {
 		}),
 	)
 
-	// Middleware для передачи HTTP-контекста
-	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Добавляем HTTP-контекст в gRPC-контекст
-		ctx := utils.WithHTTPContext(r.Context(), w, r)
-		gwmux.ServeHTTP(w, r.WithContext(ctx))
-})
-
-	// Подключаем grpc-gateway хендлеры
+	// Подключаем grpc-gateway хендлеры (кроме login и refresh-token)
 	err = userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithInsecure()})
 	if err != nil {
 		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер UserService: %v", err)
 	}
 
-	err = authpb.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithInsecure()})
-	if err != nil {
-		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер AuthService: %v", err)
-	}
+	// Кастомный мультиплексор для маршрутизации
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/users/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req authpb.LoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
+			return
+		}
+
+		authClient := authpb.NewAuthServiceClient(grpcConn)
+		resp, err := authClient.Login(r.Context(), &req)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusUnauthorized)
+			return
+		}
+
+		// Устанавливаем куки
+		utils.SetAuthCookies(w, resp.AccessToken, resp.RefreshToken)
+
+		// Отправляем JSON-ответ
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	mux.HandleFunc("/v1/users/logout", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Извлекаем заголовок Authorization
+		authHeader := r.Header.Get("Authorization")
+
+		// Создаем gRPC-метаданные
+		md := metadata.New(map[string]string{})
+		if authHeader != "" {
+			md.Set("authorization", authHeader)
+		}
+
+		// Создаем контекст с метаданными
+		ctx := metadata.NewOutgoingContext(r.Context(), md)
+
+		authClient := authpb.NewAuthServiceClient(grpcConn)
+		resp, err := authClient.Logout(ctx, &emptypb.Empty{})
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusInternalServerError)
+			return
+		}
+
+		// Очищаем куки
+		http.SetCookie(w, &http.Cookie{
+			Name:     "auth_token",
+			Value:    "",
+			Path:     "/",
+			Domain:   "localhost",
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+			HttpOnly: false,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Path:     "/",
+			Domain:   "localhost",
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+
+		// Отправляем JSON-ответ
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+			return
+		}
+
+	})
+
+	mux.HandleFunc("/v1/users/refresh-token", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req authpb.RefreshTokenRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			// Проверяем куки, если тело пустое
+			cookie, err := r.Cookie("refresh_token")
+			if err == nil && cookie != nil {
+				req.RefreshToken = cookie.Value
+			} else {
+				http.Error(w, `{"error": "refresh token required"}`, http.StatusBadRequest)
+				return
+			}
+		}
+
+		authClient := authpb.NewAuthServiceClient(grpcConn)
+		resp, err := authClient.RefreshToken(r.Context(), &req)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "%v"}`, err), http.StatusUnauthorized)
+			return
+		}
+
+		// Устанавливаем куки
+		utils.SetAuthCookies(w, resp.AccessToken, resp.RefreshToken)
+
+		// Отправляем JSON-ответ
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// Все остальные маршруты через gRPC-Gateway
+	mux.Handle("/", gwmux)
 
 	// Настройка CORS
 	corsHandler := cors.New(cors.Options{
@@ -185,17 +304,15 @@ func main() {
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"Set-Cookie"},
 		AllowCredentials: true,
-}).Handler(httpHandler)
+	}).Handler(mux)
 
 	// HTTP сервер (на 4080)
 	httpServer := &http.Server{
-    Addr: ":4080",
-    Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        log.Printf("📥 [HTTP] Request: %s %s", r.Method, r.URL.Path)
-        corsHandler.ServeHTTP(w, r)
-        log.Printf("📤 [HTTP] Response headers: %v", w.Header())
-    }),
-}
+		Addr: ":4080",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			corsHandler.ServeHTTP(w, r)
+		}),
+	}
 
 	log.Println("🌐 HTTP-сервер запущен на :4080")
 	if err := httpServer.ListenAndServe(); err != nil {
