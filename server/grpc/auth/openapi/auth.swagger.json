@@ -79,6 +79,39 @@
         ]
       }
     },
+    "/v1/users/refresh-token": {
+      "post": {
+        "summary": "Обновление токена сессии",
+        "operationId": "AuthService_RefreshToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authLoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authRefreshTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
     "/v1/users/resend-verification-email": {
       "post": {
         "summary": "Метод для повторной отправки верификационного письма",
@@ -136,6 +169,15 @@
         }
       }
     },
+    "authRefreshTokenRequest": {
+      "type": "object",
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "title": "Запрос на RefreshToken"
+    },
     "authResendVerificationRequest": {
       "type": "object",
       "properties": {
@@ -184,6 +226,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }

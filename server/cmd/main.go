@@ -4,9 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"golang.org/x/time/rate"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"log"
 	"net"
 	"net/http"
@@ -15,6 +12,11 @@ import (
 	"stormlink/server/grpc/user"
 	"stormlink/server/middleware"
 	"stormlink/server/usecase"
+	"stormlink/server/utils"
+
+	"golang.org/x/time/rate"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"entgo.io/ent/dialect/sql/schema"
 
@@ -111,9 +113,8 @@ func main() {
 
 	// Комбинируем middleware
 	chain := []grpc.UnaryServerInterceptor{
-		middleware.RateLimitInterceptor(rl), // Сначала rate limiting
-		middleware.GRPCAuthInterceptor,      // Затем авторизация
-		middleware.CookieInterceptor(),
+		middleware.RateLimitInterceptor(rl),
+		middleware.GRPCAuthInterceptor,
 	}
 
 	// Инициализация gRPC сервера
@@ -143,15 +144,6 @@ func main() {
 		}
 	}()
 
-	// Запуск Prometheus metrics эндпоинта
-	//go func() {
-	//	http.Handle("/metrics", promhttp.Handler())
-	//	log.Println("📊 Prometheus запущен на :5080")
-	//	if err := http.ListenAndServe(":5080", nil); err != nil {
-	//		log.Fatalf("ошибка при запуске Prometheus metrics сервера: %v", err)
-	//	}
-	//}()
-
 	// HTTP Gateway mux
 	ctx := context.Background()
 	gwmux := gwruntime.NewServeMux(
@@ -166,18 +158,14 @@ func main() {
 			}
 			gwruntime.DefaultHTTPErrorHandler(ctx, mux, marshaler, w, r, err)
 		}),
-		//gwruntime.WithForwardResponseOption(func(ctx context.Context, w http.ResponseWriter, protoMsg proto.Message) error {
-		//	if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		//		if cookies := md.Get("Set-Cookie"); len(cookies) > 0 {
-		//			for _, cookie := range cookies {
-		//				w.Header().Add("Set-Cookie", cookie)
-		//				log.Println("gRPC-Gateway: Added Set-Cookie to HTTP response:", cookie)
-		//			}
-		//		}
-		//	}
-		//	return nil
-		//}),
 	)
+
+	// Middleware для передачи HTTP-контекста
+	httpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Добавляем HTTP-контекст в gRPC-контекст
+		ctx := utils.WithHTTPContext(r.Context(), w, r)
+		gwmux.ServeHTTP(w, r.WithContext(ctx))
+})
 
 	// Подключаем grpc-gateway хендлеры
 	err = userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithInsecure()})
@@ -192,18 +180,22 @@ func main() {
 
 	// Настройка CORS
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000"},
-		AllowedMethods: []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders: []string{"Authorization", "Content-Type"},
-		//ExposedHeaders:   []string{"Set-Cookie"},
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Set-Cookie"},
 		AllowCredentials: true,
-	}).Handler(gwmux)
+}).Handler(httpHandler)
 
 	// HTTP сервер (на 4080)
 	httpServer := &http.Server{
-		Addr:    ":4080",
-		Handler: corsHandler,
-	}
+    Addr: ":4080",
+    Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        log.Printf("📥 [HTTP] Request: %s %s", r.Method, r.URL.Path)
+        corsHandler.ServeHTTP(w, r)
+        log.Printf("📤 [HTTP] Response headers: %v", w.Header())
+    }),
+}
 
 	log.Println("🌐 HTTP-сервер запущен на :4080")
 	if err := httpServer.ListenAndServe(); err != nil {

@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
+	"log"
 	"stormlink/server/ent/emailverification"
 	"stormlink/server/ent/user"
 	"stormlink/server/utils"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -14,9 +16,9 @@ import (
 )
 
 func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*protobuf.LoginResponse, error) {
-	// ✅ Проверяем входные данные
+	// Проверяем входные данные
 	if err := req.Validate(); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+			return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
 	}
 
 	email := req.GetEmail()
@@ -24,38 +26,44 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 
 	// Ищем пользователя по email
 	user, err := s.client.User.
-		Query().
-		Where(user.EmailEQ(email)).
-		Only(ctx)
+			Query().
+			Where(user.EmailEQ(email)).
+			Only(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
+			return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
 
 	// Проверяем пароль
 	err = utils.ComparePassword(user.PasswordHash, password, user.Salt)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
+			return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
 
-	// TODO раскоментить при реализации верификации на фронте
-	//Проверяем, верифицирован ли email
+	// Проверяем, верифицирован ли email
 	if !user.IsVerified {
-		return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
+			return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
 	}
 
 	// Генерируем токены
 	accessToken, err := utils.GenerateAccessToken(user.ID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
+			return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
 	}
 	refreshToken, err := utils.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
+			return nil, status.Errorf(codes.Internal, "error generating refresh token: %v", err)
+	}
+
+	// Сохраняем токены в куки
+	httpResp := utils.GetHTTPResponseWriter(ctx)
+	if httpResp == nil {
+			log.Println("⚠️ [Login] http.ResponseWriter is nil, cookies will not be set")
+	} else {
+			utils.SetAuthCookies(httpResp, accessToken, refreshToken)
 	}
 
 	return &protobuf.LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+			AccessToken: accessToken,
 	}, nil
 }
 
@@ -156,5 +164,76 @@ func (s *AuthService) VerifyEmail(ctx context.Context, req *protobuf.VerifyEmail
 
 	return &protobuf.VerifyEmailResponse{
 		Message: "Email verified successfully.",
+	}, nil
+}
+
+func (s *AuthService) RefreshToken(ctx context.Context, req *protobuf.RefreshTokenRequest) (*protobuf.LoginResponse, error) {
+	// Проверка входных данных
+	if err := req.Validate(); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+	}
+
+	refreshToken := req.GetRefreshToken()
+
+	// Попробуем получить refreshToken из куки, если он не передан в запросе
+	if refreshToken == "" {
+			httpReq := utils.GetHTTPRequest(ctx)
+			if httpReq != nil {
+					cookie, err := httpReq.Cookie("refresh_token")
+					if err == nil && cookie != nil {
+							refreshToken = cookie.Value
+					}
+			}
+	}
+
+	if refreshToken == "" {
+			return nil, status.Errorf(codes.InvalidArgument, "refresh token is required")
+	}
+
+	// Извлекаем claims
+	claims, err := utils.ParseToken(refreshToken)
+	if err != nil {
+			return nil, status.Errorf(codes.Unauthenticated, "invalid refresh token: %v", err)
+	}
+
+	userIDStr, ok := claims["user_id"].(string)
+	if !ok {
+			return nil, status.Errorf(codes.Unauthenticated, "user_id claim missing")
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+			return nil, status.Errorf(codes.Unauthenticated, "invalid user_id format")
+	}
+
+	// Убедимся, что пользователь существует
+	_, err = s.client.User.
+			Query().
+			Where(user.IDEQ(userID)).
+			Only(ctx)
+	if err != nil {
+			return nil, status.Errorf(codes.NotFound, "user not found")
+	}
+
+	// Генерируем новые токены
+	newAccessToken, err := utils.GenerateAccessToken(userID)
+	if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to generate access token")
+	}
+	newRefreshToken, err := utils.GenerateRefreshToken(userID)
+	if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to generate refresh token")
+	}
+
+	// Сохраняем новые токены в куки
+	httpResp := utils.GetHTTPResponseWriter(ctx)
+	if httpResp == nil {
+			log.Println("⚠️ [RefreshToken] http.ResponseWriter is nil, cookies will not be set")
+	} else {
+			utils.SetAuthCookies(httpResp, newAccessToken, newRefreshToken)
+	}
+
+	return &protobuf.LoginResponse{
+			AccessToken: newAccessToken,
 	}, nil
 }

@@ -29,6 +29,14 @@ service AuthService {
       get: "/v1/auth/verify-email"
     };
   }
+
+  // Обновление токена сессии
+  rpc RefreshToken (RefreshTokenRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/refresh-token"
+      body: "*"
+    };
+  }  
 }
 
 message LoginRequest {
@@ -39,6 +47,11 @@ message LoginRequest {
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
+}
+
+// Запрос на RefreshToken
+message RefreshTokenRequest {
+  string refresh_token = 1 [(validate.rules).string.min_len = 1];
 }
 
 // Запрос для повторной отправки верификационного письма
