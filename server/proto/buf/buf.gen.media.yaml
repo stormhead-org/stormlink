@@ -1,0 +1,23 @@
+version: v1
+plugins:
+  # Плагины для генерации в папку media
+  - name: go
+    out: server/grpc/media/protobuf
+    opt: paths=source_relative
+    path: protoc-gen-go
+  - name: go-grpc
+    out: server/grpc/media/protobuf
+    opt: paths=source_relative
+    path: protoc-gen-go-grpc
+  - name: grpc-gateway
+    out: server/grpc/media/protobuf
+    opt: logtostderr=true,paths=source_relative
+    path: protoc-gen-grpc-gateway
+  - name: openapiv2
+    out: server/grpc/media/openapi
+    opt: logtostderr=true
+    path: protoc-gen-openapiv2
+  - name: validate
+    out: server/grpc/media/protobuf
+    opt: lang=go,paths=source_relative
+    path: protoc-gen-validate

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package media;
+
+option go_package = "stormlink/server/grpc/media/protobuf;protobuf";
+
+import "google/api/annotations.proto";
+import "validate/validate.proto";
+
+service MediaService {
+  rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse) {
+    option (google.api.http) = {
+      post: "/v1/media/upload"
+      body: "*"
+    };
+  }
+}
+
+message UploadMediaRequest {
+  string filename = 1 [(validate.rules).string.min_len = 1];
+  bytes file_content = 2 [(validate.rules).bytes.min_len = 1];
+}
+
+message UploadMediaResponse {
+  string url = 1;
+}
