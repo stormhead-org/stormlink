@@ -53,6 +53,9 @@
     "mediaUploadMediaRequest": {
       "type": "object",
       "properties": {
+        "dir": {
+          "type": "string"
+        },
         "filename": {
           "type": "string"
         },
@@ -92,7 +95,6 @@
         "details": {
           "type": "array",
           "items": {
-            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }

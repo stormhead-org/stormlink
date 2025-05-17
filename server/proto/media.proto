@@ -17,8 +17,9 @@ service MediaService {
 }
 
 message UploadMediaRequest {
-  string filename = 1 [(validate.rules).string.min_len = 1];
-  bytes file_content = 2 [(validate.rules).bytes.min_len = 1];
+  string dir = 1 [(validate.rules).string.min_len = 1];
+  string filename = 2 [(validate.rules).string.min_len = 1];
+  bytes file_content = 3 [(validate.rules).bytes.min_len = 1];
 }
 
 message UploadMediaResponse {

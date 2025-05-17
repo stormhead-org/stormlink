@@ -2,7 +2,10 @@ package media
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"path/filepath"
+	"strings"
+
 	"stormlink/server/grpc/media/protobuf"
 	"stormlink/server/utils"
 
@@ -11,32 +14,37 @@ import (
 )
 
 type MediaService struct {
-    protobuf.UnimplementedMediaServiceServer
-    s3 *utils.S3Client
+	protobuf.UnimplementedMediaServiceServer
+	s3 *utils.S3Client
 }
 
-func NewMediaService() *MediaService {
-    s3Client, err := utils.NewS3Client()
-    if err != nil {
-        log.Fatalf("failed to initialize S3 client: %v", err)
-    }
-    return &MediaService{s3: s3Client}
+// используем фабрику с внешним S3Client
+func NewMediaServiceWithClient(client *utils.S3Client) *MediaService {
+	return &MediaService{s3: client}
 }
 
 func (s *MediaService) UploadMedia(ctx context.Context, req *protobuf.UploadMediaRequest) (*protobuf.UploadMediaResponse, error) {
-    if err := req.Validate(); err != nil {
-        return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
-    }
+	if err := req.Validate(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+	}
 
-    filename := req.GetFilename()
-    fileContent := req.GetFileContent()
+	dir := req.GetDir()
+	if dir == "" {
+		dir = "media"
+	}
+	filename := req.GetFilename()
+	fileContent := req.GetFileContent()
 
-    url, err := s.s3.UploadFile(ctx, filename, fileContent)
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to upload file: %v", err)
-    }
+	// мы знаем ключ внутри бакета
+	key := filepath.ToSlash(filepath.Join(dir, filename))
 
-    return &protobuf.UploadMediaResponse{
-        Url: url,
-    }, nil
+	// отправляем в S3
+	if err := s.s3.Put(ctx, key, fileContent); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to upload file: %v", err)
+	}
+
+	// возвращаем прокси-путь, по которому клиент будет брать картинку
+	return &protobuf.UploadMediaResponse{
+		Url: fmt.Sprintf("/storage/%s", strings.TrimPrefix(key, "/")),
+	}, nil
 }

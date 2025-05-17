@@ -15,8 +15,8 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.32.0 or later.
-const _ = grpc.SupportPackageIsVersion7
+// Requires gRPC-Go v1.62.0 or later.
+const _ = grpc.SupportPackageIsVersion8
 
 const (
 	MediaService_UploadMedia_FullMethodName = "/media.MediaService/UploadMedia"
@@ -38,8 +38,9 @@ func NewMediaServiceClient(cc grpc.ClientConnInterface) MediaServiceClient {
 }
 
 func (c *mediaServiceClient) UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*UploadMediaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UploadMediaResponse)
-	err := c.cc.Invoke(ctx, MediaService_UploadMedia_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MediaService_UploadMedia_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}

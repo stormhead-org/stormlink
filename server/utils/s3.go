@@ -4,98 +4,171 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+// S3Client обёртка для AWS SDK v1.
 type S3Client struct {
-    client   *s3.Client
-    bucket   string
-    endpoint string
+	svc          *s3.S3
+	bucket       string
+	endpoint     string
+	region       string
+	usePathStyle bool
+	aliasHost    string
 }
 
+// NewS3Client создаёт новый S3Client, читая настройки из окружения.
 func NewS3Client() (*S3Client, error) {
-    // Читаем ENV
-    raw := os.Getenv("S3_ENDPOINT")     // https://media.onestorage.ru или media.onestorage.ru
-    var endpoint string
-    secure := strings.HasPrefix(raw, "https://")
-    if secure {
-        endpoint = raw
-    } else if strings.HasPrefix(raw, "http://") {
-        endpoint = "http://" + strings.TrimPrefix(raw, "http://")
-    } else {
-        endpoint = "https://" + raw
-    }
+	endpoint := os.Getenv("S3_ENDPOINT")
+	region := os.Getenv("S3_REGION")
+	bucket := os.Getenv("S3_BUCKET")
+	access := os.Getenv("S3_ACCESS_KEY_ID")
+	secret := os.Getenv("S3_SECRET_ACCESS_KEY")
+	usePathStyle := os.Getenv("S3_USE_PATH_STYLE") == "true"
+	aliasHost := os.Getenv("S3_ALIAS_HOST")
 
-    region := os.Getenv("S3_REGION")    // например ru-1
-    bucket := os.Getenv("S3_BUCKET")
-    access := os.Getenv("S3_ACCESS_KEY_ID")
-    secret := os.Getenv("S3_SECRET_ACCESS_KEY")
+	if endpoint == "" {
+		return nil, fmt.Errorf("S3_ENDPOINT is not set")
+	}
+	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+		endpoint = "https://" + endpoint
+	}
+	if region == "" {
+		return nil, fmt.Errorf("S3_REGION is not set")
+	}
+	if bucket == "" {
+		return nil, fmt.Errorf("S3_BUCKET is not set")
+	}
+	if access == "" || secret == "" {
+		return nil, fmt.Errorf("S3_ACCESS_KEY_ID or S3_SECRET_ACCESS_KEY is not set")
+	}
 
-    // Загружаем базовый aws.Config, привязываем endpoint
-    cfg, err := config.LoadDefaultConfig(context.TODO(),
-        config.WithRegion(region),
-        config.WithCredentialsProvider(
-            credentials.NewStaticCredentialsProvider(access, secret, ""),
-        ),
-        config.WithEndpointResolverWithOptions(
-            aws.EndpointResolverWithOptionsFunc(func(service, rgn string, opts ...interface{}) (aws.Endpoint, error) {
-                return aws.Endpoint{
-                    URL:               endpoint,
-                    SigningRegion:     region,
-                    HostnameImmutable: true,
-                }, nil
-            }),
-        ),
-    )
-    if err != nil {
-        return nil, fmt.Errorf("load AWS config: %w", err)
-    }
+	sess, err := session.NewSession(&aws.Config{
+		Region:           aws.String(region),
+		Endpoint:         aws.String(endpoint),
+		S3ForcePathStyle: aws.Bool(usePathStyle),
+		Credentials:      credentials.NewStaticCredentials(access, secret, ""),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	}
 
-    // Создаём S3-клиент в path-style и без compute-checksums
-    client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-        o.UsePathStyle           = true
-        o.DisableComputeChecksums = true
-    })
-
-    return &S3Client{client: client, bucket: bucket, endpoint: endpoint}, nil
+	svc := s3.New(sess)
+	return &S3Client{
+		svc:          svc,
+		bucket:       bucket,
+		endpoint:     endpoint,
+		region:       region,
+		usePathStyle: usePathStyle,
+		aliasHost:    aliasHost,
+	}, nil
 }
 
+// UploadFile загружает файл и возвращает публичный URL.
 func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, fileContent []byte) (string, error) {
-    // формируем ключ: avatar/myface.png
-    key := filepath.Join(dir, filename)
+	key := filepath.ToSlash(filepath.Join(dir, filename))
 
-    // определяем Content-Type по расширению
-    contentType := "application/octet-stream"
-    switch strings.ToLower(filepath.Ext(filename)) {
-    case ".jpg", ".jpeg":
-        contentType = "image/jpeg"
-    case ".png":
-        contentType = "image/png"
-    case ".gif":
-        contentType = "image/gif"
-    }
+	contentType := "application/octet-stream"
+	switch ext := strings.ToLower(filepath.Ext(filename)); ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".gif":
+		contentType = "image/gif"
+	}
 
-    _, err := c.client.PutObject(ctx, &s3.PutObjectInput{
-        Bucket:      aws.String(c.bucket),
-        Key:         aws.String(key),
-        Body:        bytes.NewReader(fileContent),
-        ACL:         types.ObjectCannedACLPublicRead,
-        ContentType: aws.String(contentType),
-    })
-    if err != nil {
-        return "", fmt.Errorf("upload to S3: %w", err)
-    }
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(c.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(fileContent),
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String(contentType),
+	}
 
-    // Возвращаем публичную ссылку, например:
-    // https://media.onestorage.ru/avatar/face.png
-    return fmt.Sprintf("%s/%s", c.endpoint, key), nil
+	_, err := c.svc.PutObjectWithContext(ctx, input)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload to S3: %w", err)
+	}
+
+	return c.publicURL(key), nil
 }
 
+// PresignUpload генерирует presigned URL и публичный URL.
+func (c *S3Client) PresignUpload(ctx context.Context, dir, filename, contentType string, expires time.Duration) (string, string, error) {
+	key := filepath.ToSlash(filepath.Join(dir, filename))
+
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(c.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String(contentType),
+	}
+
+	req, _ := c.svc.PutObjectRequest(input)
+	uploadURL, err := req.Presign(expires)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to presign PUT request: %w", err)
+	}
+
+	return uploadURL, c.publicURL(key), nil
+}
+
+// Put записывает произвольный ключ и содержимое в S3.
+func (c *S3Client) Put(ctx context.Context, key string, content []byte) error {
+	input := &s3.PutObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+		Body:   bytes.NewReader(content),
+		ACL:    aws.String("public-read"),
+	}
+	_, err := c.svc.PutObjectWithContext(ctx, input)
+	return err
+}
+
+// publicURL формирует публичную ссылку в зависимости от alias-хоста или типа доступа.
+func (c *S3Client) publicURL(key string) string {
+	key = strings.TrimPrefix(key, "/")
+	if c.aliasHost != "" {
+		return fmt.Sprintf("https://%s/%s", c.aliasHost, key)
+	}
+
+	endpoint := strings.TrimPrefix(c.endpoint, "https://")
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+
+	if c.usePathStyle {
+		return fmt.Sprintf("%s/%s/%s", c.endpoint, c.bucket, key)
+	}
+
+	return fmt.Sprintf("https://%s.%s/%s", c.bucket, endpoint, key)
+}
+
+// GetFile скачивает объект по ключу key из S3 и возвращает его Content-Type и содержимое.
+func (c *S3Client) GetFile(ctx context.Context, key string) (string, []byte, error) {
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	}
+	result, err := c.svc.GetObjectWithContext(ctx, input)
+	if err != nil {
+		return "", nil, err
+	}
+	defer result.Body.Close()
+
+	buf := &bytes.Buffer{}
+	if _, err := io.Copy(buf, result.Body); err != nil {
+		return "", nil, err
+	}
+
+	contentType := aws.StringValue(result.ContentType)
+	return contentType, buf.Bytes(), nil
+}
