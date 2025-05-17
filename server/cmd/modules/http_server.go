@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	authpb "stormlink/server/grpc/auth/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
 )
 
@@ -30,9 +31,18 @@ func SetupHTTPServer(grpcConn *grpc.ClientConn, mux *http.ServeMux) *http.Server
 		}),
 	)
 
-	err := userpb.RegisterUserServiceHandlerFromEndpoint(ctx, gwmux, "localhost:4000", []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())})
-	if err != nil {
+	if err := userpb.RegisterUserServiceHandlerFromEndpoint(
+		ctx, gwmux, "localhost:4000",
+		[]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+	); err != nil {
 		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер UserService: %v", err)
+	}
+
+	if err := authpb.RegisterAuthServiceHandlerFromEndpoint(
+		ctx, gwmux, "localhost:4000",
+		[]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+	); err != nil {
+		log.Fatalf("не удалось зарегистрировать grpc-gateway хендлер AuthService: %v", err)
 	}
 
 	mux.Handle("/", gwmux)

@@ -8,9 +8,9 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type HostCommunitiesBan struct{ ent.Schema }
+type HostCommunitiesMute struct{ ent.Schema }
 
-func (HostCommunitiesBan) Fields() []ent.Field {
+func (HostCommunitiesMute) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
@@ -21,7 +21,7 @@ func (HostCommunitiesBan) Fields() []ent.Field {
 	}
 }
 
-func (HostCommunitiesBan) Edges() []ent.Edge {
+func (HostCommunitiesMute) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("community", Community.Type).
 			Field("community_id").

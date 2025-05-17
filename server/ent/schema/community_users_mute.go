@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/google/uuid"
 	"time"
 
 	"entgo.io/ent"
@@ -8,23 +9,32 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type CommunityUsersBan struct{ ent.Schema }
+type CommunityUsersMute struct{ ent.Schema }
 
-func (CommunityUsersBan) Fields() []ent.Field {
+func (CommunityUsersMute) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
+
+		field.UUID("user_id", uuid.New()).Default(uuid.New),
+		field.Int("community_id"),
+
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 
-func (CommunityUsersBan) Edges() []ent.Edge {
+func (CommunityUsersMute) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
-			Ref("id").
+			Ref("communities_mutes").
+			Field("user_id").
+			Required().
 			Unique(),
+
 		edge.From("community", Community.Type).
-			Ref("id").
+			Ref("mutes").
+			Field("community_id").
+			Required().
 			Unique(),
 	}
 }

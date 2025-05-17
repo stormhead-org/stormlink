@@ -8,32 +8,28 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type Community struct{ ent.Schema }
+type Host struct{ ent.Schema }
 
-func (Community) Fields() []ent.Field {
+func (Host) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
-		field.Int("logo_id").Optional().Nillable(),
-		field.Int("banner_id").Optional().Nillable(),
-		field.String("title"),
+		field.String("title").Optional().Nillable(),
+		field.String("slogan").Optional().Nillable(),
 		field.String("contacts").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),
-		field.JSON("table_info", []struct {
-			Label string  `json:"label"`
-			Value string  `json:"value"`
-			ID    *string `json:"id,omitempty"`
-		}{}).
-			Optional().
-			StructTag(`json:"table_info,omitempty"`),
 
-		field.Bool("community_has_banned").Default(false),
+		field.Int("logo_id").Optional().Nillable(),
+		field.Int("banner_id").Optional().Nillable(),
+		field.Int("auth_banner_id").Optional().Nillable(),
+
+		field.Bool("first_settings").Default(true),
 
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 
-func (Community) Edges() []ent.Edge {
+func (Host) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("logo", Media.Type).
 			Field("logo_id").
@@ -43,17 +39,14 @@ func (Community) Edges() []ent.Edge {
 			Field("banner_id").
 			Unique(),
 
-		edge.From("owner", User.Type).
-			Ref("communities_owner").
+		edge.To("auth_banner", Media.Type).
+			Field("auth_banner_id").
 			Unique(),
 
-		edge.To("moderators", CommunityModerators.Type),
-		edge.To("roles", Role.Type),
-		edge.To("rules", CommunityRule.Type),
-		edge.To("followers", CommunityFollow.Type),
-		edge.To("bans", CommunityUsersBan.Type),
-		edge.To("mutes", CommunityUsersMute.Type),
-		edge.To("posts", Post.Type),
-		edge.To("comments", Comment.Type),
+		edge.To("owner", User.Type).
+			Required().
+			Unique(),
+
+		edge.To("rules", HostRule.Type),
 	}
 }

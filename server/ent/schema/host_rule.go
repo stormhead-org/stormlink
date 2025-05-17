@@ -8,25 +8,28 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type CommunityRule struct {
+type HostRule struct {
 	ent.Schema
 }
 
-func (CommunityRule) Fields() []ent.Field {
+func (HostRule) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
-		field.String("community_name_rule").Optional().Nillable(),
-		field.String("community_description_rule").Optional().Nillable(),
+
+		field.Int("rule_id").Optional().Nillable(),
+		field.String("name_rule").Optional().Nillable(),
+		field.String("description_rule").Optional().Nillable(),
+
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 
-func (CommunityRule) Edges() []ent.Edge {
+func (HostRule) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("community", Community.Type).
+		edge.From("host", Host.Type).
 			Ref("rules").
-			Field("id").
+			Field("rule_id").
 			Unique(),
 	}
 }

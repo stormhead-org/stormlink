@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/google/uuid"
 	"time"
 
 	"entgo.io/ent"
@@ -8,23 +9,32 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type LikeComment struct{ ent.Schema }
+type CommentLike struct{ ent.Schema }
 
-func (LikeComment) Fields() []ent.Field {
+func (CommentLike) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
+
+		field.UUID("user_id", uuid.New()).Default(uuid.New),
+		field.Int("comment_id"),
+
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 
-func (LikeComment) Edges() []ent.Edge {
+func (CommentLike) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
-			Ref("comment_likes").
+			Ref("comments_likes").
+			Field("user_id").
+			Required().
 			Unique(),
+
 		edge.From("comment", Comment.Type).
 			Ref("likes").
+			Field("comment_id").
+			Required().
 			Unique(),
 	}
 }
