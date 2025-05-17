@@ -23,5 +23,6 @@ message UploadMediaRequest {
 }
 
 message UploadMediaResponse {
-  string url = 1;
+  string url      = 1;
+  string filename = 2;
 }

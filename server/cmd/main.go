@@ -13,6 +13,7 @@ import (
 func main() {
 	// Инициализация окружения
 	modules.InitEnv()
+	modules.InitS3Client()
 
 	// Подключение к базе данных
 	client := modules.ConnectDB()
@@ -52,11 +53,9 @@ func main() {
 		modules.RefreshTokenHandler(w, r, grpcConn)
 	})
 	mux.HandleFunc("/v1/media/upload", func(w http.ResponseWriter, r *http.Request) {
-		modules.MediaUploadHandler(w, r, grpcConn)
+		modules.MediaUploadHandler(w, r, grpcConn, client)
 	})
-	mux.HandleFunc("/storage/", func(w http.ResponseWriter, r *http.Request) {
-		modules.StorageHandler(w, r, modules.S3Client)
-	})
+	mux.HandleFunc("/storage/", modules.StorageHandler)
 
 	// Настройка и запуск HTTP-сервера
 	httpServer := modules.SetupHTTPServer(grpcConn, mux)

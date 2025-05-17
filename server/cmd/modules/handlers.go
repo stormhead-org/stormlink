@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"stormlink/server/ent"
 	authpb "stormlink/server/grpc/auth/protobuf"
 	mediapb "stormlink/server/grpc/media/protobuf"
 	"stormlink/server/utils"
@@ -138,7 +139,7 @@ func RefreshTokenHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.
 }
 
 // mediaUploadHandler обрабатывает запрос на загрузку медиа
-func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.ClientConn) {
+func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.ClientConn, client *ent.Client) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -174,7 +175,7 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 	if dir == "" {
 		dir = "media"
 	}
-	resp, err := mediaClient.UploadMedia(ctx, &mediapb.UploadMediaRequest{
+	grpcResp, err := mediaClient.UploadMedia(ctx, &mediapb.UploadMediaRequest{
 		Dir:         dir,
 		Filename:    handler.Filename,
 		FileContent: fileContent,
@@ -184,9 +185,22 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}
-	log.Printf("✅ [MediaUpload] File uploaded: %s", resp.Url)
+	log.Printf("✅ [MediaUpload] File uploaded: %s", grpcResp.Url)
+
+	// теперь сохраняем в Ent
+	m, err := client.Media.
+		Create().
+		SetFilename(grpcResp.GetFilename()).
+		SetURL(grpcResp.GetUrl()).
+		Save(r.Context())
+	if err != nil {
+		log.Printf("❌ [MediaUpload] Save DB error: %v", err)
+		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
+	if err := json.NewEncoder(w).Encode(m); err != nil {
 		log.Printf("❌ [MediaUpload] Failed to encode response: %v", err)
 		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
 		return
@@ -195,20 +209,21 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 }
 
 // storageHandler обрабатывает запросы к хранилищу
-func StorageHandler(w http.ResponseWriter, r *http.Request, s3Client *utils.S3Client) {
+func StorageHandler(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimPrefix(r.URL.Path, "/storage/")
 	if key == "" {
 		http.Error(w, "Bad storage path", http.StatusBadRequest)
 		return
 	}
-	ctype, data, err := s3Client.GetFile(r.Context(), key)
+	// используем глобальную переменную
+	contentType, data, err := S3Client.GetFile(r.Context(), key)
 	if err != nil {
-		log.Printf("❌ StorageProxy GetFile(%q): %v", key, err)
+		log.Printf("❌ StorageHandler GetFile(%q): %v", key, err)
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", ctype)
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	w.Write(data)
 }

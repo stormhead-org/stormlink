@@ -134,6 +134,8 @@ func (m *UploadMediaResponse) Validate() error {
 
 	// no validation rules for Url
 
+	// no validation rules for Filename
+
 	return nil
 }
 

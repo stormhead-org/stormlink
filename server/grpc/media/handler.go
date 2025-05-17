@@ -2,10 +2,6 @@ package media
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
-	"strings"
-
 	"stormlink/server/grpc/media/protobuf"
 	"stormlink/server/utils"
 
@@ -35,16 +31,16 @@ func (s *MediaService) UploadMedia(ctx context.Context, req *protobuf.UploadMedi
 	filename := req.GetFilename()
 	fileContent := req.GetFileContent()
 
-	// мы знаем ключ внутри бакета
-	key := filepath.ToSlash(filepath.Join(dir, filename))
+	url, sanitized, err := s.s3.UploadFile(ctx, dir, filename, fileContent)
 
 	// отправляем в S3
-	if err := s.s3.Put(ctx, key, fileContent); err != nil {
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to upload file: %v", err)
 	}
 
 	// возвращаем прокси-путь, по которому клиент будет брать картинку
 	return &protobuf.UploadMediaResponse{
-		Url: fmt.Sprintf("/storage/%s", strings.TrimPrefix(key, "/")),
+		Url:      url,
+		Filename: sanitized,
 	}, nil
 }

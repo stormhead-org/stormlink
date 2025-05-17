@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,12 +74,18 @@ func NewS3Client() (*S3Client, error) {
 	}, nil
 }
 
+func sanitizeFilename(name string) string {
+	ext := filepath.Ext(name)
+	return uuid.New().String() + ext
+}
+
 // UploadFile загружает файл и возвращает публичный URL.
-func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, fileContent []byte) (string, error) {
-	key := filepath.ToSlash(filepath.Join(dir, filename))
+func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, fileContent []byte) (url, sanitized string, err error) {
+	sanitized = sanitizeFilename(filename)
+	key := filepath.ToSlash(filepath.Join(dir, sanitized))
 
 	contentType := "application/octet-stream"
-	switch ext := strings.ToLower(filepath.Ext(filename)); ext {
+	switch ext := strings.ToLower(filepath.Ext(sanitized)); ext {
 	case ".jpg", ".jpeg":
 		contentType = "image/jpeg"
 	case ".png":
@@ -95,16 +102,16 @@ func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, fileCon
 		ContentType: aws.String(contentType),
 	}
 
-	_, err := c.svc.PutObjectWithContext(ctx, input)
-	if err != nil {
-		return "", fmt.Errorf("failed to upload to S3: %w", err)
+	if _, err = c.svc.PutObjectWithContext(ctx, input); err != nil {
+		return "", "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
-	return c.publicURL(key), nil
+	return "storage/" + key, sanitized, nil
 }
 
 // PresignUpload генерирует presigned URL и публичный URL.
 func (c *S3Client) PresignUpload(ctx context.Context, dir, filename, contentType string, expires time.Duration) (string, string, error) {
+	filename = sanitizeFilename(filename)
 	key := filepath.ToSlash(filepath.Join(dir, filename))
 
 	input := &s3.PutObjectInput{
@@ -120,7 +127,7 @@ func (c *S3Client) PresignUpload(ctx context.Context, dir, filename, contentType
 		return "", "", fmt.Errorf("failed to presign PUT request: %w", err)
 	}
 
-	return uploadURL, c.publicURL(key), nil
+	return uploadURL, "storage/" + key, nil
 }
 
 // Put записывает произвольный ключ и содержимое в S3.
