@@ -116,8 +116,11 @@ func RefreshTokenHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.
 			return
 		}
 	}
+	md := metadata.Pairs("authorization", r.Header.Get("Authorization"))
+	ctx := metadata.NewOutgoingContext(r.Context(), md)
+
 	authClient := authpb.NewAuthServiceClient(grpcConn)
-	resp, err := authClient.RefreshToken(r.Context(), &req)
+	resp, err := authClient.RefreshToken(ctx, &req)
 	if err != nil {
 		log.Printf("❌ [RefreshToken] gRPC error: %v", err)
 		http.Error(w, `{"error": "`+err.Error()+`"}`, http.StatusUnauthorized)
