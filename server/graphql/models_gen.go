@@ -819,7 +819,7 @@ type Host struct {
 	Logo          *Media      `json:"logo,omitempty"`
 	Banner        *Media      `json:"banner,omitempty"`
 	AuthBanner    *Media      `json:"authBanner,omitempty"`
-	Owner         *ent.User   `json:"owner"`
+	Owner         *ent.User   `json:"owner,omitempty"`
 	Rules         []*HostRule `json:"rules,omitempty"`
 }
 

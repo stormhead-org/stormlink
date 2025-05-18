@@ -25,7 +25,7 @@ func ConnectDB() *ent.Client {
 	return client
 }
 
-func MigrateDB(client *ent.Client, reset bool) {
+func MigrateDB(client *ent.Client, reset bool, seed bool) {
 	if reset {
 		log.Println("⚠️  Полный сброс базы данных с удалением колонок и индексов...")
 		if err := client.Schema.Create(
@@ -36,6 +36,18 @@ func MigrateDB(client *ent.Client, reset bool) {
 			log.Fatalf("ошибка сброса схемы: %v", err)
 		}
 		log.Println("✅ Сброс базы завершён.")
+	}
+	if seed {
+		log.Println("ℹ️  Обычная миграция схемы...")
+		if err := client.Schema.Create(context.Background()); err != nil {
+			log.Fatalf("ошибка миграции схемы: %v", err)
+		}
+		log.Println("✅ Миграция завершена.")
+		log.Println("🌱 Выполняется сидинг...")
+		if err := Seed(client); err != nil {
+			log.Fatalf("❌ Ошибка сидинга: %v", err)
+		}
+		log.Println("✅ Сидинг завершён.")
 	} else {
 		log.Println("ℹ️  Обычная миграция схемы...")
 		if err := client.Schema.Create(context.Background()); err != nil {

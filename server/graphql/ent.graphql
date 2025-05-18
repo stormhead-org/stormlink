@@ -1008,7 +1008,7 @@ type Host implements Node {
   logo: Media
   banner: Media
   authBanner: Media
-  owner: User!
+  owner: User
   rules: [HostRule!]
 }
 type HostCommunitiesBan implements Node {
@@ -2369,14 +2369,17 @@ type Query {
     """
     ids: [ID!]!
   ): [Node]!
+
   """
-  Получить все сообщества, которые не забанены.
+  Все не забаненные сообщества (по умолчанию только не забаненные)
   """
-  communities: [Community!]!
+  communities(onlyNotBanned: Boolean = true): [Community!]!
+
   """
-  Получить все юзеров, которые не забанены.
+  Список всех пользователей
   """
   users: [User!]!
+
 }
 type Role implements Node {
   id: ID!

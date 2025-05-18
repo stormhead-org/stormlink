@@ -1,7 +1,6 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - server/graphql/*.graphql
-#  - graph/*.graphqls
+  - server/graphql/ent.graphql
 
 # Where should the generated server code go?
 exec:

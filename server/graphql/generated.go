@@ -328,7 +328,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Communities func(childComplexity int) int
+		Communities func(childComplexity int, onlyNotBanned *bool) int
 		Node        func(childComplexity int, id string) int
 		Nodes       func(childComplexity int, ids []string) int
 		Users       func(childComplexity int) int
@@ -414,7 +414,7 @@ type CommunityResolver interface {
 type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []string) ([]ent.Noder, error)
-	Communities(ctx context.Context) ([]*ent.Community, error)
+	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
 	Users(ctx context.Context) ([]*ent.User, error)
 }
 type UserResolver interface {
@@ -1905,7 +1905,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.Communities(childComplexity), true
+		args, err := ec.field_Query_communities_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Communities(childComplexity, args["onlyNotBanned"].(*bool)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -2457,6 +2462,29 @@ func (ec *executionContext) field_Query___type_argsName(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_communities_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_communities_argsOnlyNotBanned(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["onlyNotBanned"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_communities_argsOnlyNotBanned(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*bool, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("onlyNotBanned"))
+	if tmp, ok := rawArgs["onlyNotBanned"]; ok {
+		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+	}
+
+	var zeroVal *bool
 	return zeroVal, nil
 }
 
@@ -8585,14 +8613,11 @@ func (ec *executionContext) _Host_owner(ctx context.Context, field graphql.Colle
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*ent.User)
 	fc.Result = res
-	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
+	return ec.marshalOUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13703,7 +13728,7 @@ func (ec *executionContext) _Query_communities(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Communities(rctx)
+		return ec.resolvers.Query().Communities(rctx, fc.Args["onlyNotBanned"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13720,7 +13745,7 @@ func (ec *executionContext) _Query_communities(ctx context.Context, field graphq
 	return ec.marshalNCommunity2ᚕᚖstormlinkᚋserverᚋentᚐCommunityᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_communities(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -13775,6 +13800,17 @@ func (ec *executionContext) fieldContext_Query_communities(_ context.Context, fi
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communities_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -31721,9 +31757,6 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Host_authBanner(ctx, field, obj)
 		case "owner":
 			out.Values[i] = ec._Host_owner(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "rules":
 			out.Values[i] = ec._Host_rules(ctx, field, obj)
 		default:

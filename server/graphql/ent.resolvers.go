@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"stormlink/server/ent"
-	"stormlink/server/ent/community"
 )
 
 // TableInfo is the resolver for the tableInfo field.
@@ -77,20 +76,13 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, e
 }
 
 // Communities is the resolver for the communities field.
-func (r *queryResolver) Communities(ctx context.Context) ([]*ent.Community, error) {
-	return r.Client.Community.
-		Query().
-		Where(community.CommunityHasBanned(false)). // условие banned == false
-		Order(ent.Asc("id")).                       // сортировка по id по возрастанию
-		All(ctx)                                    // вернуть все записи (без пагинации)
+func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error) {
+	panic(fmt.Errorf("not implemented: Communities - communities"))
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
-	return r.Client.User.
-		Query().
-		Order(ent.Asc("id")). // сортировка по id по возрастанию
-		All(ctx)              // вернуть все записи (без пагинации)
+	panic(fmt.Errorf("not implemented: Users - users"))
 }
 
 // TableInfo is the resolver for the tableInfo field.

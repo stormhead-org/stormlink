@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"stormlink/server/ent/host"
+	"stormlink/server/ent/hostrole"
 	"stormlink/server/pkg/auth"
 	"strconv"
 	"time"
@@ -71,6 +73,50 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %v", err)
+	}
+
+	hostFirstSettingsRecord, err := s.client.Host.
+		Query().
+		Where(host.IDEQ(1)).
+		Only(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get host: %v", err)
+	}
+
+	firstSettings := hostFirstSettingsRecord.FirstSettings
+
+	if firstSettings {
+		ownerRole, err := s.client.HostRole.
+			Query().
+			Where(hostrole.NameEQ("owner")).
+			Only(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to find @everyone role: %v", err)
+		}
+
+		err = s.client.User.
+			UpdateOne(newUser).
+			AddHostRoles(ownerRole).
+			Exec(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to assign @everyone role: %v", err)
+		}
+	}
+
+	everyoneRole, err := s.client.HostRole.
+		Query().
+		Where(hostrole.NameEQ("@everyone")).
+		Only(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to find @everyone role: %v", err)
+	}
+
+	err = s.client.User.
+		UpdateOne(newUser).
+		AddHostRoles(everyoneRole).
+		Exec(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to assign @everyone role: %v", err)
 	}
 
 	// Генерируем токен верификации

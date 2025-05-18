@@ -21,10 +21,11 @@ func main() {
 
 	// Обработка флагов командной строки
 	resetDB := flag.Bool("reset-db", false, "drop and recreate all tables and columns")
+	seed := flag.Bool("seed", false, "seed roles, default host etc.")
 	flag.Parse()
 
 	// Миграция базы данных
-	modules.MigrateDB(client, *resetDB)
+	modules.MigrateDB(client, *resetDB, *seed)
 
 	// Настройка gRPC-сервера
 	grpcServer := modules.SetupGRPCServer(client)

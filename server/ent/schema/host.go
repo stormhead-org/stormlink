@@ -44,7 +44,6 @@ func (Host) Edges() []ent.Edge {
 			Unique(),
 
 		edge.To("owner", User.Type).
-			Required().
 			Unique(),
 
 		edge.To("rules", HostRule.Type),
