@@ -1,7 +1,6 @@
 package schema
 
 import (
-	"github.com/google/uuid"
 	"time"
 
 	"entgo.io/ent"
@@ -15,7 +14,7 @@ func (Comment) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
-		field.UUID("author_id", uuid.New()).Default(uuid.New),
+		field.Int("author_id"),
 		field.Int("post_id"),
 		field.Int("community_id"),
 		field.Int("parent_comment_id").Optional().Nillable(),

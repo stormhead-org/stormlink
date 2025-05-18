@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+	"strconv"
 )
 
 func getJWTSecret() []byte {
@@ -17,9 +17,9 @@ func getJWTSecret() []byte {
 	return []byte(secret)
 }
 
-func GenerateAccessToken(userID uuid.UUID) (string, error) {
+func GenerateAccessToken(userID int) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID.String(),
+		"user_id": strconv.Itoa(userID),
 		"exp":     time.Now().Add(15 * time.Minute).Unix(),
 		"type":    "access",
 	}
@@ -27,9 +27,9 @@ func GenerateAccessToken(userID uuid.UUID) (string, error) {
 	return token.SignedString(getJWTSecret())
 }
 
-func GenerateRefreshToken(userID uuid.UUID) (string, error) {
+func GenerateRefreshToken(userID int) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": userID.String(),
+		"user_id": strconv.Itoa(userID),
 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
 		"type":    "refresh",
 	}
@@ -79,7 +79,7 @@ func ParseAccessToken(tokenString string) (*AccessTokenClaims, error) {
 		return nil, errors.New("user_id not found or invalid")
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		return nil, errors.New("invalid user_id format")
 	}
@@ -90,5 +90,5 @@ func ParseAccessToken(tokenString string) (*AccessTokenClaims, error) {
 }
 
 type AccessTokenClaims struct {
-	UserID uuid.UUID
+	UserID int
 }

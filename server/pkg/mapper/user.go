@@ -3,12 +3,13 @@ package mapper
 import (
 	"stormlink/server/ent"
 	"stormlink/server/grpc/user/protobuf"
+	"strconv"
 	"time"
 )
 
 func UserToProto(u *ent.User) *protobuf.User {
 	return &protobuf.User{
-		Id:         u.ID.String(),
+		Id:         strconv.Itoa(u.ID),
 		Name:       u.Name,
 		Email:      u.Email,
 		IsVerified: u.IsVerified,

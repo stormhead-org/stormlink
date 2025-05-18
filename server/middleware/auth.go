@@ -61,7 +61,6 @@ func GRPCAuthInterceptor(
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
 
-	// Устанавливаем userID как строку UUID
-	newCtx := context.WithValue(ctx, "userID", claims.UserID.String())
+	newCtx := context.WithValue(ctx, "userID", claims.UserID)
 	return handler(newCtx, req)
 }

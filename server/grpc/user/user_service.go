@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"stormlink/server/pkg/auth"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -100,20 +100,15 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 
 	// Возвращаем успешный ответ
 	return &protobuf.RegisterUserResponse{
-		UserId:  newUser.ID.String(),
+		UserId:  strconv.Itoa(newUser.ID),
 		Message: "User registered successfully. Please check your email to verify your account.",
 	}, nil
 }
 
 func (s *UserService) GetMe(ctx context.Context, _ *emptypb.Empty) (*protobuf.UserResponse, error) {
-	userIDStr, err := auth.UserIDFromContext(ctx)
+	userID, err := auth.UserIDFromContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
-	}
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID format: %v", err)
 	}
 
 	user, err := s.uc.GetUserByID(ctx, userID)

@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/google/uuid"
+	"entgo.io/contrib/entgql"
 	"time"
 
 	"entgo.io/ent"
@@ -15,18 +15,20 @@ func (Post) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 		field.String("title"),
-		field.JSON("content", map[string]interface{}{}),
+		field.JSON("content", map[string]interface{}{}).
+			Annotations(entgql.Type("JSON")),
 
 		field.Int("hero_image_id").Optional().Nillable(),
 		field.Int("community_id"),
-		field.UUID("author_id", uuid.New()).Default(uuid.New),
+		field.Int("author_id"),
 
 		field.JSON("meta", []struct {
 			Title       *string `json:"title,omitempty"`
 			Description *string `json:"description,omitempty"`
 		}{}).
 			Optional().
-			StructTag(`json:"meta,omitempty"`),
+			StructTag(`json:"meta,omitempty"`).
+			Annotations(entgql.Type("JSON")),
 
 		field.Int("views").Default(0),
 		field.Bool("has_deleted").Default(false),

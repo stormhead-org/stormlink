@@ -5,9 +5,9 @@ import (
 	"stormlink/server/ent/emailverification"
 	"stormlink/server/ent/user"
 	"stormlink/server/utils"
+	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -200,7 +200,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, req *protobuf.RefreshTok
 		return nil, status.Errorf(codes.Unauthenticated, "user_id claim missing")
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid user_id format")
 	}

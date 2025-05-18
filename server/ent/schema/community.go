@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/google/uuid"
+	"entgo.io/contrib/entgql"
 	"time"
 
 	"entgo.io/ent"
@@ -16,17 +16,19 @@ func (Community) Fields() []ent.Field {
 		field.Int("id").Unique(),
 		field.Int("logo_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
-		field.UUID("owner_id", uuid.New()).Default(uuid.New),
+		field.Int("owner_id"),
 		field.String("title"),
 		field.String("contacts").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),
+
 		field.JSON("table_info", []struct {
 			Label string  `json:"label"`
 			Value string  `json:"value"`
 			ID    *string `json:"id,omitempty"`
 		}{}).
 			Optional().
-			StructTag(`json:"table_info,omitempty"`),
+			StructTag(`json:"table_info,omitempty"`).
+			Annotations(entgql.Type("JSON")),
 
 		field.Bool("community_has_banned").Default(false),
 

@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/google/uuid"
+	"entgo.io/contrib/entgql"
 	"time"
 
 	"entgo.io/ent"
@@ -17,18 +17,21 @@ type User struct {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.New()).Default(uuid.New),
+		field.Int("id").Unique(),
 		field.String("name").NotEmpty(),
 		field.Int("avatar_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),
+
 		field.JSON("table_info", []struct {
 			Label string  `json:"label"`
 			Value string  `json:"value"`
 			ID    *string `json:"id,omitempty"`
 		}{}).
 			Optional().
-			StructTag(`json:"table_info,omitempty"`),
+			StructTag(`json:"table_info,omitempty"`).
+			Annotations(entgql.Type("JSON")),
+
 		field.String("email").Unique().NotEmpty(),
 		field.String("password_hash").NotEmpty(),
 		field.String("salt").NotEmpty(),

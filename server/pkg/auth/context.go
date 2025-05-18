@@ -5,16 +5,14 @@ import (
 	"errors"
 )
 
-func UserIDFromContext(ctx context.Context) (string, error) {
+func UserIDFromContext(ctx context.Context) (int, error) {
 	val := ctx.Value("userID")
 	if val == nil {
-		return "", errors.New("user ID not found in context")
+		return 0, errors.New("user ID not found in context")
 	}
-
-	userID, ok := val.(string)
+	userID, ok := val.(int)
 	if !ok {
-		return "", errors.New("invalid user ID in context")
+		return 0, errors.New("invalid user ID in context, expected int")
 	}
-
 	return userID, nil
 }
