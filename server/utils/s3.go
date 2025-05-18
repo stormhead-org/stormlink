@@ -4,17 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 // S3Client обёртка для AWS SDK v1.
@@ -106,57 +104,7 @@ func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, fileCon
 		return "", "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
-	return "storage/" + key, sanitized, nil
-}
-
-// PresignUpload генерирует presigned URL и публичный URL.
-func (c *S3Client) PresignUpload(ctx context.Context, dir, filename, contentType string, expires time.Duration) (string, string, error) {
-	filename = sanitizeFilename(filename)
-	key := filepath.ToSlash(filepath.Join(dir, filename))
-
-	input := &s3.PutObjectInput{
-		Bucket:      aws.String(c.bucket),
-		Key:         aws.String(key),
-		ACL:         aws.String("public-read"),
-		ContentType: aws.String(contentType),
-	}
-
-	req, _ := c.svc.PutObjectRequest(input)
-	uploadURL, err := req.Presign(expires)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to presign PUT request: %w", err)
-	}
-
-	return uploadURL, "storage/" + key, nil
-}
-
-// Put записывает произвольный ключ и содержимое в S3.
-func (c *S3Client) Put(ctx context.Context, key string, content []byte) error {
-	input := &s3.PutObjectInput{
-		Bucket: aws.String(c.bucket),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(content),
-		ACL:    aws.String("public-read"),
-	}
-	_, err := c.svc.PutObjectWithContext(ctx, input)
-	return err
-}
-
-// publicURL формирует публичную ссылку в зависимости от alias-хоста или типа доступа.
-func (c *S3Client) publicURL(key string) string {
-	key = strings.TrimPrefix(key, "/")
-	if c.aliasHost != "" {
-		return fmt.Sprintf("https://%s/%s", c.aliasHost, key)
-	}
-
-	endpoint := strings.TrimPrefix(c.endpoint, "https://")
-	endpoint = strings.TrimPrefix(endpoint, "http://")
-
-	if c.usePathStyle {
-		return fmt.Sprintf("%s/%s/%s", c.endpoint, c.bucket, key)
-	}
-
-	return fmt.Sprintf("https://%s.%s/%s", c.bucket, endpoint, key)
+	return "/storage/" + key, sanitized, nil
 }
 
 // GetFile скачивает объект по ключу key из S3 и возвращает его Content-Type и содержимое.

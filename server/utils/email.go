@@ -53,6 +53,5 @@ func SendVerificationEmail(to, token string) error {
 		log.Printf("Ошибка отправки письма на %s: %v", to, err)
 		return err
 	}
-	log.Printf("Письмо с верификацией отправлено на %s", to)
 	return nil
 }
