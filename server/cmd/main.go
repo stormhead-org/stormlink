@@ -32,6 +32,9 @@ func main() {
 	// Запуск gRPC-сервера в отдельной горутине
 	go modules.StartGRPCServer(grpcServer)
 
+	// 🚀 Запуск GraphQL-сервера
+	go modules.StartGraphQLServer(client)
+
 	// Подключение к gRPC-серверу для использования в HTTP-хендлерах
 	grpcConn, err := grpc.Dial("localhost:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
