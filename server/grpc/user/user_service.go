@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"stormlink/server/ent/host"
 	"stormlink/server/ent/hostrole"
 	"stormlink/server/pkg/auth"
 	"strconv"
 	"time"
+
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -91,7 +92,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 			Where(hostrole.NameEQ("owner")).
 			Only(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to find @everyone role: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to find host owner role: %v", err)
 		}
 
 		err = s.client.User.
@@ -99,7 +100,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 			AddHostRoles(ownerRole).
 			Exec(ctx)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to assign @everyone role: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to assign host owner role: %v", err)
 		}
 	}
 

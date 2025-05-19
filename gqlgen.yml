@@ -1,6 +1,7 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
   - server/graphql/ent.graphql
+  - server/graphql/query.graphql
 
 # Where should the generated server code go?
 exec:
@@ -43,7 +44,7 @@ resolver:
 
   # Only for follow-schema layout:
   dir: server/graphql
-  filename_template: "{name}.resolvers.go"
+  filename_template: '{name}.resolvers.go'
 
   # Optional: turn on to not generate template comments above resolvers
   # omit_template_comment: false
@@ -135,7 +136,7 @@ models:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
-  # gqlgen provides a default GraphQL UUID convenience wrapper for github.com/google/uuid 
+  # gqlgen provides a default GraphQL UUID convenience wrapper for github.com/google/uuid
   # but you can override this to provide your own GraphQL UUID implementation
   UUID:
     model:
@@ -161,3 +162,9 @@ models:
     model: stormlink/server/ent.Community
   User:
     model: stormlink/server/ent.User
+  HostRole:
+    model:
+      - stormlink/server/ent.HostRole
+  Host:
+    model:
+      - stormlink/server/ent.Host

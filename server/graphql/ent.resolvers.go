@@ -65,6 +65,31 @@ func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([
 	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
+// Logo is the resolver for the logo field.
+func (r *hostResolver) Logo(ctx context.Context, obj *ent.Host) (*Media, error) {
+	panic(fmt.Errorf("not implemented: Logo - logo"))
+}
+
+// Banner is the resolver for the banner field.
+func (r *hostResolver) Banner(ctx context.Context, obj *ent.Host) (*Media, error) {
+	panic(fmt.Errorf("not implemented: Banner - banner"))
+}
+
+// AuthBanner is the resolver for the authBanner field.
+func (r *hostResolver) AuthBanner(ctx context.Context, obj *ent.Host) (*Media, error) {
+	panic(fmt.Errorf("not implemented: AuthBanner - authBanner"))
+}
+
+// Rules is the resolver for the rules field.
+func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error) {
+	panic(fmt.Errorf("not implemented: Rules - rules"))
+}
+
+// Badge is the resolver for the badge field.
+func (r *hostRoleResolver) Badge(ctx context.Context, obj *ent.HostRole) (*Media, error) {
+	panic(fmt.Errorf("not implemented: Badge - badge"))
+}
+
 // Node is the resolver for the node field.
 func (r *queryResolver) Node(ctx context.Context, id string) (ent.Noder, error) {
 	panic(fmt.Errorf("not implemented: Node - node"))
@@ -73,16 +98,6 @@ func (r *queryResolver) Node(ctx context.Context, id string) (ent.Noder, error) 
 // Nodes is the resolver for the nodes field.
 func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, error) {
 	panic(fmt.Errorf("not implemented: Nodes - nodes"))
-}
-
-// Communities is the resolver for the communities field.
-func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error) {
-	panic(fmt.Errorf("not implemented: Communities - communities"))
-}
-
-// Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
 }
 
 // TableInfo is the resolver for the tableInfo field.
@@ -98,11 +113,6 @@ func (r *userResolver) Avatar(ctx context.Context, obj *ent.User) (*Media, error
 // Banner is the resolver for the banner field.
 func (r *userResolver) Banner(ctx context.Context, obj *ent.User) (*Media, error) {
 	panic(fmt.Errorf("not implemented: Banner - banner"))
-}
-
-// HostRoles is the resolver for the hostRoles field.
-func (r *userResolver) HostRoles(ctx context.Context, obj *ent.User) ([]*HostRole, error) {
-	panic(fmt.Errorf("not implemented: HostRoles - hostRoles"))
 }
 
 // CommunitiesRoles is the resolver for the communitiesRoles field.
@@ -173,6 +183,12 @@ func (r *userResolver) EmailVerifications(ctx context.Context, obj *ent.User) ([
 // Community returns CommunityResolver implementation.
 func (r *Resolver) Community() CommunityResolver { return &communityResolver{r} }
 
+// Host returns HostResolver implementation.
+func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
+
+// HostRole returns HostRoleResolver implementation.
+func (r *Resolver) HostRole() HostRoleResolver { return &hostRoleResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -180,5 +196,7 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
 type communityResolver struct{ *Resolver }
+type hostResolver struct{ *Resolver }
+type hostRoleResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }

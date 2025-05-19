@@ -41,6 +41,9 @@ type Config struct {
 
 type ResolverRoot interface {
 	Community() CommunityResolver
+	Host() HostResolver
+	HostRole() HostRoleResolver
+	Mutation() MutationResolver
 	Query() QueryResolver
 	User() UserResolver
 }
@@ -288,6 +291,10 @@ type ComplexityRoot struct {
 		UpdatedAt    func(childComplexity int) int
 	}
 
+	Mutation struct {
+		Host func(childComplexity int, input UpdateHostInput) int
+	}
+
 	PageInfo struct {
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
@@ -329,8 +336,11 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Communities func(childComplexity int, onlyNotBanned *bool) int
+		Host        func(childComplexity int) int
+		HostRoles   func(childComplexity int) int
 		Node        func(childComplexity int, id string) int
 		Nodes       func(childComplexity int, ids []string) int
+		User        func(childComplexity int, id string) int
 		Users       func(childComplexity int) int
 	}
 
@@ -411,18 +421,34 @@ type CommunityResolver interface {
 	Posts(ctx context.Context, obj *ent.Community) ([]*Post, error)
 	Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error)
 }
+type HostResolver interface {
+	Logo(ctx context.Context, obj *ent.Host) (*Media, error)
+	Banner(ctx context.Context, obj *ent.Host) (*Media, error)
+	AuthBanner(ctx context.Context, obj *ent.Host) (*Media, error)
+
+	Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error)
+}
+type HostRoleResolver interface {
+	Badge(ctx context.Context, obj *ent.HostRole) (*Media, error)
+}
+type MutationResolver interface {
+	Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error)
+}
 type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []string) ([]ent.Noder, error)
 	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
 	Users(ctx context.Context) ([]*ent.User, error)
+	User(ctx context.Context, id string) (*ent.User, error)
+	HostRoles(ctx context.Context) ([]*ent.HostRole, error)
+	Host(ctx context.Context) (*ent.Host, error)
 }
 type UserResolver interface {
 	TableInfo(ctx context.Context, obj *ent.User) (*string, error)
 
 	Avatar(ctx context.Context, obj *ent.User) (*Media, error)
 	Banner(ctx context.Context, obj *ent.User) (*Media, error)
-	HostRoles(ctx context.Context, obj *ent.User) ([]*HostRole, error)
+
 	CommunitiesRoles(ctx context.Context, obj *ent.User) ([]*Role, error)
 	CommunitiesBans(ctx context.Context, obj *ent.User) ([]*CommunityUsersBan, error)
 	CommunitiesMutes(ctx context.Context, obj *ent.User) ([]*CommunityUsersMute, error)
@@ -1690,6 +1716,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Media.UpdatedAt(childComplexity), true
 
+	case "Mutation.host":
+		if e.complexity.Mutation.Host == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_host_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Host(childComplexity, args["input"].(UpdateHostInput)), true
+
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
 			break
@@ -1912,6 +1950,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Communities(childComplexity, args["onlyNotBanned"].(*bool)), true
 
+	case "Query.host":
+		if e.complexity.Query.Host == nil {
+			break
+		}
+
+		return e.complexity.Query.Host(childComplexity), true
+
+	case "Query.hostRoles":
+		if e.complexity.Query.HostRoles == nil {
+			break
+		}
+
+		return e.complexity.Query.HostRoles(childComplexity), true
+
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
 			break
@@ -1935,6 +1987,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Nodes(childComplexity, args["ids"].([]string)), true
+
+	case "Query.user":
+		if e.complexity.Query.User == nil {
+			break
+		}
+
+		args, err := ec.field_Query_user_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.User(childComplexity, args["id"].(string)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -2339,6 +2403,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPostLikeWhereInput,
 		ec.unmarshalInputPostWhereInput,
 		ec.unmarshalInputRoleWhereInput,
+		ec.unmarshalInputUpdateHostInput,
 		ec.unmarshalInputUserFollowWhereInput,
 		ec.unmarshalInputUserWhereInput,
 	)
@@ -2374,6 +2439,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			}
 
 			return &response
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
+			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
 		}
 
 	default:
@@ -2422,7 +2502,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "ent.graphql"
+//go:embed "ent.graphql" "query.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -2435,12 +2515,36 @@ func sourceData(filename string) string {
 
 var sources = []*ast.Source{
 	{Name: "ent.graphql", Input: sourceData("ent.graphql"), BuiltIn: false},
+	{Name: "query.graphql", Input: sourceData("query.graphql"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_host_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_host_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_host_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (UpdateHostInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚐUpdateHostInput(ctx, tmp)
+	}
+
+	var zeroVal UpdateHostInput
+	return zeroVal, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -2531,6 +2635,29 @@ func (ec *executionContext) field_Query_nodes_argsIds(
 	}
 
 	var zeroVal []string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_user_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_user_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -7958,7 +8085,7 @@ func (ec *executionContext) fieldContext_EmailVerification_user(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_id(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7984,9 +8111,9 @@ func (ec *executionContext) _Host_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8002,7 +8129,7 @@ func (ec *executionContext) fieldContext_Host_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_title(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_title(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_title(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8043,7 +8170,7 @@ func (ec *executionContext) fieldContext_Host_title(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_slogan(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_slogan(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_slogan(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8084,7 +8211,7 @@ func (ec *executionContext) fieldContext_Host_slogan(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_contacts(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_contacts(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_contacts(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8125,7 +8252,7 @@ func (ec *executionContext) fieldContext_Host_contacts(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_description(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_description(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_description(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8166,7 +8293,7 @@ func (ec *executionContext) fieldContext_Host_description(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_logoID(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_logoID(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_logoID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8189,9 +8316,9 @@ func (ec *executionContext) _Host_logoID(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_logoID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8207,7 +8334,7 @@ func (ec *executionContext) fieldContext_Host_logoID(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_bannerID(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_bannerID(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_bannerID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8230,9 +8357,9 @@ func (ec *executionContext) _Host_bannerID(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_bannerID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8248,7 +8375,7 @@ func (ec *executionContext) fieldContext_Host_bannerID(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_authBannerID(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_authBannerID(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_authBannerID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8271,9 +8398,9 @@ func (ec *executionContext) _Host_authBannerID(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_authBannerID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8289,7 +8416,7 @@ func (ec *executionContext) fieldContext_Host_authBannerID(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_firstSettings(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_firstSettings(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_firstSettings(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8333,7 +8460,7 @@ func (ec *executionContext) fieldContext_Host_firstSettings(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_createdAt(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8377,7 +8504,7 @@ func (ec *executionContext) fieldContext_Host_createdAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8421,7 +8548,7 @@ func (ec *executionContext) fieldContext_Host_updatedAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_logo(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_logo(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_logo(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8435,7 +8562,7 @@ func (ec *executionContext) _Host_logo(ctx context.Context, field graphql.Collec
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Logo, nil
+		return ec.resolvers.Host().Logo(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8453,8 +8580,8 @@ func (ec *executionContext) fieldContext_Host_logo(_ context.Context, field grap
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8478,7 +8605,7 @@ func (ec *executionContext) fieldContext_Host_logo(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_banner(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_banner(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_banner(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8492,7 +8619,7 @@ func (ec *executionContext) _Host_banner(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Banner, nil
+		return ec.resolvers.Host().Banner(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8510,8 +8637,8 @@ func (ec *executionContext) fieldContext_Host_banner(_ context.Context, field gr
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8535,7 +8662,7 @@ func (ec *executionContext) fieldContext_Host_banner(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_authBanner(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_authBanner(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_authBanner(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8549,7 +8676,7 @@ func (ec *executionContext) _Host_authBanner(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.AuthBanner, nil
+		return ec.resolvers.Host().AuthBanner(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8567,8 +8694,8 @@ func (ec *executionContext) fieldContext_Host_authBanner(_ context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8592,7 +8719,7 @@ func (ec *executionContext) fieldContext_Host_authBanner(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_owner(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_owner(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_owner(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8606,7 +8733,7 @@ func (ec *executionContext) _Host_owner(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Owner, nil
+		return obj.Owner(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8624,7 +8751,7 @@ func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -8693,7 +8820,7 @@ func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Host_rules(ctx context.Context, field graphql.CollectedField, obj *Host) (ret graphql.Marshaler) {
+func (ec *executionContext) _Host_rules(ctx context.Context, field graphql.CollectedField, obj *ent.Host) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Host_rules(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8707,7 +8834,7 @@ func (ec *executionContext) _Host_rules(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Rules, nil
+		return ec.resolvers.Host().Rules(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8725,8 +8852,8 @@ func (ec *executionContext) fieldContext_Host_rules(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Host",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -9282,7 +9409,7 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_community(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_id(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_id(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9308,9 +9435,9 @@ func (ec *executionContext) _HostRole_id(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostRole_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -9326,7 +9453,7 @@ func (ec *executionContext) fieldContext_HostRole_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_name(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_name(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9370,7 +9497,7 @@ func (ec *executionContext) fieldContext_HostRole_name(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_badgeID(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_badgeID(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_badgeID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9393,9 +9520,9 @@ func (ec *executionContext) _HostRole_badgeID(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostRole_badgeID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -9411,7 +9538,7 @@ func (ec *executionContext) fieldContext_HostRole_badgeID(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_color(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_color(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_color(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9452,7 +9579,7 @@ func (ec *executionContext) fieldContext_HostRole_color(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_communityRolesManagement(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9496,7 +9623,7 @@ func (ec *executionContext) fieldContext_HostRole_communityRolesManagement(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_hostUserBan(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_hostUserBan(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_hostUserBan(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9540,7 +9667,7 @@ func (ec *executionContext) fieldContext_HostRole_hostUserBan(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_hostUserMute(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_hostUserMute(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_hostUserMute(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9584,7 +9711,7 @@ func (ec *executionContext) fieldContext_HostRole_hostUserMute(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_hostCommunityDeletePost(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_hostCommunityDeletePost(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_hostCommunityDeletePost(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9628,7 +9755,7 @@ func (ec *executionContext) fieldContext_HostRole_hostCommunityDeletePost(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_hostCommunityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_hostCommunityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_hostCommunityRemovePostFromPublication(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9672,7 +9799,7 @@ func (ec *executionContext) fieldContext_HostRole_hostCommunityRemovePostFromPub
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_hostCommunityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_hostCommunityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_hostCommunityDeleteComments(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9716,7 +9843,7 @@ func (ec *executionContext) fieldContext_HostRole_hostCommunityDeleteComments(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9760,7 +9887,7 @@ func (ec *executionContext) fieldContext_HostRole_createdAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9804,7 +9931,7 @@ func (ec *executionContext) fieldContext_HostRole_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_badge(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_badge(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_badge(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9818,7 +9945,7 @@ func (ec *executionContext) _HostRole_badge(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Badge, nil
+		return ec.resolvers.HostRole().Badge(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9836,8 +9963,8 @@ func (ec *executionContext) fieldContext_HostRole_badge(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "HostRole",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -9861,7 +9988,7 @@ func (ec *executionContext) fieldContext_HostRole_badge(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_users(ctx context.Context, field graphql.CollectedField, obj *HostRole) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRole_users(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRole_users(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9875,7 +10002,7 @@ func (ec *executionContext) _HostRole_users(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Users, nil
+		return obj.Users(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9893,7 +10020,7 @@ func (ec *executionContext) fieldContext_HostRole_users(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "HostRole",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -10240,9 +10367,9 @@ func (ec *executionContext) _HostRule_host(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Host)
+	res := resTmp.(*ent.Host)
 	fc.Result = res
-	return ec.marshalOHost2ᚖstormlinkᚋserverᚋgraphqlᚐHost(ctx, field.Selections, res)
+	return ec.marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostRule_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11981,6 +12108,95 @@ func (ec *executionContext) fieldContext_Media_updatedAt(_ context.Context, fiel
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_host(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_host(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Host(rctx, fc.Args["input"].(UpdateHostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Host)
+	fc.Result = res
+	return ec.marshalNHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_host(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Host_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Host_title(ctx, field)
+			case "slogan":
+				return ec.fieldContext_Host_slogan(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Host_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Host_description(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Host_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Host_bannerID(ctx, field)
+			case "authBannerID":
+				return ec.fieldContext_Host_authBannerID(ctx, field)
+			case "firstSettings":
+				return ec.fieldContext_Host_firstSettings(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Host_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Host_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Host_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Host_banner(ctx, field)
+			case "authBanner":
+				return ec.fieldContext_Host_authBanner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Host_owner(ctx, field)
+			case "rules":
+				return ec.fieldContext_Host_rules(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Host", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_host_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -13919,6 +14135,267 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().User(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.User)
+	fc.Result = res
+	return ec.marshalOUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "avatarID":
+				return ec.fieldContext_User_avatarID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_User_bannerID(ctx, field)
+			case "description":
+				return ec.fieldContext_User_description(ctx, field)
+			case "tableInfo":
+				return ec.fieldContext_User_tableInfo(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "passwordHash":
+				return ec.fieldContext_User_passwordHash(ctx, field)
+			case "salt":
+				return ec.fieldContext_User_salt(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_User_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "avatar":
+				return ec.fieldContext_User_avatar(ctx, field)
+			case "banner":
+				return ec.fieldContext_User_banner(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_User_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_User_communitiesRoles(ctx, field)
+			case "communitiesBans":
+				return ec.fieldContext_User_communitiesBans(ctx, field)
+			case "communitiesMutes":
+				return ec.fieldContext_User_communitiesMutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_User_comments(ctx, field)
+			case "following":
+				return ec.fieldContext_User_following(ctx, field)
+			case "followers":
+				return ec.fieldContext_User_followers(ctx, field)
+			case "communitiesFollow":
+				return ec.fieldContext_User_communitiesFollow(ctx, field)
+			case "communitiesOwner":
+				return ec.fieldContext_User_communitiesOwner(ctx, field)
+			case "communitiesModerator":
+				return ec.fieldContext_User_communitiesModerator(ctx, field)
+			case "postsLikes":
+				return ec.fieldContext_User_postsLikes(ctx, field)
+			case "commentsLikes":
+				return ec.fieldContext_User_commentsLikes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_User_bookmarks(ctx, field)
+			case "emailVerifications":
+				return ec.fieldContext_User_emailVerifications(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_user_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostRoles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostRoles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostRoles(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.HostRole)
+	fc.Result = res
+	return ec.marshalNHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHostRoleᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostRoles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRole_id(ctx, field)
+			case "name":
+				return ec.fieldContext_HostRole_name(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_HostRole_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_HostRole_color(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_HostRole_communityRolesManagement(ctx, field)
+			case "hostUserBan":
+				return ec.fieldContext_HostRole_hostUserBan(ctx, field)
+			case "hostUserMute":
+				return ec.fieldContext_HostRole_hostUserMute(ctx, field)
+			case "hostCommunityDeletePost":
+				return ec.fieldContext_HostRole_hostCommunityDeletePost(ctx, field)
+			case "hostCommunityRemovePostFromPublication":
+				return ec.fieldContext_HostRole_hostCommunityRemovePostFromPublication(ctx, field)
+			case "hostCommunityDeleteComments":
+				return ec.fieldContext_HostRole_hostCommunityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRole_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRole_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_HostRole_badge(ctx, field)
+			case "users":
+				return ec.fieldContext_HostRole_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_host(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_host(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Host(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Host)
+	fc.Result = res
+	return ec.marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_host(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Host_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Host_title(ctx, field)
+			case "slogan":
+				return ec.fieldContext_Host_slogan(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Host_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Host_description(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Host_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Host_bannerID(ctx, field)
+			case "authBannerID":
+				return ec.fieldContext_Host_authBannerID(ctx, field)
+			case "firstSettings":
+				return ec.fieldContext_Host_firstSettings(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Host_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Host_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Host_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Host_banner(ctx, field)
+			case "authBanner":
+				return ec.fieldContext_Host_authBanner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Host_owner(ctx, field)
+			case "rules":
+				return ec.fieldContext_Host_rules(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Host", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query___type(ctx, field)
 	if err != nil {
@@ -15508,7 +15985,7 @@ func (ec *executionContext) _User_hostRoles(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().HostRoles(rctx, obj)
+		return obj.HostRoles(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15517,9 +15994,9 @@ func (ec *executionContext) _User_hostRoles(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*HostRole)
+	res := resTmp.([]*ent.HostRole)
 	fc.Result = res
-	return ec.marshalOHostRole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleᚄ(ctx, field.Selections, res)
+	return ec.marshalOHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHostRoleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_hostRoles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15527,7 +16004,7 @@ func (ec *executionContext) fieldContext_User_hostRoles(_ context.Context, field
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -29098,6 +29575,82 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, obj any) (UpdateHostInput, error) {
+	var it UpdateHostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "slogan", "contacts", "description", "logoID", "bannerID", "authBannerID", "firstSettings"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "slogan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slogan"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slogan = data
+		case "contacts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contacts"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Contacts = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "logoID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logoID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LogoID = data
+		case "bannerID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bannerID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BannerID = data
+		case "authBannerID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authBannerID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthBannerID = data
+		case "firstSettings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("firstSettings"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FirstSettings = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Context, obj any) (UserFollowWhereInput, error) {
 	var it UserFollowWhereInput
 	asMap := map[string]any{}
@@ -30495,9 +31048,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostRule(ctx, sel, obj)
-	case HostRole:
-		return ec._HostRole(ctx, sel, &obj)
-	case *HostRole:
+	case *ent.HostRole:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -30516,9 +31067,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostCommunitiesBan(ctx, sel, obj)
-	case Host:
-		return ec._Host(ctx, sel, &obj)
-	case *Host:
+	case *ent.Host:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -31706,7 +32255,7 @@ func (ec *executionContext) _EmailVerification(ctx context.Context, sel ast.Sele
 
 var hostImplementors = []string{"Host", "Node"}
 
-func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *Host) graphql.Marshaler {
+func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj *ent.Host) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -31718,7 +32267,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Host_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "title":
 			out.Values[i] = ec._Host_title(ctx, field, obj)
@@ -31737,28 +32286,183 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 		case "firstSettings":
 			out.Values[i] = ec._Host_firstSettings(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Host_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Host_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "logo":
-			out.Values[i] = ec._Host_logo(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_logo(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "banner":
-			out.Values[i] = ec._Host_banner(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_banner(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "authBanner":
-			out.Values[i] = ec._Host_authBanner(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_authBanner(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "owner":
-			out.Values[i] = ec._Host_owner(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_owner(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "rules":
-			out.Values[i] = ec._Host_rules(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Host_rules(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31902,7 +32606,7 @@ func (ec *executionContext) _HostCommunitiesMute(ctx context.Context, sel ast.Se
 
 var hostRoleImplementors = []string{"HostRole", "Node"}
 
-func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet, obj *HostRole) graphql.Marshaler {
+func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet, obj *ent.HostRole) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostRoleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -31914,12 +32618,12 @@ func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet,
 		case "id":
 			out.Values[i] = ec._HostRole_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "name":
 			out.Values[i] = ec._HostRole_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "badgeID":
 			out.Values[i] = ec._HostRole_badgeID(ctx, field, obj)
@@ -31928,47 +32632,109 @@ func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet,
 		case "communityRolesManagement":
 			out.Values[i] = ec._HostRole_communityRolesManagement(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostUserBan":
 			out.Values[i] = ec._HostRole_hostUserBan(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostUserMute":
 			out.Values[i] = ec._HostRole_hostUserMute(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostCommunityDeletePost":
 			out.Values[i] = ec._HostRole_hostCommunityDeletePost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostCommunityRemovePostFromPublication":
 			out.Values[i] = ec._HostRole_hostCommunityRemovePostFromPublication(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "hostCommunityDeleteComments":
 			out.Values[i] = ec._HostRole_hostCommunityDeleteComments(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._HostRole_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._HostRole_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "badge":
-			out.Values[i] = ec._HostRole_badge(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostRole_badge(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "users":
-			out.Values[i] = ec._HostRole_users(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostRole_users(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32395,6 +33161,55 @@ func (ec *executionContext) _Media(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
+			Object: field.Name,
+			Field:  field,
+		})
+
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "host":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_host(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
 func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *PageInfo) graphql.Marshaler {
@@ -32712,6 +33527,66 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_user(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostRoles":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostRoles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "host":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_host(ctx, field)
 				return res
 			}
 
@@ -34142,6 +35017,20 @@ func (ec *executionContext) unmarshalNEmailVerificationWhereInput2ᚖstormlink�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNHost2stormlinkᚋserverᚋentᚐHost(ctx context.Context, sel ast.SelectionSet, v ent.Host) graphql.Marshaler {
+	return ec._Host(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx context.Context, sel ast.SelectionSet, v *ent.Host) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Host(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNHostCommunitiesBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInput(ctx context.Context, v any) (*HostCommunitiesBanWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunitiesBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -34152,7 +35041,51 @@ func (ec *executionContext) unmarshalNHostCommunitiesMuteWhereInput2ᚖstormlink
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHostRole2ᚖstormlinkᚋserverᚋgraphqlᚐHostRole(ctx context.Context, sel ast.SelectionSet, v *HostRole) graphql.Marshaler {
+func (ec *executionContext) marshalNHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHostRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostRole) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx context.Context, sel ast.SelectionSet, v *ent.HostRole) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -34466,6 +35399,11 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚐUpdateHostInput(ctx context.Context, v any) (UpdateHostInput, error) {
+	res, err := ec.unmarshalInputUpdateHostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.User) graphql.Marshaler {
@@ -35587,7 +36525,7 @@ func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚖstormlink�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHost2ᚖstormlinkᚋserverᚋgraphqlᚐHost(ctx context.Context, sel ast.SelectionSet, v *Host) graphql.Marshaler {
+func (ec *executionContext) marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx context.Context, sel ast.SelectionSet, v *ent.Host) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -35646,7 +36584,7 @@ func (ec *executionContext) unmarshalOHostCommunitiesMuteWhereInput2ᚖstormlink
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHostRole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*HostRole) graphql.Marshaler {
+func (ec *executionContext) marshalOHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHostRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostRole) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -35673,7 +36611,7 @@ func (ec *executionContext) marshalOHostRole2ᚕᚖstormlinkᚋserverᚋgraphql�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHostRole2ᚖstormlinkᚋserverᚋgraphqlᚐHostRole(ctx, sel, v[i])
+			ret[i] = ec.marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)

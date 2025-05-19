@@ -16,8 +16,8 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.62.0 or later.
-const _ = grpc.SupportPackageIsVersion8
+// Requires gRPC-Go v1.32.0 or later.
+const _ = grpc.SupportPackageIsVersion7
 
 const (
 	AuthService_Login_FullMethodName                   = "/auth.AuthService/Login"
@@ -50,9 +50,8 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 }
 
 func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginResponse)
-	err := c.cc.Invoke(ctx, AuthService_Login_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_Login_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +59,8 @@ func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ..
 }
 
 func (c *authServiceClient) Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*LogoutResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LogoutResponse)
-	err := c.cc.Invoke(ctx, AuthService_Logout_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_Logout_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +68,8 @@ func (c *authServiceClient) Logout(ctx context.Context, in *emptypb.Empty, opts 
 }
 
 func (c *authServiceClient) ResendVerificationEmail(ctx context.Context, in *ResendVerificationRequest, opts ...grpc.CallOption) (*ResendVerificationResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResendVerificationResponse)
-	err := c.cc.Invoke(ctx, AuthService_ResendVerificationEmail_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_ResendVerificationEmail_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +77,8 @@ func (c *authServiceClient) ResendVerificationEmail(ctx context.Context, in *Res
 }
 
 func (c *authServiceClient) VerifyEmail(ctx context.Context, in *VerifyEmailRequest, opts ...grpc.CallOption) (*VerifyEmailResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VerifyEmailResponse)
-	err := c.cc.Invoke(ctx, AuthService_VerifyEmail_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_VerifyEmail_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +86,8 @@ func (c *authServiceClient) VerifyEmail(ctx context.Context, in *VerifyEmailRequ
 }
 
 func (c *authServiceClient) RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginResponse)
-	err := c.cc.Invoke(ctx, AuthService_RefreshToken_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AuthService_RefreshToken_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}

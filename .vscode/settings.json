@@ -1,3 +1,12 @@
 {
-	"cSpell.words": ["authpb", "gwmux", "gwruntime", "stormlink", "userpb"]
+	"cSpell.words": [
+		"authpb",
+		"entc",
+		"entcommunity",
+		"gwmux",
+		"gwruntime",
+		"hostrole",
+		"stormlink",
+		"userpb"
+	]
 }

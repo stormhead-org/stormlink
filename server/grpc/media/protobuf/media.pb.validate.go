@@ -11,11 +11,12 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ensure the imports are used
@@ -30,43 +31,88 @@ var (
 	_ = time.Duration(0)
 	_ = (*url.URL)(nil)
 	_ = (*mail.Address)(nil)
-	_ = ptypes.DynamicAny{}
+	_ = anypb.Any{}
+	_ = sort.Sort
 )
-
-// define the regex for a UUID once up-front
-var _media_uuidPattern = regexp.MustCompile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 // Validate checks the field values on UploadMediaRequest with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *UploadMediaRequest) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UploadMediaRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UploadMediaRequestMultiError, or nil if none found.
+func (m *UploadMediaRequest) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UploadMediaRequest) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
 
+	var errors []error
+
 	if utf8.RuneCountInString(m.GetDir()) < 1 {
-		return UploadMediaRequestValidationError{
+		err := UploadMediaRequestValidationError{
 			field:  "Dir",
 			reason: "value length must be at least 1 runes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if utf8.RuneCountInString(m.GetFilename()) < 1 {
-		return UploadMediaRequestValidationError{
+		err := UploadMediaRequestValidationError{
 			field:  "Filename",
 			reason: "value length must be at least 1 runes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
 	}
 
 	if len(m.GetFileContent()) < 1 {
-		return UploadMediaRequestValidationError{
+		err := UploadMediaRequestValidationError{
 			field:  "FileContent",
 			reason: "value length must be at least 1 bytes",
 		}
+		if !all {
+			return err
+		}
+		errors = append(errors, err)
+	}
+
+	if len(errors) > 0 {
+		return UploadMediaRequestMultiError(errors)
 	}
 
 	return nil
 }
+
+// UploadMediaRequestMultiError is an error wrapping multiple validation errors
+// returned by UploadMediaRequest.ValidateAll() if the designated constraints
+// aren't met.
+type UploadMediaRequestMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UploadMediaRequestMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UploadMediaRequestMultiError) AllErrors() []error { return m }
 
 // UploadMediaRequestValidationError is the validation error returned by
 // UploadMediaRequest.Validate if the designated constraints aren't met.
@@ -126,18 +172,53 @@ var _ interface {
 
 // Validate checks the field values on UploadMediaResponse with the rules
 // defined in the proto definition for this message. If any rules are
-// violated, an error is returned.
+// violated, the first error encountered is returned, or nil if there are no violations.
 func (m *UploadMediaResponse) Validate() error {
+	return m.validate(false)
+}
+
+// ValidateAll checks the field values on UploadMediaResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, the result is a list of violation errors wrapped in
+// UploadMediaResponseMultiError, or nil if none found.
+func (m *UploadMediaResponse) ValidateAll() error {
+	return m.validate(true)
+}
+
+func (m *UploadMediaResponse) validate(all bool) error {
 	if m == nil {
 		return nil
 	}
+
+	var errors []error
 
 	// no validation rules for Url
 
 	// no validation rules for Filename
 
+	if len(errors) > 0 {
+		return UploadMediaResponseMultiError(errors)
+	}
+
 	return nil
 }
+
+// UploadMediaResponseMultiError is an error wrapping multiple validation
+// errors returned by UploadMediaResponse.ValidateAll() if the designated
+// constraints aren't met.
+type UploadMediaResponseMultiError []error
+
+// Error returns a concatenation of all the error messages it wraps.
+func (m UploadMediaResponseMultiError) Error() string {
+	var msgs []string
+	for _, err := range m {
+		msgs = append(msgs, err.Error())
+	}
+	return strings.Join(msgs, "; ")
+}
+
+// AllErrors returns a list of validation violation errors.
+func (m UploadMediaResponseMultiError) AllErrors() []error { return m }
 
 // UploadMediaResponseValidationError is the validation error returned by
 // UploadMediaResponse.Validate if the designated constraints aren't met.

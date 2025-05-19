@@ -1,0 +1,25 @@
+extend type Query {
+	communities(onlyNotBanned: Boolean = true): [Community!]!
+	users: [User!]!
+	user(id: ID!): User
+	hostRoles: [HostRole!]!
+	host: Host
+}
+
+extend type Mutation {
+	"""
+	Установить firstSettings у конкретного Host (здесь фиксированного, с id=1)
+	"""
+	host(input: UpdateHostInput!): Host!
+}
+
+input UpdateHostInput {
+	title: String
+	slogan: String
+	contacts: String
+	description: String
+	logoID: ID
+	bannerID: ID
+	authBannerID: ID
+	firstSettings: Boolean
+}
