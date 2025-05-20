@@ -1,5 +1,4 @@
 scalar JSON
-
 directive @goField(
 	forceResolver: Boolean
 	name: String
@@ -328,6 +327,7 @@ type Community implements Node {
 	bannerID: ID
 	ownerID: ID!
 	title: String!
+	slug: String!
 	contacts: String
 	description: String
 	tableInfo: JSON
@@ -807,6 +807,22 @@ input CommunityWhereInput {
 	titleHasSuffix: String
 	titleEqualFold: String
 	titleContainsFold: String
+	"""
+	slug field predicates
+	"""
+	slug: String
+	slugNEQ: String
+	slugIn: [String!]
+	slugNotIn: [String!]
+	slugGT: String
+	slugGTE: String
+	slugLT: String
+	slugLTE: String
+	slugContains: String
+	slugHasPrefix: String
+	slugHasSuffix: String
+	slugEqualFold: String
+	slugContainsFold: String
 	"""
 	contacts field predicates
 	"""
@@ -2120,6 +2136,7 @@ type PageInfo {
 type Post implements Node {
 	id: ID!
 	title: String!
+	slug: String!
 	content: JSON!
 	heroImageID: ID
 	communityID: ID!
@@ -2248,6 +2265,22 @@ input PostWhereInput {
 	titleHasSuffix: String
 	titleEqualFold: String
 	titleContainsFold: String
+	"""
+	slug field predicates
+	"""
+	slug: String
+	slugNEQ: String
+	slugIn: [String!]
+	slugNotIn: [String!]
+	slugGT: String
+	slugGTE: String
+	slugLT: String
+	slugLTE: String
+	slugContains: String
+	slugHasPrefix: String
+	slugHasSuffix: String
+	slugEqualFold: String
+	slugContainsFold: String
 	"""
 	hero_image_id field predicates
 	"""
@@ -2540,6 +2573,7 @@ scalar Time
 type User implements Node {
 	id: ID!
 	name: String!
+	slug: String!
 	avatarID: ID
 	bannerID: ID
 	description: String
@@ -2678,6 +2712,22 @@ input UserWhereInput {
 	nameHasSuffix: String
 	nameEqualFold: String
 	nameContainsFold: String
+	"""
+	slug field predicates
+	"""
+	slug: String
+	slugNEQ: String
+	slugIn: [String!]
+	slugNotIn: [String!]
+	slugGT: String
+	slugGTE: String
+	slugLT: String
+	slugLTE: String
+	slugContains: String
+	slugHasPrefix: String
+	slugHasSuffix: String
+	slugEqualFold: String
+	slugContainsFold: String
 	"""
 	avatar_id field predicates
 	"""

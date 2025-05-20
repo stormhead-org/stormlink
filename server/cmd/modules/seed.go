@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"stormlink/server/ent/hostrole"
+	"stormlink/server/ent/hostsidebarnavigation"
 
 	"stormlink/server/ent"
 	"stormlink/server/ent/host"
@@ -67,6 +68,21 @@ func Seed(client *ent.Client) error {
 			return err
 		}
 		log.Println("✅ Таблица настроек host создана")
+	}
+
+	// Проверка: сидился ли дефолтный HostSidebarNavigation
+	hostSidebarNavigationExists, err := client.HostSidebarNavigation.Query().Where(hostsidebarnavigation.IDEQ(1)).Exist(ctx)
+	if err != nil {
+		log.Println("✅ Таблица навигации HostSidebarNavigation уже существует...")
+		return err
+	}
+	if !hostSidebarNavigationExists {
+		log.Println("🌱 Сидим настройки host...")
+		if _, err := client.HostSidebarNavigation.Create().
+			Save(ctx); err != nil {
+			return err
+		}
+		log.Println("✅ Таблица навигации HostSidebarNavigation создана")
 	}
 
 	return nil

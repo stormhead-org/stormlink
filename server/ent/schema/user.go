@@ -1,8 +1,9 @@
 package schema
 
 import (
-	"entgo.io/contrib/entgql"
 	"time"
+
+	"entgo.io/contrib/entgql"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
@@ -19,6 +20,7 @@ func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 		field.String("name").NotEmpty(),
+		field.String("slug").Unique().NotEmpty(),
 		field.Int("avatar_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),

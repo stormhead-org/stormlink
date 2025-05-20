@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-// Host is the resolver for the host field.
+// Мутация Host для настроек платформы.
 func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error) {
 	upd := r.Client.Host.UpdateOneID(1)
 	// каждый Set* вызываем только если в input поле не nil
@@ -33,7 +33,7 @@ func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*en
 	return upd.Save(ctx)
 }
 
-// Communities возвращает все или только не забаненные сообщества:
+// Communities возвращает все или только не забаненные сообщества.
 func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error) {
 	q := r.Client.Community.Query()
 	if onlyNotBanned == nil || *onlyNotBanned {
@@ -42,7 +42,16 @@ func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([
 	return q.Order(ent.Asc("id")).All(ctx)
 }
 
-// Users возвращает всех пользователей:
+// Community отдает одно сообщество по ID.
+func (r *queryResolver) Community(ctx context.Context, id string) (*ent.Community, error) {
+	communityId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Community.Get(ctx, communityId)
+}
+
+// Users возвращает всех пользователей.
 func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
 	return r.Client.User.
 		Query().
@@ -50,7 +59,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
 		All(ctx)
 }
 
-// User отдает одного пользователя по ID:
+// User отдает одного пользователя по ID.
 func (r *queryResolver) User(ctx context.Context, id string) (*ent.User, error) {
 	userId, err := strconv.Atoi(id)
 	if err != nil {
@@ -59,12 +68,39 @@ func (r *queryResolver) User(ctx context.Context, id string) (*ent.User, error) 
 	return r.Client.User.Get(ctx, userId)
 }
 
-// HostRoles возвращает список всех ролей платформы:
+// Media возвращает медиа по ID.
+func (r *queryResolver) Media(ctx context.Context, id string) (*ent.Media, error) {
+	mediaId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Media.Get(ctx, mediaId)
+}
+
+// HostRoles возвращает список всех ролей платформы.
 func (r *queryResolver) HostRoles(ctx context.Context) ([]*ent.HostRole, error) {
 	return r.Client.HostRole.
 		Query().
 		Order(ent.Asc("id")).
 		All(ctx)
+}
+
+// HostSidebarNavigationItems возвращает список всех итемов навигации платформы.
+func (r *queryResolver) HostSidebarNavigationItems(ctx context.Context) ([]*ent.HostSidebarNavigationItem, error) {
+	return r.Client.HostSidebarNavigationItem.
+		Query().
+		Order(ent.Asc("id")).
+		All(ctx)
+}
+
+// HostSidebarNavigation всегда отдаёт HostSidebarNavigation с ID 1.
+func (r *queryResolver) HostSidebarNavigation(ctx context.Context) (*ent.HostSidebarNavigation, error) {
+	return r.Client.HostSidebarNavigation.Get(ctx, 1)
+}
+
+// HostSocialNavigation всегда отдаёт HostSocialNavigation с ID 1.
+func (r *queryResolver) HostSocialNavigation(ctx context.Context) (*ent.HostSocialNavigation, error) {
+	return r.Client.HostSocialNavigation.Get(ctx, 1)
 }
 
 // Host всегда отдаёт хост с ID 1.

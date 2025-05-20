@@ -1,7 +1,7 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
   - server/graphql/ent.graphql
-  - server/graphql/query.graphql
+  - server/graphql/handlers.graphql
 
 # Where should the generated server code go?
 exec:
@@ -168,3 +168,15 @@ models:
   Host:
     model:
       - stormlink/server/ent.Host
+  Media:
+    model:
+      - stormlink/server/ent.Media
+  HostSidebarNavigation:
+    model:
+      - stormlink/server/ent.HostSidebarNavigation
+  HostSidebarNavigationItem:
+    model:
+      - stormlink/server/ent.HostSidebarNavigationItem
+  HostSocialNavigation:
+    model:
+      - stormlink/server/ent.HostSocialNavigation

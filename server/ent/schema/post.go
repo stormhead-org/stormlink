@@ -1,8 +1,9 @@
 package schema
 
 import (
-	"entgo.io/contrib/entgql"
 	"time"
+
+	"entgo.io/contrib/entgql"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
@@ -14,7 +15,8 @@ type Post struct{ ent.Schema }
 func (Post) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
-		field.String("title"),
+		field.String("title").NotEmpty(),
+		field.String("slug").Unique().NotEmpty(),
 		field.JSON("content", map[string]interface{}{}).
 			Annotations(entgql.Type("JSON")),
 

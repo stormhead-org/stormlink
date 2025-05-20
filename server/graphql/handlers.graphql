@@ -1,8 +1,13 @@
 extend type Query {
 	communities(onlyNotBanned: Boolean = true): [Community!]!
+	community(id: ID!): Community
 	users: [User!]!
 	user(id: ID!): User
+	media(id: ID!): Media
 	hostRoles: [HostRole!]!
+	hostSidebarNavigationItems: [HostSidebarNavigationItem!]!
+	hostSidebarNavigation: HostSidebarNavigation
+	hostSocialNavigation: HostSocialNavigation
 	host: Host
 }
 

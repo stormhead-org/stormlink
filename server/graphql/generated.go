@@ -42,7 +42,7 @@ type Config struct {
 type ResolverRoot interface {
 	Community() CommunityResolver
 	Host() HostResolver
-	HostRole() HostRoleResolver
+	HostSidebarNavigationItem() HostSidebarNavigationItemResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 	User() UserResolver
@@ -113,6 +113,7 @@ type ComplexityRoot struct {
 		Posts              func(childComplexity int) int
 		Roles              func(childComplexity int) int
 		Rules              func(childComplexity int) int
+		Slug               func(childComplexity int) int
 		TableInfo          func(childComplexity int) int
 		Title              func(childComplexity int) int
 		UpdatedAt          func(childComplexity int) int
@@ -319,6 +320,7 @@ type ComplexityRoot struct {
 		Meta        func(childComplexity int) int
 		PublishedAt func(childComplexity int) int
 		RelatedPost func(childComplexity int) int
+		Slug        func(childComplexity int) int
 		Title       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Views       func(childComplexity int) int
@@ -335,13 +337,18 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Communities func(childComplexity int, onlyNotBanned *bool) int
-		Host        func(childComplexity int) int
-		HostRoles   func(childComplexity int) int
-		Node        func(childComplexity int, id string) int
-		Nodes       func(childComplexity int, ids []string) int
-		User        func(childComplexity int, id string) int
-		Users       func(childComplexity int) int
+		Communities                func(childComplexity int, onlyNotBanned *bool) int
+		Community                  func(childComplexity int, id string) int
+		Host                       func(childComplexity int) int
+		HostRoles                  func(childComplexity int) int
+		HostSidebarNavigation      func(childComplexity int) int
+		HostSidebarNavigationItems func(childComplexity int) int
+		HostSocialNavigation       func(childComplexity int) int
+		Media                      func(childComplexity int, id string) int
+		Node                       func(childComplexity int, id string) int
+		Nodes                      func(childComplexity int, ids []string) int
+		User                       func(childComplexity int, id string) int
+		Users                      func(childComplexity int) int
 	}
 
 	Role struct {
@@ -391,6 +398,7 @@ type ComplexityRoot struct {
 		Posts                func(childComplexity int) int
 		PostsLikes           func(childComplexity int) int
 		Salt                 func(childComplexity int) int
+		Slug                 func(childComplexity int) int
 		TableInfo            func(childComplexity int) int
 		UpdatedAt            func(childComplexity int) int
 	}
@@ -409,9 +417,6 @@ type ComplexityRoot struct {
 type CommunityResolver interface {
 	TableInfo(ctx context.Context, obj *ent.Community) (*string, error)
 
-	Logo(ctx context.Context, obj *ent.Community) (*Media, error)
-	Banner(ctx context.Context, obj *ent.Community) (*Media, error)
-
 	Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerators, error)
 	Roles(ctx context.Context, obj *ent.Community) ([]*Role, error)
 	Rules(ctx context.Context, obj *ent.Community) ([]*CommunityRule, error)
@@ -422,14 +427,10 @@ type CommunityResolver interface {
 	Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error)
 }
 type HostResolver interface {
-	Logo(ctx context.Context, obj *ent.Host) (*Media, error)
-	Banner(ctx context.Context, obj *ent.Host) (*Media, error)
-	AuthBanner(ctx context.Context, obj *ent.Host) (*Media, error)
-
 	Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error)
 }
-type HostRoleResolver interface {
-	Badge(ctx context.Context, obj *ent.HostRole) (*Media, error)
+type HostSidebarNavigationItemResolver interface {
+	Post(ctx context.Context, obj *ent.HostSidebarNavigationItem) (*Post, error)
 }
 type MutationResolver interface {
 	Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error)
@@ -438,16 +439,18 @@ type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []string) ([]ent.Noder, error)
 	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
+	Community(ctx context.Context, id string) (*ent.Community, error)
 	Users(ctx context.Context) ([]*ent.User, error)
 	User(ctx context.Context, id string) (*ent.User, error)
+	Media(ctx context.Context, id string) (*ent.Media, error)
 	HostRoles(ctx context.Context) ([]*ent.HostRole, error)
+	HostSidebarNavigationItems(ctx context.Context) ([]*ent.HostSidebarNavigationItem, error)
+	HostSidebarNavigation(ctx context.Context) (*ent.HostSidebarNavigation, error)
+	HostSocialNavigation(ctx context.Context) (*ent.HostSocialNavigation, error)
 	Host(ctx context.Context) (*ent.Host, error)
 }
 type UserResolver interface {
 	TableInfo(ctx context.Context, obj *ent.User) (*string, error)
-
-	Avatar(ctx context.Context, obj *ent.User) (*Media, error)
-	Banner(ctx context.Context, obj *ent.User) (*Media, error)
 
 	CommunitiesRoles(ctx context.Context, obj *ent.User) ([]*Role, error)
 	CommunitiesBans(ctx context.Context, obj *ent.User) ([]*CommunityUsersBan, error)
@@ -840,6 +843,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Community.Rules(childComplexity), true
+
+	case "Community.slug":
+		if e.complexity.Community.Slug == nil {
+			break
+		}
+
+		return e.complexity.Community.Slug(childComplexity), true
 
 	case "Community.tableInfo":
 		if e.complexity.Community.TableInfo == nil {
@@ -1868,6 +1878,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Post.RelatedPost(childComplexity), true
 
+	case "Post.slug":
+		if e.complexity.Post.Slug == nil {
+			break
+		}
+
+		return e.complexity.Post.Slug(childComplexity), true
+
 	case "Post.title":
 		if e.complexity.Post.Title == nil {
 			break
@@ -1950,6 +1967,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Communities(childComplexity, args["onlyNotBanned"].(*bool)), true
 
+	case "Query.community":
+		if e.complexity.Query.Community == nil {
+			break
+		}
+
+		args, err := ec.field_Query_community_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Community(childComplexity, args["id"].(string)), true
+
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
@@ -1963,6 +1992,39 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.HostRoles(childComplexity), true
+
+	case "Query.hostSidebarNavigation":
+		if e.complexity.Query.HostSidebarNavigation == nil {
+			break
+		}
+
+		return e.complexity.Query.HostSidebarNavigation(childComplexity), true
+
+	case "Query.hostSidebarNavigationItems":
+		if e.complexity.Query.HostSidebarNavigationItems == nil {
+			break
+		}
+
+		return e.complexity.Query.HostSidebarNavigationItems(childComplexity), true
+
+	case "Query.hostSocialNavigation":
+		if e.complexity.Query.HostSocialNavigation == nil {
+			break
+		}
+
+		return e.complexity.Query.HostSocialNavigation(childComplexity), true
+
+	case "Query.media":
+		if e.complexity.Query.Media == nil {
+			break
+		}
+
+		args, err := ec.field_Query_media_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Media(childComplexity, args["id"].(string)), true
 
 	case "Query.node":
 		if e.complexity.Query.Node == nil {
@@ -2308,6 +2370,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Salt(childComplexity), true
 
+	case "User.slug":
+		if e.complexity.User.Slug == nil {
+			break
+		}
+
+		return e.complexity.User.Slug(childComplexity), true
+
 	case "User.tableInfo":
 		if e.complexity.User.TableInfo == nil {
 			break
@@ -2502,7 +2571,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "ent.graphql" "query.graphql"
+//go:embed "ent.graphql" "handlers.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -2515,7 +2584,7 @@ func sourceData(filename string) string {
 
 var sources = []*ast.Source{
 	{Name: "ent.graphql", Input: sourceData("ent.graphql"), BuiltIn: false},
-	{Name: "query.graphql", Input: sourceData("query.graphql"), BuiltIn: false},
+	{Name: "handlers.graphql", Input: sourceData("handlers.graphql"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -2589,6 +2658,52 @@ func (ec *executionContext) field_Query_communities_argsOnlyNotBanned(
 	}
 
 	var zeroVal *bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_community_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_community_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_community_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_media_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_media_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_media_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -3024,6 +3139,8 @@ func (ec *executionContext) fieldContext_Bookmark_user(_ context.Context, field 
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -3128,6 +3245,8 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -3690,6 +3809,8 @@ func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -3794,6 +3915,8 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -3884,6 +4007,8 @@ func (ec *executionContext) fieldContext_Comment_community(_ context.Context, fi
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -3948,9 +4073,9 @@ func (ec *executionContext) _Comment_media(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Comment_media(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4460,6 +4585,8 @@ func (ec *executionContext) fieldContext_CommentLike_user(_ context.Context, fie
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -4817,6 +4944,50 @@ func (ec *executionContext) fieldContext_Community_title(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Community_slug(ctx context.Context, field graphql.CollectedField, obj *ent.Community) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Community_slug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slug, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Community_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Community",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Community_contacts(ctx context.Context, field graphql.CollectedField, obj *ent.Community) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Community_contacts(ctx, field)
 	if err != nil {
@@ -5086,7 +5257,7 @@ func (ec *executionContext) _Community_logo(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Logo(rctx, obj)
+		return obj.Logo(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5095,9 +5266,9 @@ func (ec *executionContext) _Community_logo(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_logo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5105,7 +5276,7 @@ func (ec *executionContext) fieldContext_Community_logo(_ context.Context, field
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -5143,7 +5314,7 @@ func (ec *executionContext) _Community_banner(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Banner(rctx, obj)
+		return obj.Banner(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5152,9 +5323,9 @@ func (ec *executionContext) _Community_banner(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_banner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5162,7 +5333,7 @@ func (ec *executionContext) fieldContext_Community_banner(_ context.Context, fie
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -5229,6 +5400,8 @@ func (ec *executionContext) fieldContext_Community_owner(_ context.Context, fiel
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -5690,6 +5863,8 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -6073,6 +6248,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_user(_ context.Context,
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -6183,6 +6360,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_community(_ context.Con
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -6487,6 +6666,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_user(_ context.Cont
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -6597,6 +6778,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_community(_ context
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -6939,6 +7122,8 @@ func (ec *executionContext) fieldContext_CommunityRule_community(_ context.Conte
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -7243,6 +7428,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_user(_ context.Contex
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -7353,6 +7540,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_community(_ context.C
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -7657,6 +7846,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_user(_ context.Conte
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -7767,6 +7958,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_community(_ context.
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -8024,6 +8217,8 @@ func (ec *executionContext) fieldContext_EmailVerification_user(_ context.Contex
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -8562,7 +8757,7 @@ func (ec *executionContext) _Host_logo(ctx context.Context, field graphql.Collec
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Logo(rctx, obj)
+		return obj.Logo(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8571,9 +8766,9 @@ func (ec *executionContext) _Host_logo(ctx context.Context, field graphql.Collec
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_logo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8581,7 +8776,7 @@ func (ec *executionContext) fieldContext_Host_logo(_ context.Context, field grap
 		Object:     "Host",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8619,7 +8814,7 @@ func (ec *executionContext) _Host_banner(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().Banner(rctx, obj)
+		return obj.Banner(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8628,9 +8823,9 @@ func (ec *executionContext) _Host_banner(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_banner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8638,7 +8833,7 @@ func (ec *executionContext) fieldContext_Host_banner(_ context.Context, field gr
 		Object:     "Host",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8676,7 +8871,7 @@ func (ec *executionContext) _Host_authBanner(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Host().AuthBanner(rctx, obj)
+		return obj.AuthBanner(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8685,9 +8880,9 @@ func (ec *executionContext) _Host_authBanner(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_authBanner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -8695,7 +8890,7 @@ func (ec *executionContext) fieldContext_Host_authBanner(_ context.Context, fiel
 		Object:     "Host",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -8759,6 +8954,8 @@ func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field gra
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -9102,6 +9299,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_community(_ context.
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -9368,6 +9567,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_community(_ context
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -9945,7 +10146,7 @@ func (ec *executionContext) _HostRole_badge(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostRole().Badge(rctx, obj)
+		return obj.Badge(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9954,9 +10155,9 @@ func (ec *executionContext) _HostRole_badge(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostRole_badge(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -9964,7 +10165,7 @@ func (ec *executionContext) fieldContext_HostRole_badge(_ context.Context, field
 		Object:     "HostRole",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -10028,6 +10229,8 @@ func (ec *executionContext) fieldContext_HostRole_users(_ context.Context, field
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -10419,7 +10622,7 @@ func (ec *executionContext) fieldContext_HostRule_host(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigation_id(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigation_id(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigation_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10445,9 +10648,9 @@ func (ec *executionContext) _HostSidebarNavigation_id(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigation_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10463,7 +10666,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigation_id(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigation_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigation_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigation_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10507,7 +10710,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigation_createdAt(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigation_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigation_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigation_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10551,7 +10754,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigation_updatedAt(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigation_items(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigation_items(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigation_items(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10565,7 +10768,7 @@ func (ec *executionContext) _HostSidebarNavigation_items(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Items, nil
+		return obj.Items(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10574,16 +10777,16 @@ func (ec *executionContext) _HostSidebarNavigation_items(ctx context.Context, fi
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*HostSidebarNavigationItem)
+	res := resTmp.([]*ent.HostSidebarNavigationItem)
 	fc.Result = res
-	return ec.marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemᚄ(ctx, field.Selections, res)
+	return ec.marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItemᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigation_items(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostSidebarNavigation",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -10608,7 +10811,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigation_items(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_id(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_id(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10634,9 +10837,9 @@ func (ec *executionContext) _HostSidebarNavigationItem_id(ctx context.Context, f
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigationItem_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10652,7 +10855,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_id(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigationID(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigationID(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_sidebarNavigationID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10678,9 +10881,9 @@ func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigationID(ctx c
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigationItem_sidebarNavigationID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10696,7 +10899,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_sidebarNaviga
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_postID(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_postID(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_postID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10722,9 +10925,9 @@ func (ec *executionContext) _HostSidebarNavigationItem_postID(ctx context.Contex
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigationItem_postID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10740,7 +10943,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_postID(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10784,7 +10987,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_createdAt(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10828,7 +11031,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_updatedAt(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigation(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigation(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_sidebarNavigation(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10842,7 +11045,7 @@ func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigation(ctx con
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SidebarNavigation, nil
+		return obj.SidebarNavigation(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10854,16 +11057,16 @@ func (ec *executionContext) _HostSidebarNavigationItem_sidebarNavigation(ctx con
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*HostSidebarNavigation)
+	res := resTmp.(*ent.HostSidebarNavigation)
 	fc.Result = res
-	return ec.marshalNHostSidebarNavigation2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigation(ctx, field.Selections, res)
+	return ec.marshalNHostSidebarNavigation2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigation(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigationItem_sidebarNavigation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostSidebarNavigationItem",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -10882,7 +11085,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_sidebarNaviga
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSidebarNavigationItem_post(ctx context.Context, field graphql.CollectedField, obj *HostSidebarNavigationItem) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSidebarNavigationItem_post(ctx context.Context, field graphql.CollectedField, obj *ent.HostSidebarNavigationItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSidebarNavigationItem_post(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10896,7 +11099,7 @@ func (ec *executionContext) _HostSidebarNavigationItem_post(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Post, nil
+		return ec.resolvers.HostSidebarNavigationItem().Post(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10917,14 +11120,16 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 	fc = &graphql.FieldContext{
 		Object:     "HostSidebarNavigationItem",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -10966,7 +11171,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_id(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_id(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10992,9 +11197,9 @@ func (ec *executionContext) _HostSocialNavigation_id(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSocialNavigation_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11010,7 +11215,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_id(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_github(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_github(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_github(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11051,7 +11256,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_github(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_site(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_site(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_site(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11092,7 +11297,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_site(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_telegram(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_telegram(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_telegram(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11133,7 +11338,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_telegram(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_instagram(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_instagram(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_instagram(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11174,7 +11379,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_instagram(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_twitter(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_twitter(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_twitter(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11215,7 +11420,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_twitter(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_mastodon(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_mastodon(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_mastodon(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11256,7 +11461,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_mastodon(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11300,7 +11505,7 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_createdAt(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostSocialNavigation_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostSocialNavigation) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostSocialNavigation_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostSocialNavigation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostSocialNavigation_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11519,6 +11724,8 @@ func (ec *executionContext) fieldContext_HostUsersBan_user(_ context.Context, fi
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -11755,6 +11962,8 @@ func (ec *executionContext) fieldContext_HostUsersMute_user(_ context.Context, f
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -11816,7 +12025,7 @@ func (ec *executionContext) fieldContext_HostUsersMute_user(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_id(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_id(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11842,9 +12051,9 @@ func (ec *executionContext) _Media_id(ctx context.Context, field graphql.Collect
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Media_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11860,7 +12069,7 @@ func (ec *executionContext) fieldContext_Media_id(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_alt(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_alt(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_alt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11901,7 +12110,7 @@ func (ec *executionContext) fieldContext_Media_alt(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_url(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_url(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_url(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11942,7 +12151,7 @@ func (ec *executionContext) fieldContext_Media_url(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_thumbnailURL(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_thumbnailURL(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_thumbnailURL(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11983,7 +12192,7 @@ func (ec *executionContext) fieldContext_Media_thumbnailURL(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_filename(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_filename(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_filename(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12024,7 +12233,7 @@ func (ec *executionContext) fieldContext_Media_filename(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_createdAt(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12068,7 +12277,7 @@ func (ec *executionContext) fieldContext_Media_createdAt(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Media_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Media) (ret graphql.Marshaler) {
+func (ec *executionContext) _Media_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Media) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Media_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12447,6 +12656,50 @@ func (ec *executionContext) _Post_title(ctx context.Context, field graphql.Colle
 }
 
 func (ec *executionContext) fieldContext_Post_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_slug(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_slug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slug, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Post_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
@@ -12913,9 +13166,9 @@ func (ec *executionContext) _Post_heroimage(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_heroimage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13066,6 +13319,8 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -13156,6 +13411,8 @@ func (ec *executionContext) fieldContext_Post_community(_ context.Context, field
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -13240,6 +13497,8 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -13678,6 +13937,8 @@ func (ec *executionContext) fieldContext_PostLike_user(_ context.Context, field 
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -13782,6 +14043,8 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -13979,6 +14242,8 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -14031,6 +14296,106 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_community(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_community(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Community(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Community)
+	fc.Result = res
+	return ec.marshalOCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_community(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Community_id(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Community_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Community_bannerID(ctx, field)
+			case "ownerID":
+				return ec.fieldContext_Community_ownerID(ctx, field)
+			case "title":
+				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Community_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Community_description(ctx, field)
+			case "tableInfo":
+				return ec.fieldContext_Community_tableInfo(ctx, field)
+			case "communityHasBanned":
+				return ec.fieldContext_Community_communityHasBanned(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Community_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Community_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Community_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Community_banner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Community_owner(ctx, field)
+			case "moderators":
+				return ec.fieldContext_Community_moderators(ctx, field)
+			case "roles":
+				return ec.fieldContext_Community_roles(ctx, field)
+			case "rules":
+				return ec.fieldContext_Community_rules(ctx, field)
+			case "followers":
+				return ec.fieldContext_Community_followers(ctx, field)
+			case "bans":
+				return ec.fieldContext_Community_bans(ctx, field)
+			case "mutes":
+				return ec.fieldContext_Community_mutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_Community_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_Community_comments(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_community_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_users(ctx, field)
 	if err != nil {
@@ -14074,6 +14439,8 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -14175,6 +14542,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -14241,6 +14610,74 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_user_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_media(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_media(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Media(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Media)
+	fc.Result = res
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_media(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Media_id(ctx, field)
+			case "alt":
+				return ec.fieldContext_Media_alt(ctx, field)
+			case "url":
+				return ec.fieldContext_Media_url(ctx, field)
+			case "thumbnailURL":
+				return ec.fieldContext_Media_thumbnailURL(ctx, field)
+			case "filename":
+				return ec.fieldContext_Media_filename(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Media_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Media_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Media", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_media_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14316,6 +14753,178 @@ func (ec *executionContext) fieldContext_Query_hostRoles(_ context.Context, fiel
 				return ec.fieldContext_HostRole_users(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostSidebarNavigationItems(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostSidebarNavigationItems(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostSidebarNavigationItems(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.HostSidebarNavigationItem)
+	fc.Result = res
+	return ec.marshalNHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItemᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostSidebarNavigationItems(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostSidebarNavigationItem_id(ctx, field)
+			case "sidebarNavigationID":
+				return ec.fieldContext_HostSidebarNavigationItem_sidebarNavigationID(ctx, field)
+			case "postID":
+				return ec.fieldContext_HostSidebarNavigationItem_postID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostSidebarNavigationItem_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostSidebarNavigationItem_updatedAt(ctx, field)
+			case "sidebarNavigation":
+				return ec.fieldContext_HostSidebarNavigationItem_sidebarNavigation(ctx, field)
+			case "post":
+				return ec.fieldContext_HostSidebarNavigationItem_post(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostSidebarNavigationItem", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostSidebarNavigation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostSidebarNavigation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostSidebarNavigation(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostSidebarNavigation)
+	fc.Result = res
+	return ec.marshalOHostSidebarNavigation2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostSidebarNavigation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostSidebarNavigation_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostSidebarNavigation_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostSidebarNavigation_updatedAt(ctx, field)
+			case "items":
+				return ec.fieldContext_HostSidebarNavigation_items(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostSidebarNavigation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostSocialNavigation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostSocialNavigation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostSocialNavigation(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostSocialNavigation)
+	fc.Result = res
+	return ec.marshalOHostSocialNavigation2ᚖstormlinkᚋserverᚋentᚐHostSocialNavigation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostSocialNavigation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostSocialNavigation_id(ctx, field)
+			case "github":
+				return ec.fieldContext_HostSocialNavigation_github(ctx, field)
+			case "site":
+				return ec.fieldContext_HostSocialNavigation_site(ctx, field)
+			case "telegram":
+				return ec.fieldContext_HostSocialNavigation_telegram(ctx, field)
+			case "instagram":
+				return ec.fieldContext_HostSocialNavigation_instagram(ctx, field)
+			case "twitter":
+				return ec.fieldContext_HostSocialNavigation_twitter(ctx, field)
+			case "mastodon":
+				return ec.fieldContext_HostSocialNavigation_mastodon(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostSocialNavigation_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostSocialNavigation_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostSocialNavigation", field.Name)
 		},
 	}
 	return fc, nil
@@ -15116,9 +15725,9 @@ func (ec *executionContext) _Role_badge(ctx context.Context, field graphql.Colle
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Role_badge(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15199,6 +15808,8 @@ func (ec *executionContext) fieldContext_Role_community(_ context.Context, field
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -15280,6 +15891,8 @@ func (ec *executionContext) fieldContext_Role_users(_ context.Context, field gra
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -15417,6 +16030,50 @@ func (ec *executionContext) _User_name(ctx context.Context, field graphql.Collec
 }
 
 func (ec *executionContext) fieldContext_User_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_slug(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_slug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slug, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -15871,7 +16528,7 @@ func (ec *executionContext) _User_avatar(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Avatar(rctx, obj)
+		return obj.Avatar(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15880,9 +16537,9 @@ func (ec *executionContext) _User_avatar(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_avatar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15890,7 +16547,7 @@ func (ec *executionContext) fieldContext_User_avatar(_ context.Context, field gr
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -15928,7 +16585,7 @@ func (ec *executionContext) _User_banner(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Banner(rctx, obj)
+		return obj.Banner(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15937,9 +16594,9 @@ func (ec *executionContext) _User_banner(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Media)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_banner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15947,7 +16604,7 @@ func (ec *executionContext) fieldContext_User_banner(_ context.Context, field gr
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -16271,6 +16928,8 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_id(ctx, field)
 			case "title":
 				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
 			case "content":
 				return ec.fieldContext_Post_content(ctx, field)
 			case "heroImageID":
@@ -16608,6 +17267,8 @@ func (ec *executionContext) fieldContext_User_communitiesOwner(_ context.Context
 				return ec.fieldContext_Community_ownerID(ctx, field)
 			case "title":
 				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
 			case "contacts":
 				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
@@ -17193,6 +17854,8 @@ func (ec *executionContext) fieldContext_UserFollow_follower(_ context.Context, 
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -17297,6 +17960,8 @@ func (ec *executionContext) fieldContext_UserFollow_followee(_ context.Context, 
 				return ec.fieldContext_User_id(ctx, field)
 			case "name":
 				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
 			case "avatarID":
 				return ec.fieldContext_User_avatarID(ctx, field)
 			case "bannerID":
@@ -22143,7 +22808,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "logoID", "logoIDNEQ", "logoIDIn", "logoIDNotIn", "logoIDIsNil", "logoIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "ownerID", "ownerIDNEQ", "ownerIDIn", "ownerIDNotIn", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "contacts", "contactsNEQ", "contactsIn", "contactsNotIn", "contactsGT", "contactsGTE", "contactsLT", "contactsLTE", "contactsContains", "contactsHasPrefix", "contactsHasSuffix", "contactsIsNil", "contactsNotNil", "contactsEqualFold", "contactsContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "communityHasBanned", "communityHasBannedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasLogo", "hasLogoWith", "hasBanner", "hasBannerWith", "hasOwner", "hasOwnerWith", "hasModerators", "hasModeratorsWith", "hasRoles", "hasRolesWith", "hasRules", "hasRulesWith", "hasFollowers", "hasFollowersWith", "hasBans", "hasBansWith", "hasMutes", "hasMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "logoID", "logoIDNEQ", "logoIDIn", "logoIDNotIn", "logoIDIsNil", "logoIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "ownerID", "ownerIDNEQ", "ownerIDIn", "ownerIDNotIn", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "contacts", "contactsNEQ", "contactsIn", "contactsNotIn", "contactsGT", "contactsGTE", "contactsLT", "contactsLTE", "contactsContains", "contactsHasPrefix", "contactsHasSuffix", "contactsIsNil", "contactsNotNil", "contactsEqualFold", "contactsContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "communityHasBanned", "communityHasBannedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasLogo", "hasLogoWith", "hasBanner", "hasBannerWith", "hasOwner", "hasOwnerWith", "hasModerators", "hasModeratorsWith", "hasRoles", "hasRolesWith", "hasRules", "hasRulesWith", "hasFollowers", "hasFollowersWith", "hasBans", "hasBansWith", "hasMutes", "hasMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22430,6 +23095,97 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 				return it, err
 			}
 			it.TitleContainsFold = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "slugNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNeq = data
+		case "slugIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugIn = data
+		case "slugNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNotIn = data
+		case "slugGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGt = data
+		case "slugGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGte = data
+		case "slugLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLt = data
+		case "slugLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLte = data
+		case "slugContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContains = data
+		case "slugHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasPrefix = data
+		case "slugHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasSuffix = data
+		case "slugEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugEqualFold = data
+		case "slugContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContainsFold = data
 		case "contacts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contacts"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -28345,7 +29101,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "views", "viewsNEQ", "viewsIn", "viewsNotIn", "viewsGT", "viewsGTE", "viewsLT", "viewsLTE", "hasDeleted", "hasDeletedNEQ", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "views", "viewsNEQ", "viewsIn", "viewsNotIn", "viewsGT", "viewsGTE", "viewsLT", "viewsLTE", "hasDeleted", "hasDeletedNEQ", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -28520,6 +29276,97 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.TitleContainsFold = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "slugNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNeq = data
+		case "slugIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugIn = data
+		case "slugNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNotIn = data
+		case "slugGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGt = data
+		case "slugGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGte = data
+		case "slugLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLt = data
+		case "slugLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLte = data
+		case "slugContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContains = data
+		case "slugHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasPrefix = data
+		case "slugHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasSuffix = data
+		case "slugEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugEqualFold = data
+		case "slugContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContainsFold = data
 		case "heroImageID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("heroImageID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -29951,7 +30798,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "avatarID", "avatarIDNEQ", "avatarIDIn", "avatarIDNotIn", "avatarIDIsNil", "avatarIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "email", "emailNEQ", "emailIn", "emailNotIn", "emailGT", "emailGTE", "emailLT", "emailLTE", "emailContains", "emailHasPrefix", "emailHasSuffix", "emailEqualFold", "emailContainsFold", "passwordHash", "passwordHashNEQ", "passwordHashIn", "passwordHashNotIn", "passwordHashGT", "passwordHashGTE", "passwordHashLT", "passwordHashLTE", "passwordHashContains", "passwordHashHasPrefix", "passwordHashHasSuffix", "passwordHashEqualFold", "passwordHashContainsFold", "salt", "saltNEQ", "saltIn", "saltNotIn", "saltGT", "saltGTE", "saltLT", "saltLTE", "saltContains", "saltHasPrefix", "saltHasSuffix", "saltEqualFold", "saltContainsFold", "isVerified", "isVerifiedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasAvatar", "hasAvatarWith", "hasBanner", "hasBannerWith", "hasHostRoles", "hasHostRolesWith", "hasCommunitiesRoles", "hasCommunitiesRolesWith", "hasCommunitiesBans", "hasCommunitiesBansWith", "hasCommunitiesMutes", "hasCommunitiesMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith", "hasFollowing", "hasFollowingWith", "hasFollowers", "hasFollowersWith", "hasCommunitiesFollow", "hasCommunitiesFollowWith", "hasCommunitiesOwner", "hasCommunitiesOwnerWith", "hasCommunitiesModerator", "hasCommunitiesModeratorWith", "hasPostsLikes", "hasPostsLikesWith", "hasCommentsLikes", "hasCommentsLikesWith", "hasBookmarks", "hasBookmarksWith", "hasEmailVerifications", "hasEmailVerificationsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "avatarID", "avatarIDNEQ", "avatarIDIn", "avatarIDNotIn", "avatarIDIsNil", "avatarIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "email", "emailNEQ", "emailIn", "emailNotIn", "emailGT", "emailGTE", "emailLT", "emailLTE", "emailContains", "emailHasPrefix", "emailHasSuffix", "emailEqualFold", "emailContainsFold", "passwordHash", "passwordHashNEQ", "passwordHashIn", "passwordHashNotIn", "passwordHashGT", "passwordHashGTE", "passwordHashLT", "passwordHashLTE", "passwordHashContains", "passwordHashHasPrefix", "passwordHashHasSuffix", "passwordHashEqualFold", "passwordHashContainsFold", "salt", "saltNEQ", "saltIn", "saltNotIn", "saltGT", "saltGTE", "saltLT", "saltLTE", "saltContains", "saltHasPrefix", "saltHasSuffix", "saltEqualFold", "saltContainsFold", "isVerified", "isVerifiedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasAvatar", "hasAvatarWith", "hasBanner", "hasBannerWith", "hasHostRoles", "hasHostRolesWith", "hasCommunitiesRoles", "hasCommunitiesRolesWith", "hasCommunitiesBans", "hasCommunitiesBansWith", "hasCommunitiesMutes", "hasCommunitiesMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith", "hasFollowing", "hasFollowingWith", "hasFollowers", "hasFollowersWith", "hasCommunitiesFollow", "hasCommunitiesFollowWith", "hasCommunitiesOwner", "hasCommunitiesOwnerWith", "hasCommunitiesModerator", "hasCommunitiesModeratorWith", "hasPostsLikes", "hasPostsLikesWith", "hasCommentsLikes", "hasCommentsLikesWith", "hasBookmarks", "hasBookmarksWith", "hasEmailVerifications", "hasEmailVerificationsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -30126,6 +30973,97 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.NameContainsFold = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "slugNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNeq = data
+		case "slugIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugIn = data
+		case "slugNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugNotIn = data
+		case "slugGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGt = data
+		case "slugGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugGte = data
+		case "slugLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLt = data
+		case "slugLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugLte = data
+		case "slugContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContains = data
+		case "slugHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasPrefix = data
+		case "slugHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugHasSuffix = data
+		case "slugEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugEqualFold = data
+		case "slugContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slugContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SlugContainsFold = data
 		case "avatarID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avatarID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -30999,9 +31937,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Post(ctx, sel, obj)
-	case Media:
-		return ec._Media(ctx, sel, &obj)
-	case *Media:
+	case *ent.Media:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -31020,23 +31956,17 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostUsersBan(ctx, sel, obj)
-	case HostSocialNavigation:
-		return ec._HostSocialNavigation(ctx, sel, &obj)
-	case *HostSocialNavigation:
+	case *ent.HostSocialNavigation:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._HostSocialNavigation(ctx, sel, obj)
-	case HostSidebarNavigationItem:
-		return ec._HostSidebarNavigationItem(ctx, sel, &obj)
-	case *HostSidebarNavigationItem:
+	case *ent.HostSidebarNavigationItem:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._HostSidebarNavigationItem(ctx, sel, obj)
-	case HostSidebarNavigation:
-		return ec._HostSidebarNavigation(ctx, sel, &obj)
-	case *HostSidebarNavigation:
+	case *ent.HostSidebarNavigation:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -31420,6 +32350,11 @@ func (ec *executionContext) _Community(ctx context.Context, sel ast.SelectionSet
 			}
 		case "title":
 			out.Values[i] = ec._Community_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "slug":
+			out.Values[i] = ec._Community_slug(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -32817,7 +33752,7 @@ func (ec *executionContext) _HostRule(ctx context.Context, sel ast.SelectionSet,
 
 var hostSidebarNavigationImplementors = []string{"HostSidebarNavigation", "Node"}
 
-func (ec *executionContext) _HostSidebarNavigation(ctx context.Context, sel ast.SelectionSet, obj *HostSidebarNavigation) graphql.Marshaler {
+func (ec *executionContext) _HostSidebarNavigation(ctx context.Context, sel ast.SelectionSet, obj *ent.HostSidebarNavigation) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostSidebarNavigationImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -32829,20 +33764,51 @@ func (ec *executionContext) _HostSidebarNavigation(ctx context.Context, sel ast.
 		case "id":
 			out.Values[i] = ec._HostSidebarNavigation_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._HostSidebarNavigation_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._HostSidebarNavigation_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "items":
-			out.Values[i] = ec._HostSidebarNavigation_items(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostSidebarNavigation_items(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32868,7 +33834,7 @@ func (ec *executionContext) _HostSidebarNavigation(ctx context.Context, sel ast.
 
 var hostSidebarNavigationItemImplementors = []string{"HostSidebarNavigationItem", "Node"}
 
-func (ec *executionContext) _HostSidebarNavigationItem(ctx context.Context, sel ast.SelectionSet, obj *HostSidebarNavigationItem) graphql.Marshaler {
+func (ec *executionContext) _HostSidebarNavigationItem(ctx context.Context, sel ast.SelectionSet, obj *ent.HostSidebarNavigationItem) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostSidebarNavigationItemImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -32880,38 +33846,100 @@ func (ec *executionContext) _HostSidebarNavigationItem(ctx context.Context, sel 
 		case "id":
 			out.Values[i] = ec._HostSidebarNavigationItem_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "sidebarNavigationID":
 			out.Values[i] = ec._HostSidebarNavigationItem_sidebarNavigationID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "postID":
 			out.Values[i] = ec._HostSidebarNavigationItem_postID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._HostSidebarNavigationItem_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._HostSidebarNavigationItem_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "sidebarNavigation":
-			out.Values[i] = ec._HostSidebarNavigationItem_sidebarNavigation(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostSidebarNavigationItem_sidebarNavigation(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "post":
-			out.Values[i] = ec._HostSidebarNavigationItem_post(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostSidebarNavigationItem_post(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32937,7 +33965,7 @@ func (ec *executionContext) _HostSidebarNavigationItem(ctx context.Context, sel 
 
 var hostSocialNavigationImplementors = []string{"HostSocialNavigation", "Node"}
 
-func (ec *executionContext) _HostSocialNavigation(ctx context.Context, sel ast.SelectionSet, obj *HostSocialNavigation) graphql.Marshaler {
+func (ec *executionContext) _HostSocialNavigation(ctx context.Context, sel ast.SelectionSet, obj *ent.HostSocialNavigation) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostSocialNavigationImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -33106,7 +34134,7 @@ func (ec *executionContext) _HostUsersMute(ctx context.Context, sel ast.Selectio
 
 var mediaImplementors = []string{"Media", "Node"}
 
-func (ec *executionContext) _Media(ctx context.Context, sel ast.SelectionSet, obj *Media) graphql.Marshaler {
+func (ec *executionContext) _Media(ctx context.Context, sel ast.SelectionSet, obj *ent.Media) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, mediaImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -33276,6 +34304,11 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "title":
 			out.Values[i] = ec._Post_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slug":
+			out.Values[i] = ec._Post_slug(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -33514,6 +34547,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "community":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_community(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "users":
 			field := field
 
@@ -33555,6 +34607,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "media":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_media(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "hostRoles":
 			field := field
 
@@ -33568,6 +34639,66 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostSidebarNavigationItems":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostSidebarNavigationItems(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostSidebarNavigation":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostSidebarNavigation(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostSocialNavigation":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostSocialNavigation(ctx, field)
 				return res
 			}
 
@@ -33747,6 +34878,11 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "name":
 			out.Values[i] = ec._User_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "slug":
+			out.Values[i] = ec._User_slug(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -35115,7 +36251,7 @@ func (ec *executionContext) unmarshalNHostRuleWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHostSidebarNavigation2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigation(ctx context.Context, sel ast.SelectionSet, v *HostSidebarNavigation) graphql.Marshaler {
+func (ec *executionContext) marshalNHostSidebarNavigation2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigation(ctx context.Context, sel ast.SelectionSet, v *ent.HostSidebarNavigation) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -35125,7 +36261,51 @@ func (ec *executionContext) marshalNHostSidebarNavigation2ᚖstormlinkᚋserver�
 	return ec._HostSidebarNavigation(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNHostSidebarNavigationItem2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItem(ctx context.Context, sel ast.SelectionSet, v *HostSidebarNavigationItem) graphql.Marshaler {
+func (ec *executionContext) marshalNHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostSidebarNavigationItem) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostSidebarNavigationItem2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItem(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostSidebarNavigationItem2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItem(ctx context.Context, sel ast.SelectionSet, v *ent.HostSidebarNavigationItem) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -35300,6 +36480,10 @@ func (ec *executionContext) marshalNNode2ᚕstormlinkᚋserverᚋentᚐNoder(ctx
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) marshalNPost2stormlinkᚋserverᚋgraphqlᚐPost(ctx context.Context, sel ast.SelectionSet, v Post) graphql.Marshaler {
+	return ec._Post(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx context.Context, sel ast.SelectionSet, v *Post) graphql.Marshaler {
@@ -36730,7 +37914,14 @@ func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*HostSidebarNavigationItem) graphql.Marshaler {
+func (ec *executionContext) marshalOHostSidebarNavigation2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigation(ctx context.Context, sel ast.SelectionSet, v *ent.HostSidebarNavigation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostSidebarNavigation(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostSidebarNavigationItem) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -36757,7 +37948,7 @@ func (ec *executionContext) marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHostSidebarNavigationItem2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItem(ctx, sel, v[i])
+			ret[i] = ec.marshalNHostSidebarNavigationItem2ᚖstormlinkᚋserverᚋentᚐHostSidebarNavigationItem(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -36827,6 +38018,13 @@ func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚖstormli
 	}
 	res, err := ec.unmarshalInputHostSidebarNavigationWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHostSocialNavigation2ᚖstormlinkᚋserverᚋentᚐHostSocialNavigation(ctx context.Context, sel ast.SelectionSet, v *ent.HostSocialNavigation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostSocialNavigation(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInputᚄ(ctx context.Context, v any) ([]*HostSocialNavigationWhereInput, error) {
@@ -37077,7 +38275,7 @@ func (ec *executionContext) marshalOJSON2ᚖstring(ctx context.Context, sel ast.
 	return res
 }
 
-func (ec *executionContext) marshalOMedia2ᚖstormlinkᚋserverᚋgraphqlᚐMedia(ctx context.Context, sel ast.SelectionSet, v *Media) graphql.Marshaler {
+func (ec *executionContext) marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx context.Context, sel ast.SelectionSet, v *ent.Media) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

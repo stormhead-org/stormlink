@@ -1,8 +1,9 @@
 package schema
 
 import (
-	"entgo.io/contrib/entgql"
 	"time"
+
+	"entgo.io/contrib/entgql"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
@@ -17,7 +18,8 @@ func (Community) Fields() []ent.Field {
 		field.Int("logo_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
 		field.Int("owner_id"),
-		field.String("title"),
+		field.String("title").NotEmpty(),
+		field.String("slug").Unique().NotEmpty(),
 		field.String("contacts").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),
 

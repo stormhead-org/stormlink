@@ -15,16 +15,6 @@ func (r *communityResolver) TableInfo(ctx context.Context, obj *ent.Community) (
 	panic(fmt.Errorf("not implemented: TableInfo - tableInfo"))
 }
 
-// Logo is the resolver for the logo field.
-func (r *communityResolver) Logo(ctx context.Context, obj *ent.Community) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Logo - logo"))
-}
-
-// Banner is the resolver for the banner field.
-func (r *communityResolver) Banner(ctx context.Context, obj *ent.Community) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Banner - banner"))
-}
-
 // Moderators is the resolver for the moderators field.
 func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerators, error) {
 	panic(fmt.Errorf("not implemented: Moderators - moderators"))
@@ -65,29 +55,14 @@ func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([
 	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
-// Logo is the resolver for the logo field.
-func (r *hostResolver) Logo(ctx context.Context, obj *ent.Host) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Logo - logo"))
-}
-
-// Banner is the resolver for the banner field.
-func (r *hostResolver) Banner(ctx context.Context, obj *ent.Host) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Banner - banner"))
-}
-
-// AuthBanner is the resolver for the authBanner field.
-func (r *hostResolver) AuthBanner(ctx context.Context, obj *ent.Host) (*Media, error) {
-	panic(fmt.Errorf("not implemented: AuthBanner - authBanner"))
-}
-
 // Rules is the resolver for the rules field.
 func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error) {
 	panic(fmt.Errorf("not implemented: Rules - rules"))
 }
 
-// Badge is the resolver for the badge field.
-func (r *hostRoleResolver) Badge(ctx context.Context, obj *ent.HostRole) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Badge - badge"))
+// Post is the resolver for the post field.
+func (r *hostSidebarNavigationItemResolver) Post(ctx context.Context, obj *ent.HostSidebarNavigationItem) (*Post, error) {
+	panic(fmt.Errorf("not implemented: Post - post"))
 }
 
 // Node is the resolver for the node field.
@@ -103,16 +78,6 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, e
 // TableInfo is the resolver for the tableInfo field.
 func (r *userResolver) TableInfo(ctx context.Context, obj *ent.User) (*string, error) {
 	panic(fmt.Errorf("not implemented: TableInfo - tableInfo"))
-}
-
-// Avatar is the resolver for the avatar field.
-func (r *userResolver) Avatar(ctx context.Context, obj *ent.User) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Avatar - avatar"))
-}
-
-// Banner is the resolver for the banner field.
-func (r *userResolver) Banner(ctx context.Context, obj *ent.User) (*Media, error) {
-	panic(fmt.Errorf("not implemented: Banner - banner"))
 }
 
 // CommunitiesRoles is the resolver for the communitiesRoles field.
@@ -186,8 +151,10 @@ func (r *Resolver) Community() CommunityResolver { return &communityResolver{r} 
 // Host returns HostResolver implementation.
 func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
-// HostRole returns HostRoleResolver implementation.
-func (r *Resolver) HostRole() HostRoleResolver { return &hostRoleResolver{r} }
+// HostSidebarNavigationItem returns HostSidebarNavigationItemResolver implementation.
+func (r *Resolver) HostSidebarNavigationItem() HostSidebarNavigationItemResolver {
+	return &hostSidebarNavigationItemResolver{r}
+}
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
@@ -197,6 +164,6 @@ func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
 type communityResolver struct{ *Resolver }
 type hostResolver struct{ *Resolver }
-type hostRoleResolver struct{ *Resolver }
+type hostSidebarNavigationItemResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
