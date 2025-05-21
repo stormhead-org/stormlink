@@ -55,12 +55,12 @@ func (Community) Edges() []ent.Edge {
 			Required().
 			Unique(),
 
-		edge.To("moderators", CommunityModerators.Type),
+		edge.To("moderators", CommunityModerator.Type),
 		edge.To("roles", Role.Type),
 		edge.To("rules", CommunityRule.Type),
 		edge.To("followers", CommunityFollow.Type),
-		edge.To("bans", CommunityUsersBan.Type),
-		edge.To("mutes", CommunityUsersMute.Type),
+		edge.To("bans", CommunityUserBan.Type),
+		edge.To("mutes", CommunityUserMute.Type),
 		edge.To("posts", Post.Type),
 		edge.To("comments", Comment.Type),
 	}

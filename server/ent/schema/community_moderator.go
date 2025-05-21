@@ -8,9 +8,9 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type CommunityModerators struct{ ent.Schema }
+type CommunityModerator struct{ ent.Schema }
 
-func (CommunityModerators) Fields() []ent.Field {
+func (CommunityModerator) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
@@ -22,7 +22,7 @@ func (CommunityModerators) Fields() []ent.Field {
 	}
 }
 
-func (CommunityModerators) Edges() []ent.Edge {
+func (CommunityModerator) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
 			Ref("communities_moderator").

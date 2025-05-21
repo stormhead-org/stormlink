@@ -1,13 +1,32 @@
 extend type Query {
-	communities(onlyNotBanned: Boolean = true): [Community!]!
-	community(id: ID!): Community
-	users: [User!]!
-	user(id: ID!): User
 	media(id: ID!): Media
+
+	community(id: ID!): Community
+	communities(onlyNotBanned: Boolean = true): [Community!]!
+
+	communityUserBan(communityId: ID!, userId: ID!): CommunityUserBan
+	communityUserMute(communityId: ID!, userId: ID!): CommunityUserMute
+
+	user(id: ID!): User
+	users: [User!]!
+
+	post(id: ID!): Post
+	posts(status: PostStatus = PUBLISHED): [Post!]!
+
+	role(id: ID!): Role
+	roles(id: ID!): [Role!]!
+
+	hostRole(id: ID!): HostRole
 	hostRoles: [HostRole!]!
+
+	hostUserBan(id: ID!): HostUserBan
+	hostUsersBan: [HostUserBan!]!
+
 	hostSidebarNavigationItems: [HostSidebarNavigationItem!]!
 	hostSidebarNavigation: HostSidebarNavigation
+
 	hostSocialNavigation: HostSocialNavigation
+
 	host: Host
 }
 

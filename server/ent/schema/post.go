@@ -33,16 +33,18 @@ func (Post) Fields() []ent.Field {
 			Annotations(entgql.Type("JSON")),
 
 		field.Int("views").Default(0),
-		field.Bool("has_deleted").Default(false),
-		field.Time("published_at").Optional().Nillable(),
+		field.Enum("status").
+			Values("published", "draft", "deleted").
+			Default("draft"),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Time("published_at").Optional().Nillable(),
 	}
 }
 
 func (Post) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("heroImage", Media.Type).
+		edge.To("hero_image", Media.Type).
 			Field("hero_image_id").
 			Unique(),
 

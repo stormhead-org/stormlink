@@ -8,9 +8,9 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type CommunityUsersBan struct{ ent.Schema }
+type CommunityUserMute struct{ ent.Schema }
 
-func (CommunityUsersBan) Fields() []ent.Field {
+func (CommunityUserMute) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
@@ -22,16 +22,16 @@ func (CommunityUsersBan) Fields() []ent.Field {
 	}
 }
 
-func (CommunityUsersBan) Edges() []ent.Edge {
+func (CommunityUserMute) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("user", User.Type).
-			Ref("communities_bans").
+			Ref("communities_mutes").
 			Field("user_id").
 			Required().
 			Unique(),
 
 		edge.From("community", Community.Type).
-			Ref("bans").
+			Ref("mutes").
 			Field("community_id").
 			Required().
 			Unique(),

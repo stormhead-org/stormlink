@@ -62,8 +62,8 @@ func (User) Edges() []ent.Edge {
 		edge.To("communities_roles", Role.Type),
 
 		// Баны и муты в сообществах
-		edge.To("communities_bans", CommunityUsersBan.Type),
-		edge.To("communities_mutes", CommunityUsersMute.Type),
+		edge.To("communities_bans", CommunityUserBan.Type),
+		edge.To("communities_mutes", CommunityUserMute.Type),
 
 		// Посты пользователя
 		edge.To("posts", Post.Type),
@@ -84,7 +84,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("communities_owner", Community.Type),
 
 		// Сообщества, в которых пользователь модератор
-		edge.To("communities_moderator", CommunityModerators.Type),
+		edge.To("communities_moderator", CommunityModerator.Type),
 
 		// Лайки к постам и комментариям
 		edge.To("posts_likes", PostLike.Type),

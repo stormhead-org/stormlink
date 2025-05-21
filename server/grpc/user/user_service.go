@@ -67,6 +67,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 	newUser, err := s.client.User.
 		Create().
 		SetName(req.GetName()).
+		SetSlug(req.GetName()).
 		SetEmail(req.GetEmail()).
 		SetPasswordHash(passwordHash).
 		SetSalt(salt).
@@ -89,7 +90,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 	if firstSettings {
 		ownerRole, err := s.client.HostRole.
 			Query().
-			Where(hostrole.NameEQ("owner")).
+			Where(hostrole.TitleEQ("owner")).
 			Only(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to find host owner role: %v", err)
@@ -106,7 +107,7 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 
 	everyoneRole, err := s.client.HostRole.
 		Query().
-		Where(hostrole.NameEQ("@everyone")).
+		Where(hostrole.TitleEQ("@everyone")).
 		Only(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find @everyone role: %v", err)

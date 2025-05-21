@@ -16,13 +16,8 @@ func (r *communityResolver) TableInfo(ctx context.Context, obj *ent.Community) (
 }
 
 // Moderators is the resolver for the moderators field.
-func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerators, error) {
+func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerator, error) {
 	panic(fmt.Errorf("not implemented: Moderators - moderators"))
-}
-
-// Roles is the resolver for the roles field.
-func (r *communityResolver) Roles(ctx context.Context, obj *ent.Community) ([]*Role, error) {
-	panic(fmt.Errorf("not implemented: Roles - roles"))
 }
 
 // Rules is the resolver for the rules field.
@@ -35,21 +30,6 @@ func (r *communityResolver) Followers(ctx context.Context, obj *ent.Community) (
 	panic(fmt.Errorf("not implemented: Followers - followers"))
 }
 
-// Bans is the resolver for the bans field.
-func (r *communityResolver) Bans(ctx context.Context, obj *ent.Community) ([]*CommunityUsersBan, error) {
-	panic(fmt.Errorf("not implemented: Bans - bans"))
-}
-
-// Mutes is the resolver for the mutes field.
-func (r *communityResolver) Mutes(ctx context.Context, obj *ent.Community) ([]*CommunityUsersMute, error) {
-	panic(fmt.Errorf("not implemented: Mutes - mutes"))
-}
-
-// Posts is the resolver for the posts field.
-func (r *communityResolver) Posts(ctx context.Context, obj *ent.Community) ([]*Post, error) {
-	panic(fmt.Errorf("not implemented: Posts - posts"))
-}
-
 // Comments is the resolver for the comments field.
 func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error) {
 	panic(fmt.Errorf("not implemented: Comments - comments"))
@@ -60,9 +40,34 @@ func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, e
 	panic(fmt.Errorf("not implemented: Rules - rules"))
 }
 
-// Post is the resolver for the post field.
-func (r *hostSidebarNavigationItemResolver) Post(ctx context.Context, obj *ent.HostSidebarNavigationItem) (*Post, error) {
-	panic(fmt.Errorf("not implemented: Post - post"))
+// Content is the resolver for the content field.
+func (r *postResolver) Content(ctx context.Context, obj *ent.Post) (string, error) {
+	panic(fmt.Errorf("not implemented: Content - content"))
+}
+
+// Meta is the resolver for the meta field.
+func (r *postResolver) Meta(ctx context.Context, obj *ent.Post) (*string, error) {
+	panic(fmt.Errorf("not implemented: Meta - meta"))
+}
+
+// Views is the resolver for the views field.
+func (r *postResolver) Views(ctx context.Context, obj *ent.Post) (int32, error) {
+	panic(fmt.Errorf("not implemented: Views - views"))
+}
+
+// Comments is the resolver for the comments field.
+func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*Comment, error) {
+	panic(fmt.Errorf("not implemented: Comments - comments"))
+}
+
+// Likes is the resolver for the likes field.
+func (r *postResolver) Likes(ctx context.Context, obj *ent.Post) ([]*PostLike, error) {
+	panic(fmt.Errorf("not implemented: Likes - likes"))
+}
+
+// Bookmarks is the resolver for the bookmarks field.
+func (r *postResolver) Bookmarks(ctx context.Context, obj *ent.Post) ([]*Bookmark, error) {
+	panic(fmt.Errorf("not implemented: Bookmarks - bookmarks"))
 }
 
 // Node is the resolver for the node field.
@@ -78,26 +83,6 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, e
 // TableInfo is the resolver for the tableInfo field.
 func (r *userResolver) TableInfo(ctx context.Context, obj *ent.User) (*string, error) {
 	panic(fmt.Errorf("not implemented: TableInfo - tableInfo"))
-}
-
-// CommunitiesRoles is the resolver for the communitiesRoles field.
-func (r *userResolver) CommunitiesRoles(ctx context.Context, obj *ent.User) ([]*Role, error) {
-	panic(fmt.Errorf("not implemented: CommunitiesRoles - communitiesRoles"))
-}
-
-// CommunitiesBans is the resolver for the communitiesBans field.
-func (r *userResolver) CommunitiesBans(ctx context.Context, obj *ent.User) ([]*CommunityUsersBan, error) {
-	panic(fmt.Errorf("not implemented: CommunitiesBans - communitiesBans"))
-}
-
-// CommunitiesMutes is the resolver for the communitiesMutes field.
-func (r *userResolver) CommunitiesMutes(ctx context.Context, obj *ent.User) ([]*CommunityUsersMute, error) {
-	panic(fmt.Errorf("not implemented: CommunitiesMutes - communitiesMutes"))
-}
-
-// Posts is the resolver for the posts field.
-func (r *userResolver) Posts(ctx context.Context, obj *ent.User) ([]*Post, error) {
-	panic(fmt.Errorf("not implemented: Posts - posts"))
 }
 
 // Comments is the resolver for the comments field.
@@ -121,7 +106,7 @@ func (r *userResolver) CommunitiesFollow(ctx context.Context, obj *ent.User) ([]
 }
 
 // CommunitiesModerator is the resolver for the communitiesModerator field.
-func (r *userResolver) CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerators, error) {
+func (r *userResolver) CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerator, error) {
 	panic(fmt.Errorf("not implemented: CommunitiesModerator - communitiesModerator"))
 }
 
@@ -151,10 +136,8 @@ func (r *Resolver) Community() CommunityResolver { return &communityResolver{r} 
 // Host returns HostResolver implementation.
 func (r *Resolver) Host() HostResolver { return &hostResolver{r} }
 
-// HostSidebarNavigationItem returns HostSidebarNavigationItemResolver implementation.
-func (r *Resolver) HostSidebarNavigationItem() HostSidebarNavigationItemResolver {
-	return &hostSidebarNavigationItemResolver{r}
-}
+// Post returns PostResolver implementation.
+func (r *Resolver) Post() PostResolver { return &postResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
@@ -164,6 +147,21 @@ func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
 type communityResolver struct{ *Resolver }
 type hostResolver struct{ *Resolver }
-type hostSidebarNavigationItemResolver struct{ *Resolver }
+type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *communityResolver) Mutes(ctx context.Context, obj *ent.Community) ([]*CommunityUserMute, error) {
+	panic(fmt.Errorf("not implemented: Mutes - mutes"))
+}
+func (r *userResolver) CommunitiesMutes(ctx context.Context, obj *ent.User) ([]*CommunityUserMute, error) {
+	panic(fmt.Errorf("not implemented: CommunitiesMutes - communitiesMutes"))
+}
+*/

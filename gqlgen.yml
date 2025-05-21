@@ -160,8 +160,18 @@ models:
       - github.com/99designs/gqlgen/graphql.Int64
   Community:
     model: stormlink/server/ent.Community
+  CommunityUserBan:
+    model: stormlink/server/ent.CommunityUserBan
+  CommunityUserMute:
+    model: stormlink/server/ent.CommunityUserMute
   User:
     model: stormlink/server/ent.User
+  Post:
+    model:
+      - stormlink/server/ent.Post
+  Role:
+    model:
+      - stormlink/server/ent.Role
   HostRole:
     model:
       - stormlink/server/ent.HostRole
@@ -180,3 +190,6 @@ models:
   HostSocialNavigation:
     model:
       - stormlink/server/ent.HostSocialNavigation
+  HostUserBan:
+    model:
+      - stormlink/server/ent.HostUserBan

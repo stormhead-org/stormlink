@@ -14,7 +14,7 @@ func Seed(client *ent.Client) error {
 	ctx := context.Background()
 
 	// Проверка: сидились ли роли?
-	roleOwnerExists, err := client.HostRole.Query().Where(hostrole.NameEQ("owner")).Exist(ctx)
+	roleOwnerExists, err := client.HostRole.Query().Where(hostrole.TitleEQ("owner")).Exist(ctx)
 	if err != nil {
 		log.Println("✅ Роль host owner уже существует...")
 		return err
@@ -22,7 +22,7 @@ func Seed(client *ent.Client) error {
 	if !roleOwnerExists {
 		log.Println("🌱 Сидим роль host owner...")
 		if _, err := client.HostRole.Create().
-			SetName("owner").
+			SetTitle("owner").
 			SetColor("#99AAB5").
 			SetCommunityRolesManagement(true).
 			SetHostUserBan(true).
@@ -35,7 +35,7 @@ func Seed(client *ent.Client) error {
 		}
 		log.Printf("✅ Роль host owner создана")
 	}
-	roleEveryoneExists, err := client.HostRole.Query().Where(hostrole.NameEQ("@everyone")).Exist(ctx)
+	roleEveryoneExists, err := client.HostRole.Query().Where(hostrole.TitleEQ("@everyone")).Exist(ctx)
 	if err != nil {
 		log.Println("✅ Роль host @everyone уже существует...")
 		return err
@@ -43,7 +43,7 @@ func Seed(client *ent.Client) error {
 	if !roleEveryoneExists {
 		log.Println("🌱 Сидим роль host @everyone...")
 		if _, err := client.HostRole.Create().
-			SetName("@everyone").
+			SetTitle("@everyone").
 			SetColor("#99AAB5").
 			Save(ctx); err != nil {
 			return err
@@ -77,7 +77,7 @@ func Seed(client *ent.Client) error {
 		return err
 	}
 	if !hostSidebarNavigationExists {
-		log.Println("🌱 Сидим настройки host...")
+		log.Println("🌱 Сидим навигацию HostSidebarNavigation...")
 		if _, err := client.HostSidebarNavigation.Create().
 			Save(ctx); err != nil {
 			return err

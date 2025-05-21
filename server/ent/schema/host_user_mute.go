@@ -8,23 +8,20 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-type HostCommunitiesBan struct{ ent.Schema }
+type HostUserMute struct{ ent.Schema }
 
-func (HostCommunitiesBan) Fields() []ent.Field {
+func (HostUserMute) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
-
-		field.Int("community_id"),
 
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 
-func (HostCommunitiesBan) Edges() []ent.Edge {
+func (HostUserMute) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("community", Community.Type).
-			Field("community_id").
+		edge.To("user", User.Type).
 			Required().
 			Unique(),
 	}

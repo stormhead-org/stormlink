@@ -13,7 +13,7 @@ type Role struct{ ent.Schema }
 func (Role) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
-		field.String("name"),
+		field.String("title"),
 		field.Int("badge_id").Optional().Nillable(),
 		field.String("color").Optional().Nillable(),
 		field.Int("community_id"),

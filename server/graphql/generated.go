@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"stormlink/server/ent"
+	"stormlink/server/ent/post"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -42,8 +43,8 @@ type Config struct {
 type ResolverRoot interface {
 	Community() CommunityResolver
 	Host() HostResolver
-	HostSidebarNavigationItem() HostSidebarNavigationItemResolver
 	Mutation() MutationResolver
+	Post() PostResolver
 	Query() QueryResolver
 	User() UserResolver
 }
@@ -129,7 +130,7 @@ type ComplexityRoot struct {
 		UserID      func(childComplexity int) int
 	}
 
-	CommunityModerators struct {
+	CommunityModerator struct {
 		Community   func(childComplexity int) int
 		CommunityID func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -149,7 +150,7 @@ type ComplexityRoot struct {
 		UpdatedAt                func(childComplexity int) int
 	}
 
-	CommunityUsersBan struct {
+	CommunityUserBan struct {
 		Community   func(childComplexity int) int
 		CommunityID func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -159,7 +160,7 @@ type ComplexityRoot struct {
 		UserID      func(childComplexity int) int
 	}
 
-	CommunityUsersMute struct {
+	CommunityUserMute struct {
 		Community   func(childComplexity int) int
 		CommunityID func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -196,7 +197,7 @@ type ComplexityRoot struct {
 		UpdatedAt     func(childComplexity int) int
 	}
 
-	HostCommunitiesBan struct {
+	HostCommunityBan struct {
 		Community   func(childComplexity int) int
 		CommunityID func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -204,7 +205,7 @@ type ComplexityRoot struct {
 		UpdatedAt   func(childComplexity int) int
 	}
 
-	HostCommunitiesMute struct {
+	HostCommunityMute struct {
 		Community   func(childComplexity int) int
 		CommunityID func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -224,7 +225,7 @@ type ComplexityRoot struct {
 		HostUserBan                            func(childComplexity int) int
 		HostUserMute                           func(childComplexity int) int
 		ID                                     func(childComplexity int) int
-		Name                                   func(childComplexity int) int
+		Title                                  func(childComplexity int) int
 		UpdatedAt                              func(childComplexity int) int
 		Users                                  func(childComplexity int) int
 	}
@@ -268,14 +269,14 @@ type ComplexityRoot struct {
 		UpdatedAt func(childComplexity int) int
 	}
 
-	HostUsersBan struct {
+	HostUserBan struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 		User      func(childComplexity int) int
 	}
 
-	HostUsersMute struct {
+	HostUserMute struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
@@ -312,7 +313,6 @@ type ComplexityRoot struct {
 		CommunityID func(childComplexity int) int
 		Content     func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
-		HasDeleted  func(childComplexity int) int
 		HeroImage   func(childComplexity int) int
 		HeroImageID func(childComplexity int) int
 		ID          func(childComplexity int) int
@@ -321,6 +321,7 @@ type ComplexityRoot struct {
 		PublishedAt func(childComplexity int) int
 		RelatedPost func(childComplexity int) int
 		Slug        func(childComplexity int) int
+		Status      func(childComplexity int) int
 		Title       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Views       func(childComplexity int) int
@@ -339,14 +340,23 @@ type ComplexityRoot struct {
 	Query struct {
 		Communities                func(childComplexity int, onlyNotBanned *bool) int
 		Community                  func(childComplexity int, id string) int
+		CommunityUserBan           func(childComplexity int, communityID string, userID string) int
+		CommunityUserMute          func(childComplexity int, communityID string, userID string) int
 		Host                       func(childComplexity int) int
+		HostRole                   func(childComplexity int, id string) int
 		HostRoles                  func(childComplexity int) int
 		HostSidebarNavigation      func(childComplexity int) int
 		HostSidebarNavigationItems func(childComplexity int) int
 		HostSocialNavigation       func(childComplexity int) int
+		HostUserBan                func(childComplexity int, id string) int
+		HostUsersBan               func(childComplexity int) int
 		Media                      func(childComplexity int, id string) int
 		Node                       func(childComplexity int, id string) int
 		Nodes                      func(childComplexity int, ids []string) int
+		Post                       func(childComplexity int, id string) int
+		Posts                      func(childComplexity int, status *post.Status) int
+		Role                       func(childComplexity int, id string) int
+		Roles                      func(childComplexity int, id string) int
 		User                       func(childComplexity int, id string) int
 		Users                      func(childComplexity int) int
 	}
@@ -365,7 +375,7 @@ type ComplexityRoot struct {
 		CommunityUserMute                  func(childComplexity int) int
 		CreatedAt                          func(childComplexity int) int
 		ID                                 func(childComplexity int) int
-		Name                               func(childComplexity int) int
+		Title                              func(childComplexity int) int
 		UpdatedAt                          func(childComplexity int) int
 		Users                              func(childComplexity int) int
 	}
@@ -417,33 +427,48 @@ type ComplexityRoot struct {
 type CommunityResolver interface {
 	TableInfo(ctx context.Context, obj *ent.Community) (*string, error)
 
-	Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerators, error)
-	Roles(ctx context.Context, obj *ent.Community) ([]*Role, error)
+	Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerator, error)
+
 	Rules(ctx context.Context, obj *ent.Community) ([]*CommunityRule, error)
 	Followers(ctx context.Context, obj *ent.Community) ([]*CommunityFollow, error)
-	Bans(ctx context.Context, obj *ent.Community) ([]*CommunityUsersBan, error)
-	Mutes(ctx context.Context, obj *ent.Community) ([]*CommunityUsersMute, error)
-	Posts(ctx context.Context, obj *ent.Community) ([]*Post, error)
+
 	Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error)
 }
 type HostResolver interface {
 	Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error)
 }
-type HostSidebarNavigationItemResolver interface {
-	Post(ctx context.Context, obj *ent.HostSidebarNavigationItem) (*Post, error)
-}
 type MutationResolver interface {
 	Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error)
+}
+type PostResolver interface {
+	Content(ctx context.Context, obj *ent.Post) (string, error)
+
+	Meta(ctx context.Context, obj *ent.Post) (*string, error)
+	Views(ctx context.Context, obj *ent.Post) (int32, error)
+
+	Comments(ctx context.Context, obj *ent.Post) ([]*Comment, error)
+
+	Likes(ctx context.Context, obj *ent.Post) ([]*PostLike, error)
+	Bookmarks(ctx context.Context, obj *ent.Post) ([]*Bookmark, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
 	Nodes(ctx context.Context, ids []string) ([]ent.Noder, error)
-	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
-	Community(ctx context.Context, id string) (*ent.Community, error)
-	Users(ctx context.Context) ([]*ent.User, error)
-	User(ctx context.Context, id string) (*ent.User, error)
 	Media(ctx context.Context, id string) (*ent.Media, error)
+	Community(ctx context.Context, id string) (*ent.Community, error)
+	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
+	CommunityUserBan(ctx context.Context, communityID string, userID string) (*ent.CommunityUserBan, error)
+	CommunityUserMute(ctx context.Context, communityID string, userID string) (*ent.CommunityUserMute, error)
+	User(ctx context.Context, id string) (*ent.User, error)
+	Users(ctx context.Context) ([]*ent.User, error)
+	Post(ctx context.Context, id string) (*ent.Post, error)
+	Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error)
+	Role(ctx context.Context, id string) (*ent.Role, error)
+	Roles(ctx context.Context, id string) ([]*ent.Role, error)
+	HostRole(ctx context.Context, id string) (*ent.HostRole, error)
 	HostRoles(ctx context.Context) ([]*ent.HostRole, error)
+	HostUserBan(ctx context.Context, id string) (*ent.HostUserBan, error)
+	HostUsersBan(ctx context.Context) ([]*ent.HostUserBan, error)
 	HostSidebarNavigationItems(ctx context.Context) ([]*ent.HostSidebarNavigationItem, error)
 	HostSidebarNavigation(ctx context.Context) (*ent.HostSidebarNavigation, error)
 	HostSocialNavigation(ctx context.Context) (*ent.HostSocialNavigation, error)
@@ -452,16 +477,12 @@ type QueryResolver interface {
 type UserResolver interface {
 	TableInfo(ctx context.Context, obj *ent.User) (*string, error)
 
-	CommunitiesRoles(ctx context.Context, obj *ent.User) ([]*Role, error)
-	CommunitiesBans(ctx context.Context, obj *ent.User) ([]*CommunityUsersBan, error)
-	CommunitiesMutes(ctx context.Context, obj *ent.User) ([]*CommunityUsersMute, error)
-	Posts(ctx context.Context, obj *ent.User) ([]*Post, error)
 	Comments(ctx context.Context, obj *ent.User) ([]*Comment, error)
 	Following(ctx context.Context, obj *ent.User) ([]*UserFollow, error)
 	Followers(ctx context.Context, obj *ent.User) ([]*UserFollow, error)
 	CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*CommunityFollow, error)
 
-	CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerators, error)
+	CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerator, error)
 	PostsLikes(ctx context.Context, obj *ent.User) ([]*PostLike, error)
 	CommentsLikes(ctx context.Context, obj *ent.User) ([]*CommentLike, error)
 	Bookmarks(ctx context.Context, obj *ent.User) ([]*Bookmark, error)
@@ -921,54 +942,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommunityFollow.UserID(childComplexity), true
 
-	case "CommunityModerators.community":
-		if e.complexity.CommunityModerators.Community == nil {
+	case "CommunityModerator.community":
+		if e.complexity.CommunityModerator.Community == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.Community(childComplexity), true
+		return e.complexity.CommunityModerator.Community(childComplexity), true
 
-	case "CommunityModerators.communityID":
-		if e.complexity.CommunityModerators.CommunityID == nil {
+	case "CommunityModerator.communityID":
+		if e.complexity.CommunityModerator.CommunityID == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.CommunityID(childComplexity), true
+		return e.complexity.CommunityModerator.CommunityID(childComplexity), true
 
-	case "CommunityModerators.createdAt":
-		if e.complexity.CommunityModerators.CreatedAt == nil {
+	case "CommunityModerator.createdAt":
+		if e.complexity.CommunityModerator.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.CreatedAt(childComplexity), true
+		return e.complexity.CommunityModerator.CreatedAt(childComplexity), true
 
-	case "CommunityModerators.id":
-		if e.complexity.CommunityModerators.ID == nil {
+	case "CommunityModerator.id":
+		if e.complexity.CommunityModerator.ID == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.ID(childComplexity), true
+		return e.complexity.CommunityModerator.ID(childComplexity), true
 
-	case "CommunityModerators.updatedAt":
-		if e.complexity.CommunityModerators.UpdatedAt == nil {
+	case "CommunityModerator.updatedAt":
+		if e.complexity.CommunityModerator.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.UpdatedAt(childComplexity), true
+		return e.complexity.CommunityModerator.UpdatedAt(childComplexity), true
 
-	case "CommunityModerators.user":
-		if e.complexity.CommunityModerators.User == nil {
+	case "CommunityModerator.user":
+		if e.complexity.CommunityModerator.User == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.User(childComplexity), true
+		return e.complexity.CommunityModerator.User(childComplexity), true
 
-	case "CommunityModerators.userID":
-		if e.complexity.CommunityModerators.UserID == nil {
+	case "CommunityModerator.userID":
+		if e.complexity.CommunityModerator.UserID == nil {
 			break
 		}
 
-		return e.complexity.CommunityModerators.UserID(childComplexity), true
+		return e.complexity.CommunityModerator.UserID(childComplexity), true
 
 	case "CommunityRule.community":
 		if e.complexity.CommunityRule.Community == nil {
@@ -1019,103 +1040,103 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommunityRule.UpdatedAt(childComplexity), true
 
-	case "CommunityUsersBan.community":
-		if e.complexity.CommunityUsersBan.Community == nil {
+	case "CommunityUserBan.community":
+		if e.complexity.CommunityUserBan.Community == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.Community(childComplexity), true
+		return e.complexity.CommunityUserBan.Community(childComplexity), true
 
-	case "CommunityUsersBan.communityID":
-		if e.complexity.CommunityUsersBan.CommunityID == nil {
+	case "CommunityUserBan.communityID":
+		if e.complexity.CommunityUserBan.CommunityID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.CommunityID(childComplexity), true
+		return e.complexity.CommunityUserBan.CommunityID(childComplexity), true
 
-	case "CommunityUsersBan.createdAt":
-		if e.complexity.CommunityUsersBan.CreatedAt == nil {
+	case "CommunityUserBan.createdAt":
+		if e.complexity.CommunityUserBan.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.CreatedAt(childComplexity), true
+		return e.complexity.CommunityUserBan.CreatedAt(childComplexity), true
 
-	case "CommunityUsersBan.id":
-		if e.complexity.CommunityUsersBan.ID == nil {
+	case "CommunityUserBan.id":
+		if e.complexity.CommunityUserBan.ID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.ID(childComplexity), true
+		return e.complexity.CommunityUserBan.ID(childComplexity), true
 
-	case "CommunityUsersBan.updatedAt":
-		if e.complexity.CommunityUsersBan.UpdatedAt == nil {
+	case "CommunityUserBan.updatedAt":
+		if e.complexity.CommunityUserBan.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.UpdatedAt(childComplexity), true
+		return e.complexity.CommunityUserBan.UpdatedAt(childComplexity), true
 
-	case "CommunityUsersBan.user":
-		if e.complexity.CommunityUsersBan.User == nil {
+	case "CommunityUserBan.user":
+		if e.complexity.CommunityUserBan.User == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.User(childComplexity), true
+		return e.complexity.CommunityUserBan.User(childComplexity), true
 
-	case "CommunityUsersBan.userID":
-		if e.complexity.CommunityUsersBan.UserID == nil {
+	case "CommunityUserBan.userID":
+		if e.complexity.CommunityUserBan.UserID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersBan.UserID(childComplexity), true
+		return e.complexity.CommunityUserBan.UserID(childComplexity), true
 
-	case "CommunityUsersMute.community":
-		if e.complexity.CommunityUsersMute.Community == nil {
+	case "CommunityUserMute.community":
+		if e.complexity.CommunityUserMute.Community == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.Community(childComplexity), true
+		return e.complexity.CommunityUserMute.Community(childComplexity), true
 
-	case "CommunityUsersMute.communityID":
-		if e.complexity.CommunityUsersMute.CommunityID == nil {
+	case "CommunityUserMute.communityID":
+		if e.complexity.CommunityUserMute.CommunityID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.CommunityID(childComplexity), true
+		return e.complexity.CommunityUserMute.CommunityID(childComplexity), true
 
-	case "CommunityUsersMute.createdAt":
-		if e.complexity.CommunityUsersMute.CreatedAt == nil {
+	case "CommunityUserMute.createdAt":
+		if e.complexity.CommunityUserMute.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.CreatedAt(childComplexity), true
+		return e.complexity.CommunityUserMute.CreatedAt(childComplexity), true
 
-	case "CommunityUsersMute.id":
-		if e.complexity.CommunityUsersMute.ID == nil {
+	case "CommunityUserMute.id":
+		if e.complexity.CommunityUserMute.ID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.ID(childComplexity), true
+		return e.complexity.CommunityUserMute.ID(childComplexity), true
 
-	case "CommunityUsersMute.updatedAt":
-		if e.complexity.CommunityUsersMute.UpdatedAt == nil {
+	case "CommunityUserMute.updatedAt":
+		if e.complexity.CommunityUserMute.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.UpdatedAt(childComplexity), true
+		return e.complexity.CommunityUserMute.UpdatedAt(childComplexity), true
 
-	case "CommunityUsersMute.user":
-		if e.complexity.CommunityUsersMute.User == nil {
+	case "CommunityUserMute.user":
+		if e.complexity.CommunityUserMute.User == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.User(childComplexity), true
+		return e.complexity.CommunityUserMute.User(childComplexity), true
 
-	case "CommunityUsersMute.userID":
-		if e.complexity.CommunityUsersMute.UserID == nil {
+	case "CommunityUserMute.userID":
+		if e.complexity.CommunityUserMute.UserID == nil {
 			break
 		}
 
-		return e.complexity.CommunityUsersMute.UserID(childComplexity), true
+		return e.complexity.CommunityUserMute.UserID(childComplexity), true
 
 	case "EmailVerification.createdAt":
 		if e.complexity.EmailVerification.CreatedAt == nil {
@@ -1264,75 +1285,75 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Host.UpdatedAt(childComplexity), true
 
-	case "HostCommunitiesBan.community":
-		if e.complexity.HostCommunitiesBan.Community == nil {
+	case "HostCommunityBan.community":
+		if e.complexity.HostCommunityBan.Community == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesBan.Community(childComplexity), true
+		return e.complexity.HostCommunityBan.Community(childComplexity), true
 
-	case "HostCommunitiesBan.communityID":
-		if e.complexity.HostCommunitiesBan.CommunityID == nil {
+	case "HostCommunityBan.communityID":
+		if e.complexity.HostCommunityBan.CommunityID == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesBan.CommunityID(childComplexity), true
+		return e.complexity.HostCommunityBan.CommunityID(childComplexity), true
 
-	case "HostCommunitiesBan.createdAt":
-		if e.complexity.HostCommunitiesBan.CreatedAt == nil {
+	case "HostCommunityBan.createdAt":
+		if e.complexity.HostCommunityBan.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesBan.CreatedAt(childComplexity), true
+		return e.complexity.HostCommunityBan.CreatedAt(childComplexity), true
 
-	case "HostCommunitiesBan.id":
-		if e.complexity.HostCommunitiesBan.ID == nil {
+	case "HostCommunityBan.id":
+		if e.complexity.HostCommunityBan.ID == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesBan.ID(childComplexity), true
+		return e.complexity.HostCommunityBan.ID(childComplexity), true
 
-	case "HostCommunitiesBan.updatedAt":
-		if e.complexity.HostCommunitiesBan.UpdatedAt == nil {
+	case "HostCommunityBan.updatedAt":
+		if e.complexity.HostCommunityBan.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesBan.UpdatedAt(childComplexity), true
+		return e.complexity.HostCommunityBan.UpdatedAt(childComplexity), true
 
-	case "HostCommunitiesMute.community":
-		if e.complexity.HostCommunitiesMute.Community == nil {
+	case "HostCommunityMute.community":
+		if e.complexity.HostCommunityMute.Community == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesMute.Community(childComplexity), true
+		return e.complexity.HostCommunityMute.Community(childComplexity), true
 
-	case "HostCommunitiesMute.communityID":
-		if e.complexity.HostCommunitiesMute.CommunityID == nil {
+	case "HostCommunityMute.communityID":
+		if e.complexity.HostCommunityMute.CommunityID == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesMute.CommunityID(childComplexity), true
+		return e.complexity.HostCommunityMute.CommunityID(childComplexity), true
 
-	case "HostCommunitiesMute.createdAt":
-		if e.complexity.HostCommunitiesMute.CreatedAt == nil {
+	case "HostCommunityMute.createdAt":
+		if e.complexity.HostCommunityMute.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesMute.CreatedAt(childComplexity), true
+		return e.complexity.HostCommunityMute.CreatedAt(childComplexity), true
 
-	case "HostCommunitiesMute.id":
-		if e.complexity.HostCommunitiesMute.ID == nil {
+	case "HostCommunityMute.id":
+		if e.complexity.HostCommunityMute.ID == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesMute.ID(childComplexity), true
+		return e.complexity.HostCommunityMute.ID(childComplexity), true
 
-	case "HostCommunitiesMute.updatedAt":
-		if e.complexity.HostCommunitiesMute.UpdatedAt == nil {
+	case "HostCommunityMute.updatedAt":
+		if e.complexity.HostCommunityMute.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostCommunitiesMute.UpdatedAt(childComplexity), true
+		return e.complexity.HostCommunityMute.UpdatedAt(childComplexity), true
 
 	case "HostRole.badge":
 		if e.complexity.HostRole.Badge == nil {
@@ -1411,12 +1432,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostRole.ID(childComplexity), true
 
-	case "HostRole.name":
-		if e.complexity.HostRole.Name == nil {
+	case "HostRole.title":
+		if e.complexity.HostRole.Title == nil {
 			break
 		}
 
-		return e.complexity.HostRole.Name(childComplexity), true
+		return e.complexity.HostRole.Title(childComplexity), true
 
 	case "HostRole.updatedAt":
 		if e.complexity.HostRole.UpdatedAt == nil {
@@ -1621,61 +1642,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostSocialNavigation.UpdatedAt(childComplexity), true
 
-	case "HostUsersBan.createdAt":
-		if e.complexity.HostUsersBan.CreatedAt == nil {
+	case "HostUserBan.createdAt":
+		if e.complexity.HostUserBan.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostUsersBan.CreatedAt(childComplexity), true
+		return e.complexity.HostUserBan.CreatedAt(childComplexity), true
 
-	case "HostUsersBan.id":
-		if e.complexity.HostUsersBan.ID == nil {
+	case "HostUserBan.id":
+		if e.complexity.HostUserBan.ID == nil {
 			break
 		}
 
-		return e.complexity.HostUsersBan.ID(childComplexity), true
+		return e.complexity.HostUserBan.ID(childComplexity), true
 
-	case "HostUsersBan.updatedAt":
-		if e.complexity.HostUsersBan.UpdatedAt == nil {
+	case "HostUserBan.updatedAt":
+		if e.complexity.HostUserBan.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostUsersBan.UpdatedAt(childComplexity), true
+		return e.complexity.HostUserBan.UpdatedAt(childComplexity), true
 
-	case "HostUsersBan.user":
-		if e.complexity.HostUsersBan.User == nil {
+	case "HostUserBan.user":
+		if e.complexity.HostUserBan.User == nil {
 			break
 		}
 
-		return e.complexity.HostUsersBan.User(childComplexity), true
+		return e.complexity.HostUserBan.User(childComplexity), true
 
-	case "HostUsersMute.createdAt":
-		if e.complexity.HostUsersMute.CreatedAt == nil {
+	case "HostUserMute.createdAt":
+		if e.complexity.HostUserMute.CreatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostUsersMute.CreatedAt(childComplexity), true
+		return e.complexity.HostUserMute.CreatedAt(childComplexity), true
 
-	case "HostUsersMute.id":
-		if e.complexity.HostUsersMute.ID == nil {
+	case "HostUserMute.id":
+		if e.complexity.HostUserMute.ID == nil {
 			break
 		}
 
-		return e.complexity.HostUsersMute.ID(childComplexity), true
+		return e.complexity.HostUserMute.ID(childComplexity), true
 
-	case "HostUsersMute.updatedAt":
-		if e.complexity.HostUsersMute.UpdatedAt == nil {
+	case "HostUserMute.updatedAt":
+		if e.complexity.HostUserMute.UpdatedAt == nil {
 			break
 		}
 
-		return e.complexity.HostUsersMute.UpdatedAt(childComplexity), true
+		return e.complexity.HostUserMute.UpdatedAt(childComplexity), true
 
-	case "HostUsersMute.user":
-		if e.complexity.HostUsersMute.User == nil {
+	case "HostUserMute.user":
+		if e.complexity.HostUserMute.User == nil {
 			break
 		}
 
-		return e.complexity.HostUsersMute.User(childComplexity), true
+		return e.complexity.HostUserMute.User(childComplexity), true
 
 	case "Media.alt":
 		if e.complexity.Media.Alt == nil {
@@ -1822,14 +1843,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Post.CreatedAt(childComplexity), true
 
-	case "Post.hasDeleted":
-		if e.complexity.Post.HasDeleted == nil {
-			break
-		}
-
-		return e.complexity.Post.HasDeleted(childComplexity), true
-
-	case "Post.heroimage":
+	case "Post.heroImage":
 		if e.complexity.Post.HeroImage == nil {
 			break
 		}
@@ -1884,6 +1898,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Post.Slug(childComplexity), true
+
+	case "Post.status":
+		if e.complexity.Post.Status == nil {
+			break
+		}
+
+		return e.complexity.Post.Status(childComplexity), true
 
 	case "Post.title":
 		if e.complexity.Post.Title == nil {
@@ -1979,12 +2000,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Community(childComplexity, args["id"].(string)), true
 
+	case "Query.communityUserBan":
+		if e.complexity.Query.CommunityUserBan == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityUserBan_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityUserBan(childComplexity, args["communityId"].(string), args["userId"].(string)), true
+
+	case "Query.communityUserMute":
+		if e.complexity.Query.CommunityUserMute == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityUserMute_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityUserMute(childComplexity, args["communityId"].(string), args["userId"].(string)), true
+
 	case "Query.host":
 		if e.complexity.Query.Host == nil {
 			break
 		}
 
 		return e.complexity.Query.Host(childComplexity), true
+
+	case "Query.hostRole":
+		if e.complexity.Query.HostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostRole(childComplexity, args["id"].(string)), true
 
 	case "Query.hostRoles":
 		if e.complexity.Query.HostRoles == nil {
@@ -2013,6 +2070,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.HostSocialNavigation(childComplexity), true
+
+	case "Query.hostUserBan":
+		if e.complexity.Query.HostUserBan == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostUserBan_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostUserBan(childComplexity, args["id"].(string)), true
+
+	case "Query.hostUsersBan":
+		if e.complexity.Query.HostUsersBan == nil {
+			break
+		}
+
+		return e.complexity.Query.HostUsersBan(childComplexity), true
 
 	case "Query.media":
 		if e.complexity.Query.Media == nil {
@@ -2049,6 +2125,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Nodes(childComplexity, args["ids"].([]string)), true
+
+	case "Query.post":
+		if e.complexity.Query.Post == nil {
+			break
+		}
+
+		args, err := ec.field_Query_post_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Post(childComplexity, args["id"].(string)), true
+
+	case "Query.posts":
+		if e.complexity.Query.Posts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_posts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Posts(childComplexity, args["status"].(*post.Status)), true
+
+	case "Query.role":
+		if e.complexity.Query.Role == nil {
+			break
+		}
+
+		args, err := ec.field_Query_role_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Role(childComplexity, args["id"].(string)), true
+
+	case "Query.roles":
+		if e.complexity.Query.Roles == nil {
+			break
+		}
+
+		args, err := ec.field_Query_roles_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Roles(childComplexity, args["id"].(string)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -2160,12 +2284,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Role.ID(childComplexity), true
 
-	case "Role.name":
-		if e.complexity.Role.Name == nil {
+	case "Role.title":
+		if e.complexity.Role.Title == nil {
 			break
 		}
 
-		return e.complexity.Role.Name(childComplexity), true
+		return e.complexity.Role.Title(childComplexity), true
 
 	case "Role.updatedAt":
 		if e.complexity.Role.UpdatedAt == nil {
@@ -2452,21 +2576,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCommentLikeWhereInput,
 		ec.unmarshalInputCommentWhereInput,
 		ec.unmarshalInputCommunityFollowWhereInput,
-		ec.unmarshalInputCommunityModeratorsWhereInput,
+		ec.unmarshalInputCommunityModeratorWhereInput,
 		ec.unmarshalInputCommunityRuleWhereInput,
-		ec.unmarshalInputCommunityUsersBanWhereInput,
-		ec.unmarshalInputCommunityUsersMuteWhereInput,
+		ec.unmarshalInputCommunityUserBanWhereInput,
+		ec.unmarshalInputCommunityUserMuteWhereInput,
 		ec.unmarshalInputCommunityWhereInput,
 		ec.unmarshalInputEmailVerificationWhereInput,
-		ec.unmarshalInputHostCommunitiesBanWhereInput,
-		ec.unmarshalInputHostCommunitiesMuteWhereInput,
+		ec.unmarshalInputHostCommunityBanWhereInput,
+		ec.unmarshalInputHostCommunityMuteWhereInput,
 		ec.unmarshalInputHostRoleWhereInput,
 		ec.unmarshalInputHostRuleWhereInput,
 		ec.unmarshalInputHostSidebarNavigationItemWhereInput,
 		ec.unmarshalInputHostSidebarNavigationWhereInput,
 		ec.unmarshalInputHostSocialNavigationWhereInput,
-		ec.unmarshalInputHostUsersBanWhereInput,
-		ec.unmarshalInputHostUsersMuteWhereInput,
+		ec.unmarshalInputHostUserBanWhereInput,
+		ec.unmarshalInputHostUserMuteWhereInput,
 		ec.unmarshalInputHostWhereInput,
 		ec.unmarshalInputMediaWhereInput,
 		ec.unmarshalInputPostLikeWhereInput,
@@ -2661,6 +2785,88 @@ func (ec *executionContext) field_Query_communities_argsOnlyNotBanned(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_communityUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_communityUserBan_argsCommunityID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["communityId"] = arg0
+	arg1, err := ec.field_Query_communityUserBan_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_communityUserBan_argsCommunityID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityId"))
+	if tmp, ok := rawArgs["communityId"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_communityUserBan_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+	if tmp, ok := rawArgs["userId"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_communityUserMute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_communityUserMute_argsCommunityID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["communityId"] = arg0
+	arg1, err := ec.field_Query_communityUserMute_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_communityUserMute_argsCommunityID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityId"))
+	if tmp, ok := rawArgs["communityId"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_communityUserMute_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+	if tmp, ok := rawArgs["userId"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_community_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2672,6 +2878,52 @@ func (ec *executionContext) field_Query_community_args(ctx context.Context, rawA
 	return args, nil
 }
 func (ec *executionContext) field_Query_community_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_hostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_hostRole_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_hostRole_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_hostUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_hostUserBan_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_hostUserBan_argsID(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (string, error) {
@@ -2750,6 +3002,98 @@ func (ec *executionContext) field_Query_nodes_argsIds(
 	}
 
 	var zeroVal []string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_post_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_post_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_posts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_posts_argsStatus(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["status"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_posts_argsStatus(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*post.Status, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+	if tmp, ok := rawArgs["status"]; ok {
+		return ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, tmp)
+	}
+
+	var zeroVal *post.Status
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_role_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_role_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_role_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_roles_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_roles_argsID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_roles_argsID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["id"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -3228,9 +3572,9 @@ func (ec *executionContext) _Bookmark_post(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Post)
+	res := resTmp.(*ent.Post)
 	fc.Result = res
-	return ec.marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx, field.Selections, res)
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3259,16 +3603,16 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -3898,9 +4242,9 @@ func (ec *executionContext) _Comment_post(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Post)
+	res := resTmp.(*ent.Post)
 	fc.Result = res
-	return ec.marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx, field.Selections, res)
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3929,16 +4273,16 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -5486,9 +5830,9 @@ func (ec *executionContext) _Community_moderators(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityModerators)
+	res := resTmp.([]*CommunityModerator)
 	fc.Result = res
-	return ec.marshalOCommunityModerators2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_moderators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5500,21 +5844,21 @@ func (ec *executionContext) fieldContext_Community_moderators(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityModerators_id(ctx, field)
+				return ec.fieldContext_CommunityModerator_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityModerators_userID(ctx, field)
+				return ec.fieldContext_CommunityModerator_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityModerators_communityID(ctx, field)
+				return ec.fieldContext_CommunityModerator_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityModerators_createdAt(ctx, field)
+				return ec.fieldContext_CommunityModerator_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityModerators_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityModerator_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityModerators_user(ctx, field)
+				return ec.fieldContext_CommunityModerator_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityModerators_community(ctx, field)
+				return ec.fieldContext_CommunityModerator_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityModerators", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityModerator", field.Name)
 		},
 	}
 	return fc, nil
@@ -5534,7 +5878,7 @@ func (ec *executionContext) _Community_roles(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Roles(rctx, obj)
+		return obj.Roles(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5543,9 +5887,9 @@ func (ec *executionContext) _Community_roles(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Role)
+	res := resTmp.([]*ent.Role)
 	fc.Result = res
-	return ec.marshalORole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleᚄ(ctx, field.Selections, res)
+	return ec.marshalORole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_roles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5553,13 +5897,13 @@ func (ec *executionContext) fieldContext_Community_roles(_ context.Context, fiel
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Role_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Role_name(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
 			case "badgeID":
 				return ec.fieldContext_Role_badgeID(ctx, field)
 			case "color":
@@ -5723,7 +6067,7 @@ func (ec *executionContext) _Community_bans(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Bans(rctx, obj)
+		return obj.Bans(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5732,9 +6076,9 @@ func (ec *executionContext) _Community_bans(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityUsersBan)
+	res := resTmp.([]*ent.CommunityUserBan)
 	fc.Result = res
-	return ec.marshalOCommunityUsersBan2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityUserBan2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserBanᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_bans(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5742,25 +6086,25 @@ func (ec *executionContext) fieldContext_Community_bans(_ context.Context, field
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityUsersBan_id(ctx, field)
+				return ec.fieldContext_CommunityUserBan_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityUsersBan_userID(ctx, field)
+				return ec.fieldContext_CommunityUserBan_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityUsersBan_communityID(ctx, field)
+				return ec.fieldContext_CommunityUserBan_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityUsersBan_createdAt(ctx, field)
+				return ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityUsersBan_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityUsersBan_user(ctx, field)
+				return ec.fieldContext_CommunityUserBan_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityUsersBan_community(ctx, field)
+				return ec.fieldContext_CommunityUserBan_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityUsersBan", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserBan", field.Name)
 		},
 	}
 	return fc, nil
@@ -5780,7 +6124,7 @@ func (ec *executionContext) _Community_mutes(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Mutes(rctx, obj)
+		return obj.Mutes(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5789,9 +6133,9 @@ func (ec *executionContext) _Community_mutes(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityUsersMute)
+	res := resTmp.([]*ent.CommunityUserMute)
 	fc.Result = res
-	return ec.marshalOCommunityUsersMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityUserMute2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserMuteᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_mutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5799,25 +6143,25 @@ func (ec *executionContext) fieldContext_Community_mutes(_ context.Context, fiel
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityUsersMute_id(ctx, field)
+				return ec.fieldContext_CommunityUserMute_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityUsersMute_userID(ctx, field)
+				return ec.fieldContext_CommunityUserMute_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityUsersMute_communityID(ctx, field)
+				return ec.fieldContext_CommunityUserMute_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityUsersMute_createdAt(ctx, field)
+				return ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityUsersMute_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityUsersMute_user(ctx, field)
+				return ec.fieldContext_CommunityUserMute_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityUsersMute_community(ctx, field)
+				return ec.fieldContext_CommunityUserMute_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityUsersMute", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserMute", field.Name)
 		},
 	}
 	return fc, nil
@@ -5837,7 +6181,7 @@ func (ec *executionContext) _Community_posts(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Community().Posts(rctx, obj)
+		return obj.Posts(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5846,9 +6190,9 @@ func (ec *executionContext) _Community_posts(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Post)
+	res := resTmp.([]*ent.Post)
 	fc.Result = res
-	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostᚄ(ctx, field.Selections, res)
+	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_posts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5856,7 +6200,7 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 		Object:     "Community",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -5877,16 +6221,16 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -6403,8 +6747,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_community(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_id(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_id(ctx, field)
+func (ec *executionContext) _CommunityModerator_id(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6434,9 +6778,9 @@ func (ec *executionContext) _CommunityModerators_id(ctx context.Context, field g
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6447,8 +6791,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_id(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_userID(ctx, field)
+func (ec *executionContext) _CommunityModerator_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6478,9 +6822,9 @@ func (ec *executionContext) _CommunityModerators_userID(ctx context.Context, fie
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6491,8 +6835,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_userID(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_communityID(ctx, field)
+func (ec *executionContext) _CommunityModerator_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6522,9 +6866,9 @@ func (ec *executionContext) _CommunityModerators_communityID(ctx context.Context
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6535,8 +6879,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_communityID(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_createdAt(ctx, field)
+func (ec *executionContext) _CommunityModerator_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6566,9 +6910,9 @@ func (ec *executionContext) _CommunityModerators_createdAt(ctx context.Context, 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6579,8 +6923,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_createdAt(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_updatedAt(ctx, field)
+func (ec *executionContext) _CommunityModerator_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6610,9 +6954,9 @@ func (ec *executionContext) _CommunityModerators_updatedAt(ctx context.Context, 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6623,8 +6967,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_updatedAt(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_user(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_user(ctx, field)
+func (ec *executionContext) _CommunityModerator_user(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_user(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6654,9 +6998,9 @@ func (ec *executionContext) _CommunityModerators_user(ctx context.Context, field
 	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -6729,8 +7073,8 @@ func (ec *executionContext) fieldContext_CommunityModerators_user(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerators_community(ctx context.Context, field graphql.CollectedField, obj *CommunityModerators) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityModerators_community(ctx, field)
+func (ec *executionContext) _CommunityModerator_community(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityModerator_community(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6760,9 +7104,9 @@ func (ec *executionContext) _CommunityModerators_community(ctx context.Context, 
 	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityModerators_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityModerator_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityModerators",
+		Object:     "CommunityModerator",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7165,8 +7509,8 @@ func (ec *executionContext) fieldContext_CommunityRule_community(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_id(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_id(ctx, field)
+func (ec *executionContext) _CommunityUserBan_id(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7191,14 +7535,14 @@ func (ec *executionContext) _CommunityUsersBan_id(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7209,8 +7553,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_id(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_userID(ctx, field)
+func (ec *executionContext) _CommunityUserBan_userID(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7235,14 +7579,14 @@ func (ec *executionContext) _CommunityUsersBan_userID(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7253,8 +7597,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_userID(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_communityID(ctx, field)
+func (ec *executionContext) _CommunityUserBan_communityID(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7279,14 +7623,14 @@ func (ec *executionContext) _CommunityUsersBan_communityID(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7297,8 +7641,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_communityID(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_createdAt(ctx, field)
+func (ec *executionContext) _CommunityUserBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7328,9 +7672,9 @@ func (ec *executionContext) _CommunityUsersBan_createdAt(ctx context.Context, fi
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7341,8 +7685,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_createdAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_updatedAt(ctx, field)
+func (ec *executionContext) _CommunityUserBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7372,9 +7716,9 @@ func (ec *executionContext) _CommunityUsersBan_updatedAt(ctx context.Context, fi
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7385,8 +7729,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_updatedAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_user(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_user(ctx, field)
+func (ec *executionContext) _CommunityUserBan_user(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_user(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7399,7 +7743,7 @@ func (ec *executionContext) _CommunityUsersBan_user(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.User, nil
+		return obj.User(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7416,11 +7760,11 @@ func (ec *executionContext) _CommunityUsersBan_user(ctx context.Context, field g
 	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -7491,8 +7835,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_user(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersBan_community(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersBan_community(ctx, field)
+func (ec *executionContext) _CommunityUserBan_community(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserBan_community(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7505,7 +7849,7 @@ func (ec *executionContext) _CommunityUsersBan_community(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Community, nil
+		return obj.Community(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7522,11 +7866,11 @@ func (ec *executionContext) _CommunityUsersBan_community(ctx context.Context, fi
 	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersBan_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserBan_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersBan",
+		Object:     "CommunityUserBan",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -7583,8 +7927,8 @@ func (ec *executionContext) fieldContext_CommunityUsersBan_community(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_id(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_id(ctx, field)
+func (ec *executionContext) _CommunityUserMute_id(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7609,14 +7953,14 @@ func (ec *executionContext) _CommunityUsersMute_id(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7627,8 +7971,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_id(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_userID(ctx, field)
+func (ec *executionContext) _CommunityUserMute_userID(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7653,14 +7997,14 @@ func (ec *executionContext) _CommunityUsersMute_userID(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_userID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7671,8 +8015,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_userID(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_communityID(ctx, field)
+func (ec *executionContext) _CommunityUserMute_communityID(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7697,14 +8041,14 @@ func (ec *executionContext) _CommunityUsersMute_communityID(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7715,8 +8059,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_communityID(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_createdAt(ctx, field)
+func (ec *executionContext) _CommunityUserMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7746,9 +8090,9 @@ func (ec *executionContext) _CommunityUsersMute_createdAt(ctx context.Context, f
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7759,8 +8103,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_createdAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_updatedAt(ctx, field)
+func (ec *executionContext) _CommunityUserMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7790,9 +8134,9 @@ func (ec *executionContext) _CommunityUsersMute_updatedAt(ctx context.Context, f
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7803,8 +8147,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_updatedAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_user(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_user(ctx, field)
+func (ec *executionContext) _CommunityUserMute_user(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_user(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7817,7 +8161,7 @@ func (ec *executionContext) _CommunityUsersMute_user(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.User, nil
+		return obj.User(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7834,11 +8178,11 @@ func (ec *executionContext) _CommunityUsersMute_user(ctx context.Context, field 
 	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -7909,8 +8253,8 @@ func (ec *executionContext) fieldContext_CommunityUsersMute_user(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityUsersMute_community(ctx context.Context, field graphql.CollectedField, obj *CommunityUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityUsersMute_community(ctx, field)
+func (ec *executionContext) _CommunityUserMute_community(ctx context.Context, field graphql.CollectedField, obj *ent.CommunityUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityUserMute_community(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7923,7 +8267,7 @@ func (ec *executionContext) _CommunityUsersMute_community(ctx context.Context, f
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Community, nil
+		return obj.Community(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7940,11 +8284,11 @@ func (ec *executionContext) _CommunityUsersMute_community(ctx context.Context, f
 	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommunityUsersMute_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommunityUserMute_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommunityUsersMute",
+		Object:     "CommunityUserMute",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -9074,8 +9418,8 @@ func (ec *executionContext) fieldContext_Host_rules(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesBan_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesBan_id(ctx, field)
+func (ec *executionContext) _HostCommunityBan_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityBan_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9105,9 +9449,9 @@ func (ec *executionContext) _HostCommunitiesBan_id(ctx context.Context, field gr
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesBan",
+		Object:     "HostCommunityBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9118,8 +9462,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_id(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesBan_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesBan_communityID(ctx, field)
+func (ec *executionContext) _HostCommunityBan_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityBan_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9149,9 +9493,9 @@ func (ec *executionContext) _HostCommunitiesBan_communityID(ctx context.Context,
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesBan_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityBan_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesBan",
+		Object:     "HostCommunityBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9162,8 +9506,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_communityID(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesBan_createdAt(ctx, field)
+func (ec *executionContext) _HostCommunityBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityBan_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9193,9 +9537,9 @@ func (ec *executionContext) _HostCommunitiesBan_createdAt(ctx context.Context, f
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesBan",
+		Object:     "HostCommunityBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9206,8 +9550,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_createdAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesBan_updatedAt(ctx, field)
+func (ec *executionContext) _HostCommunityBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityBan_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9237,9 +9581,9 @@ func (ec *executionContext) _HostCommunitiesBan_updatedAt(ctx context.Context, f
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesBan",
+		Object:     "HostCommunityBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9250,8 +9594,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_updatedAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesBan_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesBan_community(ctx, field)
+func (ec *executionContext) _HostCommunityBan_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityBan_community(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9281,9 +9625,9 @@ func (ec *executionContext) _HostCommunitiesBan_community(ctx context.Context, f
 	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesBan_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityBan_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesBan",
+		Object:     "HostCommunityBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9342,8 +9686,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesBan_community(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesMute_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesMute_id(ctx, field)
+func (ec *executionContext) _HostCommunityMute_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityMute_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9373,9 +9717,9 @@ func (ec *executionContext) _HostCommunitiesMute_id(ctx context.Context, field g
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesMute",
+		Object:     "HostCommunityMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9386,8 +9730,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_id(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesMute_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesMute_communityID(ctx, field)
+func (ec *executionContext) _HostCommunityMute_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityMute_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9417,9 +9761,9 @@ func (ec *executionContext) _HostCommunitiesMute_communityID(ctx context.Context
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesMute_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityMute_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesMute",
+		Object:     "HostCommunityMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9430,8 +9774,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_communityID(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesMute_createdAt(ctx, field)
+func (ec *executionContext) _HostCommunityMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityMute_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9461,9 +9805,9 @@ func (ec *executionContext) _HostCommunitiesMute_createdAt(ctx context.Context, 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesMute",
+		Object:     "HostCommunityMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9474,8 +9818,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_createdAt(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesMute_updatedAt(ctx, field)
+func (ec *executionContext) _HostCommunityMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityMute_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9505,9 +9849,9 @@ func (ec *executionContext) _HostCommunitiesMute_updatedAt(ctx context.Context, 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesMute",
+		Object:     "HostCommunityMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9518,8 +9862,8 @@ func (ec *executionContext) fieldContext_HostCommunitiesMute_updatedAt(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunitiesMute_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunitiesMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostCommunitiesMute_community(ctx, field)
+func (ec *executionContext) _HostCommunityMute_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostCommunityMute_community(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9549,9 +9893,9 @@ func (ec *executionContext) _HostCommunitiesMute_community(ctx context.Context, 
 	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostCommunitiesMute_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostCommunityMute_community(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostCommunitiesMute",
+		Object:     "HostCommunityMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -9654,8 +9998,8 @@ func (ec *executionContext) fieldContext_HostRole_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRole_name(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostRole_name(ctx, field)
+func (ec *executionContext) _HostRole_title(ctx context.Context, field graphql.CollectedField, obj *ent.HostRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostRole_title(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9668,7 +10012,7 @@ func (ec *executionContext) _HostRole_name(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
+		return obj.Title, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9685,7 +10029,7 @@ func (ec *executionContext) _HostRole_name(ctx context.Context, field graphql.Co
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostRole_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostRole_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostRole",
 		Field:      field,
@@ -11099,7 +11443,7 @@ func (ec *executionContext) _HostSidebarNavigationItem_post(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.HostSidebarNavigationItem().Post(rctx, obj)
+		return obj.Post(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11111,9 +11455,9 @@ func (ec *executionContext) _HostSidebarNavigationItem_post(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Post)
+	res := resTmp.(*ent.Post)
 	fc.Result = res
-	return ec.marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx, field.Selections, res)
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11121,7 +11465,7 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 		Object:     "HostSidebarNavigationItem",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -11142,16 +11486,16 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -11549,8 +11893,8 @@ func (ec *executionContext) fieldContext_HostSocialNavigation_updatedAt(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersBan_id(ctx context.Context, field graphql.CollectedField, obj *HostUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersBan_id(ctx, field)
+func (ec *executionContext) _HostUserBan_id(ctx context.Context, field graphql.CollectedField, obj *ent.HostUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserBan_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11575,14 +11919,14 @@ func (ec *executionContext) _HostUsersBan_id(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserBan_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersBan",
+		Object:     "HostUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11593,8 +11937,8 @@ func (ec *executionContext) fieldContext_HostUsersBan_id(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersBan_createdAt(ctx, field)
+func (ec *executionContext) _HostUserBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserBan_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11624,9 +11968,9 @@ func (ec *executionContext) _HostUsersBan_createdAt(ctx context.Context, field g
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserBan_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersBan",
+		Object:     "HostUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11637,8 +11981,8 @@ func (ec *executionContext) fieldContext_HostUsersBan_createdAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersBan_updatedAt(ctx, field)
+func (ec *executionContext) _HostUserBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.HostUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserBan_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11668,9 +12012,9 @@ func (ec *executionContext) _HostUsersBan_updatedAt(ctx context.Context, field g
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserBan_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersBan",
+		Object:     "HostUserBan",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11681,8 +12025,8 @@ func (ec *executionContext) fieldContext_HostUsersBan_updatedAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersBan_user(ctx context.Context, field graphql.CollectedField, obj *HostUsersBan) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersBan_user(ctx, field)
+func (ec *executionContext) _HostUserBan_user(ctx context.Context, field graphql.CollectedField, obj *ent.HostUserBan) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserBan_user(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11695,7 +12039,7 @@ func (ec *executionContext) _HostUsersBan_user(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.User, nil
+		return obj.User(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11712,11 +12056,11 @@ func (ec *executionContext) _HostUsersBan_user(ctx context.Context, field graphq
 	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersBan_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserBan_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersBan",
+		Object:     "HostUserBan",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -11787,8 +12131,8 @@ func (ec *executionContext) fieldContext_HostUsersBan_user(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersMute_id(ctx context.Context, field graphql.CollectedField, obj *HostUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersMute_id(ctx, field)
+func (ec *executionContext) _HostUserMute_id(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserMute_id(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11818,9 +12162,9 @@ func (ec *executionContext) _HostUsersMute_id(ctx context.Context, field graphql
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserMute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersMute",
+		Object:     "HostUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11831,8 +12175,8 @@ func (ec *executionContext) fieldContext_HostUsersMute_id(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersMute_createdAt(ctx, field)
+func (ec *executionContext) _HostUserMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserMute_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11862,9 +12206,9 @@ func (ec *executionContext) _HostUsersMute_createdAt(ctx context.Context, field 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserMute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersMute",
+		Object:     "HostUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11875,8 +12219,8 @@ func (ec *executionContext) fieldContext_HostUsersMute_createdAt(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersMute_updatedAt(ctx, field)
+func (ec *executionContext) _HostUserMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserMute_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11906,9 +12250,9 @@ func (ec *executionContext) _HostUsersMute_updatedAt(ctx context.Context, field 
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserMute_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersMute",
+		Object:     "HostUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -11919,8 +12263,8 @@ func (ec *executionContext) fieldContext_HostUsersMute_updatedAt(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUsersMute_user(ctx context.Context, field graphql.CollectedField, obj *HostUsersMute) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostUsersMute_user(ctx, field)
+func (ec *executionContext) _HostUserMute_user(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostUserMute_user(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11950,9 +12294,9 @@ func (ec *executionContext) _HostUsersMute_user(ctx context.Context, field graph
 	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostUsersMute_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostUserMute_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "HostUsersMute",
+		Object:     "HostUserMute",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -12580,7 +12924,7 @@ func (ec *executionContext) fieldContext_PageInfo_endCursor(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_id(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_id(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12606,9 +12950,9 @@ func (ec *executionContext) _Post_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12624,7 +12968,7 @@ func (ec *executionContext) fieldContext_Post_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_title(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_title(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_title(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12668,7 +13012,7 @@ func (ec *executionContext) fieldContext_Post_title(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_slug(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_slug(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_slug(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12712,7 +13056,7 @@ func (ec *executionContext) fieldContext_Post_slug(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_content(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_content(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_content(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12726,7 +13070,7 @@ func (ec *executionContext) _Post_content(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Content, nil
+		return ec.resolvers.Post().Content(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12747,8 +13091,8 @@ func (ec *executionContext) fieldContext_Post_content(_ context.Context, field g
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSON does not have child fields")
 		},
@@ -12756,7 +13100,7 @@ func (ec *executionContext) fieldContext_Post_content(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_heroImageID(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_heroImageID(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_heroImageID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12779,9 +13123,9 @@ func (ec *executionContext) _Post_heroImageID(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_heroImageID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12797,7 +13141,7 @@ func (ec *executionContext) fieldContext_Post_heroImageID(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_communityID(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_communityID(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12823,9 +13167,9 @@ func (ec *executionContext) _Post_communityID(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12841,7 +13185,7 @@ func (ec *executionContext) fieldContext_Post_communityID(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_authorID(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_authorID(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_authorID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12867,9 +13211,9 @@ func (ec *executionContext) _Post_authorID(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_authorID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -12885,7 +13229,7 @@ func (ec *executionContext) fieldContext_Post_authorID(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_meta(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_meta(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_meta(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12899,7 +13243,7 @@ func (ec *executionContext) _Post_meta(ctx context.Context, field graphql.Collec
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Meta, nil
+		return ec.resolvers.Post().Meta(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12917,8 +13261,8 @@ func (ec *executionContext) fieldContext_Post_meta(_ context.Context, field grap
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type JSON does not have child fields")
 		},
@@ -12926,7 +13270,7 @@ func (ec *executionContext) fieldContext_Post_meta(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_views(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_views(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_views(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12940,7 +13284,7 @@ func (ec *executionContext) _Post_views(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Views, nil
+		return ec.resolvers.Post().Views(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12961,8 +13305,8 @@ func (ec *executionContext) fieldContext_Post_views(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
@@ -12970,8 +13314,8 @@ func (ec *executionContext) fieldContext_Post_views(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_hasDeleted(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Post_hasDeleted(ctx, field)
+func (ec *executionContext) _Post_status(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_status(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -12984,7 +13328,7 @@ func (ec *executionContext) _Post_hasDeleted(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HasDeleted, nil
+		return obj.Status, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12996,66 +13340,25 @@ func (ec *executionContext) _Post_hasDeleted(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.(bool)
+	res := resTmp.(post.Status)
 	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+	return ec.marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Post_hasDeleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Post_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			return nil, errors.New("field of type PostStatus does not have child fields")
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_publishedAt(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Post_publishedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PublishedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Post_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Post",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Post_createdAt(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13099,7 +13402,7 @@ func (ec *executionContext) fieldContext_Post_createdAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13143,8 +13446,8 @@ func (ec *executionContext) fieldContext_Post_updatedAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_heroimage(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Post_heroimage(ctx, field)
+func (ec *executionContext) _Post_publishedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_publishedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -13157,7 +13460,48 @@ func (ec *executionContext) _Post_heroimage(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.HeroImage, nil
+		return obj.PublishedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Post_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_heroImage(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_heroImage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HeroImage(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13171,11 +13515,11 @@ func (ec *executionContext) _Post_heroimage(ctx context.Context, field graphql.C
 	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Post_heroimage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Post_heroImage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -13200,7 +13544,7 @@ func (ec *executionContext) fieldContext_Post_heroimage(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_comments(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_comments(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_comments(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13214,7 +13558,7 @@ func (ec *executionContext) _Post_comments(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Comments, nil
+		return ec.resolvers.Post().Comments(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13232,8 +13576,8 @@ func (ec *executionContext) fieldContext_Post_comments(_ context.Context, field 
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -13279,7 +13623,7 @@ func (ec *executionContext) fieldContext_Post_comments(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_relatedPost(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_relatedPost(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_relatedPost(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13293,7 +13637,7 @@ func (ec *executionContext) _Post_relatedPost(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RelatedPost, nil
+		return obj.RelatedPost(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13302,16 +13646,16 @@ func (ec *executionContext) _Post_relatedPost(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Post)
+	res := resTmp.([]*ent.Post)
 	fc.Result = res
-	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostᚄ(ctx, field.Selections, res)
+	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -13333,16 +13677,16 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -13362,7 +13706,7 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_community(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_community(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13376,7 +13720,7 @@ func (ec *executionContext) _Post_community(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Community, nil
+		return obj.Community(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13397,7 +13741,7 @@ func (ec *executionContext) fieldContext_Post_community(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -13454,7 +13798,7 @@ func (ec *executionContext) fieldContext_Post_community(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_author(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_author(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_author(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13468,7 +13812,7 @@ func (ec *executionContext) _Post_author(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Author, nil
+		return obj.Author(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13489,7 +13833,7 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -13560,7 +13904,7 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_likes(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_likes(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_likes(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13574,7 +13918,7 @@ func (ec *executionContext) _Post_likes(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Likes, nil
+		return ec.resolvers.Post().Likes(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13592,8 +13936,8 @@ func (ec *executionContext) fieldContext_Post_likes(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -13617,7 +13961,7 @@ func (ec *executionContext) fieldContext_Post_likes(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_bookmarks(ctx context.Context, field graphql.CollectedField, obj *Post) (ret graphql.Marshaler) {
+func (ec *executionContext) _Post_bookmarks(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_bookmarks(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13631,7 +13975,7 @@ func (ec *executionContext) _Post_bookmarks(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Bookmarks, nil
+		return ec.resolvers.Post().Bookmarks(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13649,8 +13993,8 @@ func (ec *executionContext) fieldContext_Post_bookmarks(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "Post",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -14026,9 +14370,9 @@ func (ec *executionContext) _PostLike_post(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Post)
+	res := resTmp.(*ent.Post)
 	fc.Result = res
-	return ec.marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx, field.Selections, res)
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -14057,16 +14401,16 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -14193,8 +14537,8 @@ func (ec *executionContext) fieldContext_Query_nodes(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_communities(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_communities(ctx, field)
+func (ec *executionContext) _Query_media(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_media(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14207,24 +14551,21 @@ func (ec *executionContext) _Query_communities(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Communities(rctx, fc.Args["onlyNotBanned"].(*bool))
+		return ec.resolvers.Query().Media(rctx, fc.Args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.Community)
+	res := resTmp.(*ent.Media)
 	fc.Result = res
-	return ec.marshalNCommunity2ᚕᚖstormlinkᚋserverᚋentᚐCommunityᚄ(ctx, field.Selections, res)
+	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_media(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -14233,53 +14574,21 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Community_id(ctx, field)
-			case "logoID":
-				return ec.fieldContext_Community_logoID(ctx, field)
-			case "bannerID":
-				return ec.fieldContext_Community_bannerID(ctx, field)
-			case "ownerID":
-				return ec.fieldContext_Community_ownerID(ctx, field)
-			case "title":
-				return ec.fieldContext_Community_title(ctx, field)
-			case "slug":
-				return ec.fieldContext_Community_slug(ctx, field)
-			case "contacts":
-				return ec.fieldContext_Community_contacts(ctx, field)
-			case "description":
-				return ec.fieldContext_Community_description(ctx, field)
-			case "tableInfo":
-				return ec.fieldContext_Community_tableInfo(ctx, field)
-			case "communityHasBanned":
-				return ec.fieldContext_Community_communityHasBanned(ctx, field)
+				return ec.fieldContext_Media_id(ctx, field)
+			case "alt":
+				return ec.fieldContext_Media_alt(ctx, field)
+			case "url":
+				return ec.fieldContext_Media_url(ctx, field)
+			case "thumbnailURL":
+				return ec.fieldContext_Media_thumbnailURL(ctx, field)
+			case "filename":
+				return ec.fieldContext_Media_filename(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_Community_createdAt(ctx, field)
+				return ec.fieldContext_Media_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_Community_updatedAt(ctx, field)
-			case "logo":
-				return ec.fieldContext_Community_logo(ctx, field)
-			case "banner":
-				return ec.fieldContext_Community_banner(ctx, field)
-			case "owner":
-				return ec.fieldContext_Community_owner(ctx, field)
-			case "moderators":
-				return ec.fieldContext_Community_moderators(ctx, field)
-			case "roles":
-				return ec.fieldContext_Community_roles(ctx, field)
-			case "rules":
-				return ec.fieldContext_Community_rules(ctx, field)
-			case "followers":
-				return ec.fieldContext_Community_followers(ctx, field)
-			case "bans":
-				return ec.fieldContext_Community_bans(ctx, field)
-			case "mutes":
-				return ec.fieldContext_Community_mutes(ctx, field)
-			case "posts":
-				return ec.fieldContext_Community_posts(ctx, field)
-			case "comments":
-				return ec.fieldContext_Community_comments(ctx, field)
+				return ec.fieldContext_Media_updatedAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Media", field.Name)
 		},
 	}
 	defer func() {
@@ -14289,7 +14598,7 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_communities_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_media_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14396,8 +14705,8 @@ func (ec *executionContext) fieldContext_Query_community(ctx context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_users(ctx, field)
+func (ec *executionContext) _Query_communities(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communities(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14410,7 +14719,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Users(rctx)
+		return ec.resolvers.Query().Communities(rctx, fc.Args["onlyNotBanned"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14422,12 +14731,12 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*ent.User)
+	res := resTmp.([]*ent.Community)
 	fc.Result = res
-	return ec.marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx, field.Selections, res)
+	return ec.marshalNCommunity2ᚕᚖstormlinkᚋserverᚋentᚐCommunityᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -14436,68 +14745,201 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "name":
-				return ec.fieldContext_User_name(ctx, field)
-			case "slug":
-				return ec.fieldContext_User_slug(ctx, field)
-			case "avatarID":
-				return ec.fieldContext_User_avatarID(ctx, field)
+				return ec.fieldContext_Community_id(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Community_logoID(ctx, field)
 			case "bannerID":
-				return ec.fieldContext_User_bannerID(ctx, field)
+				return ec.fieldContext_Community_bannerID(ctx, field)
+			case "ownerID":
+				return ec.fieldContext_Community_ownerID(ctx, field)
+			case "title":
+				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Community_contacts(ctx, field)
 			case "description":
-				return ec.fieldContext_User_description(ctx, field)
+				return ec.fieldContext_Community_description(ctx, field)
 			case "tableInfo":
-				return ec.fieldContext_User_tableInfo(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
-			case "isVerified":
-				return ec.fieldContext_User_isVerified(ctx, field)
+				return ec.fieldContext_Community_tableInfo(ctx, field)
+			case "communityHasBanned":
+				return ec.fieldContext_Community_communityHasBanned(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
+				return ec.fieldContext_Community_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
-			case "avatar":
-				return ec.fieldContext_User_avatar(ctx, field)
+				return ec.fieldContext_Community_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Community_logo(ctx, field)
 			case "banner":
-				return ec.fieldContext_User_banner(ctx, field)
-			case "hostRoles":
-				return ec.fieldContext_User_hostRoles(ctx, field)
-			case "communitiesRoles":
-				return ec.fieldContext_User_communitiesRoles(ctx, field)
-			case "communitiesBans":
-				return ec.fieldContext_User_communitiesBans(ctx, field)
-			case "communitiesMutes":
-				return ec.fieldContext_User_communitiesMutes(ctx, field)
-			case "posts":
-				return ec.fieldContext_User_posts(ctx, field)
-			case "comments":
-				return ec.fieldContext_User_comments(ctx, field)
-			case "following":
-				return ec.fieldContext_User_following(ctx, field)
+				return ec.fieldContext_Community_banner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Community_owner(ctx, field)
+			case "moderators":
+				return ec.fieldContext_Community_moderators(ctx, field)
+			case "roles":
+				return ec.fieldContext_Community_roles(ctx, field)
+			case "rules":
+				return ec.fieldContext_Community_rules(ctx, field)
 			case "followers":
-				return ec.fieldContext_User_followers(ctx, field)
-			case "communitiesFollow":
-				return ec.fieldContext_User_communitiesFollow(ctx, field)
-			case "communitiesOwner":
-				return ec.fieldContext_User_communitiesOwner(ctx, field)
-			case "communitiesModerator":
-				return ec.fieldContext_User_communitiesModerator(ctx, field)
-			case "postsLikes":
-				return ec.fieldContext_User_postsLikes(ctx, field)
-			case "commentsLikes":
-				return ec.fieldContext_User_commentsLikes(ctx, field)
-			case "bookmarks":
-				return ec.fieldContext_User_bookmarks(ctx, field)
-			case "emailVerifications":
-				return ec.fieldContext_User_emailVerifications(ctx, field)
+				return ec.fieldContext_Community_followers(ctx, field)
+			case "bans":
+				return ec.fieldContext_Community_bans(ctx, field)
+			case "mutes":
+				return ec.fieldContext_Community_mutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_Community_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_Community_comments(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communities_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityUserBan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityUserBan(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityUserBan(rctx, fc.Args["communityId"].(string), fc.Args["userId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CommunityUserBan)
+	fc.Result = res
+	return ec.marshalOCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityUserBan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserBan_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserBan_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserBan_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityUserBan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityUserMute(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityUserMute(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityUserMute(rctx, fc.Args["communityId"].(string), fc.Args["userId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CommunityUserMute)
+	fc.Result = res
+	return ec.marshalOCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityUserMute(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserMute_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserMute_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserMute_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityUserMute_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -14616,8 +15058,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_media(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_media(ctx, field)
+func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_users(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14630,21 +15072,24 @@ func (ec *executionContext) _Query_media(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Media(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().Users(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.Media)
+	res := resTmp.([]*ent.User)
 	fc.Result = res
-	return ec.marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ctx, field.Selections, res)
+	return ec.marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_media(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -14653,21 +15098,150 @@ func (ec *executionContext) fieldContext_Query_media(ctx context.Context, field 
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Media_id(ctx, field)
-			case "alt":
-				return ec.fieldContext_Media_alt(ctx, field)
-			case "url":
-				return ec.fieldContext_Media_url(ctx, field)
-			case "thumbnailURL":
-				return ec.fieldContext_Media_thumbnailURL(ctx, field)
-			case "filename":
-				return ec.fieldContext_Media_filename(ctx, field)
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
+			case "avatarID":
+				return ec.fieldContext_User_avatarID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_User_bannerID(ctx, field)
+			case "description":
+				return ec.fieldContext_User_description(ctx, field)
+			case "tableInfo":
+				return ec.fieldContext_User_tableInfo(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "passwordHash":
+				return ec.fieldContext_User_passwordHash(ctx, field)
+			case "salt":
+				return ec.fieldContext_User_salt(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_Media_createdAt(ctx, field)
+				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_Media_updatedAt(ctx, field)
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "avatar":
+				return ec.fieldContext_User_avatar(ctx, field)
+			case "banner":
+				return ec.fieldContext_User_banner(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_User_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_User_communitiesRoles(ctx, field)
+			case "communitiesBans":
+				return ec.fieldContext_User_communitiesBans(ctx, field)
+			case "communitiesMutes":
+				return ec.fieldContext_User_communitiesMutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_User_comments(ctx, field)
+			case "following":
+				return ec.fieldContext_User_following(ctx, field)
+			case "followers":
+				return ec.fieldContext_User_followers(ctx, field)
+			case "communitiesFollow":
+				return ec.fieldContext_User_communitiesFollow(ctx, field)
+			case "communitiesOwner":
+				return ec.fieldContext_User_communitiesOwner(ctx, field)
+			case "communitiesModerator":
+				return ec.fieldContext_User_communitiesModerator(ctx, field)
+			case "postsLikes":
+				return ec.fieldContext_User_postsLikes(ctx, field)
+			case "commentsLikes":
+				return ec.fieldContext_User_commentsLikes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_User_bookmarks(ctx, field)
+			case "emailVerifications":
+				return ec.fieldContext_User_emailVerifications(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Media", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_post(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_post(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Post(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Post)
+	fc.Result = res
+	return ec.marshalOPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Post_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
+			case "content":
+				return ec.fieldContext_Post_content(ctx, field)
+			case "heroImageID":
+				return ec.fieldContext_Post_heroImageID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Post_communityID(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Post_authorID(ctx, field)
+			case "meta":
+				return ec.fieldContext_Post_meta(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Post_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Post_updatedAt(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
+			case "comments":
+				return ec.fieldContext_Post_comments(ctx, field)
+			case "relatedPost":
+				return ec.fieldContext_Post_relatedPost(ctx, field)
+			case "community":
+				return ec.fieldContext_Post_community(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
+			case "likes":
+				return ec.fieldContext_Post_likes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_Post_bookmarks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
 	}
 	defer func() {
@@ -14677,7 +15251,361 @@ func (ec *executionContext) fieldContext_Query_media(ctx context.Context, field 
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_media_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_post_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_posts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_posts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Posts(rctx, fc.Args["status"].(*post.Status))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.Post)
+	fc.Result = res
+	return ec.marshalNPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Post_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
+			case "content":
+				return ec.fieldContext_Post_content(ctx, field)
+			case "heroImageID":
+				return ec.fieldContext_Post_heroImageID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Post_communityID(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Post_authorID(ctx, field)
+			case "meta":
+				return ec.fieldContext_Post_meta(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Post_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Post_updatedAt(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
+			case "comments":
+				return ec.fieldContext_Post_comments(ctx, field)
+			case "relatedPost":
+				return ec.fieldContext_Post_relatedPost(ctx, field)
+			case "community":
+				return ec.fieldContext_Post_community(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
+			case "likes":
+				return ec.fieldContext_Post_likes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_Post_bookmarks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_posts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_role(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_role(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Role(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Role)
+	fc.Result = res
+	return ec.marshalORole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_role(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_role_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_roles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_roles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Roles(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.Role)
+	fc.Result = res
+	return ec.marshalNRole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_roles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_roles_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostRole(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostRole)
+	fc.Result = res
+	return ec.marshalOHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRole_id(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRole_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_HostRole_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_HostRole_color(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_HostRole_communityRolesManagement(ctx, field)
+			case "hostUserBan":
+				return ec.fieldContext_HostRole_hostUserBan(ctx, field)
+			case "hostUserMute":
+				return ec.fieldContext_HostRole_hostUserMute(ctx, field)
+			case "hostCommunityDeletePost":
+				return ec.fieldContext_HostRole_hostCommunityDeletePost(ctx, field)
+			case "hostCommunityRemovePostFromPublication":
+				return ec.fieldContext_HostRole_hostCommunityRemovePostFromPublication(ctx, field)
+			case "hostCommunityDeleteComments":
+				return ec.fieldContext_HostRole_hostCommunityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRole_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRole_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_HostRole_badge(ctx, field)
+			case "users":
+				return ec.fieldContext_HostRole_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14725,8 +15653,8 @@ func (ec *executionContext) fieldContext_Query_hostRoles(_ context.Context, fiel
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_HostRole_id(ctx, field)
-			case "name":
-				return ec.fieldContext_HostRole_name(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRole_title(ctx, field)
 			case "badgeID":
 				return ec.fieldContext_HostRole_badgeID(ctx, field)
 			case "color":
@@ -14753,6 +15681,122 @@ func (ec *executionContext) fieldContext_Query_hostRoles(_ context.Context, fiel
 				return ec.fieldContext_HostRole_users(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostUserBan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostUserBan(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostUserBan(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostUserBan)
+	fc.Result = res
+	return ec.marshalOHostUserBan2ᚖstormlinkᚋserverᚋentᚐHostUserBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostUserBan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserBan_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserBan_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostUserBan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostUsersBan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostUsersBan(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostUsersBan(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.HostUserBan)
+	fc.Result = res
+	return ec.marshalNHostUserBan2ᚕᚖstormlinkᚋserverᚋentᚐHostUserBanᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostUsersBan(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserBan_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserBan_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserBan", field.Name)
 		},
 	}
 	return fc, nil
@@ -15136,7 +16180,7 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_id(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_id(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15162,9 +16206,9 @@ func (ec *executionContext) _Role_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Role_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15180,8 +16224,8 @@ func (ec *executionContext) fieldContext_Role_id(_ context.Context, field graphq
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_name(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Role_name(ctx, field)
+func (ec *executionContext) _Role_title(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Role_title(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -15194,7 +16238,7 @@ func (ec *executionContext) _Role_name(ctx context.Context, field graphql.Collec
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Name, nil
+		return obj.Title, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15211,7 +16255,7 @@ func (ec *executionContext) _Role_name(ctx context.Context, field graphql.Collec
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Role_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Role_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Role",
 		Field:      field,
@@ -15224,7 +16268,7 @@ func (ec *executionContext) fieldContext_Role_name(_ context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_badgeID(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_badgeID(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_badgeID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15247,9 +16291,9 @@ func (ec *executionContext) _Role_badgeID(ctx context.Context, field graphql.Col
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*int)
 	fc.Result = res
-	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Role_badgeID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15265,7 +16309,7 @@ func (ec *executionContext) fieldContext_Role_badgeID(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_color(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_color(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_color(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15306,7 +16350,7 @@ func (ec *executionContext) fieldContext_Role_color(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityID(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityID(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15332,9 +16376,9 @@ func (ec *executionContext) _Role_communityID(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Role_communityID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15350,7 +16394,7 @@ func (ec *executionContext) fieldContext_Role_communityID(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityRolesManagement(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15394,7 +16438,7 @@ func (ec *executionContext) fieldContext_Role_communityRolesManagement(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityUserBan(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityUserBan(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityUserBan(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15438,7 +16482,7 @@ func (ec *executionContext) fieldContext_Role_communityUserBan(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityUserMute(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityUserMute(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityUserMute(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15482,7 +16526,7 @@ func (ec *executionContext) fieldContext_Role_communityUserMute(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityDeletePost(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityDeletePost(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityDeletePost(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15526,7 +16570,7 @@ func (ec *executionContext) fieldContext_Role_communityDeletePost(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15570,7 +16614,7 @@ func (ec *executionContext) fieldContext_Role_communityRemovePostFromPublication
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_communityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_communityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_communityDeleteComments(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15614,7 +16658,7 @@ func (ec *executionContext) fieldContext_Role_communityDeleteComments(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_createdAt(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15658,7 +16702,7 @@ func (ec *executionContext) fieldContext_Role_createdAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_updatedAt(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15702,7 +16746,7 @@ func (ec *executionContext) fieldContext_Role_updatedAt(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_badge(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_badge(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_badge(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15716,7 +16760,7 @@ func (ec *executionContext) _Role_badge(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Badge, nil
+		return obj.Badge(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15734,7 +16778,7 @@ func (ec *executionContext) fieldContext_Role_badge(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Role",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -15759,7 +16803,7 @@ func (ec *executionContext) fieldContext_Role_badge(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_community(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_community(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15773,7 +16817,7 @@ func (ec *executionContext) _Role_community(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Community, nil
+		return obj.Community(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15794,7 +16838,7 @@ func (ec *executionContext) fieldContext_Role_community(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "Role",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -15851,7 +16895,7 @@ func (ec *executionContext) fieldContext_Role_community(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Role_users(ctx context.Context, field graphql.CollectedField, obj *Role) (ret graphql.Marshaler) {
+func (ec *executionContext) _Role_users(ctx context.Context, field graphql.CollectedField, obj *ent.Role) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Role_users(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15865,7 +16909,7 @@ func (ec *executionContext) _Role_users(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Users, nil
+		return obj.Users(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15883,7 +16927,7 @@ func (ec *executionContext) fieldContext_Role_users(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Role",
 		Field:      field,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
@@ -16666,8 +17710,8 @@ func (ec *executionContext) fieldContext_User_hostRoles(_ context.Context, field
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_HostRole_id(ctx, field)
-			case "name":
-				return ec.fieldContext_HostRole_name(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRole_title(ctx, field)
 			case "badgeID":
 				return ec.fieldContext_HostRole_badgeID(ctx, field)
 			case "color":
@@ -16713,7 +17757,7 @@ func (ec *executionContext) _User_communitiesRoles(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().CommunitiesRoles(rctx, obj)
+		return obj.CommunitiesRoles(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16722,9 +17766,9 @@ func (ec *executionContext) _User_communitiesRoles(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Role)
+	res := resTmp.([]*ent.Role)
 	fc.Result = res
-	return ec.marshalORole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleᚄ(ctx, field.Selections, res)
+	return ec.marshalORole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesRoles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16732,13 +17776,13 @@ func (ec *executionContext) fieldContext_User_communitiesRoles(_ context.Context
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Role_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Role_name(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
 			case "badgeID":
 				return ec.fieldContext_Role_badgeID(ctx, field)
 			case "color":
@@ -16788,7 +17832,7 @@ func (ec *executionContext) _User_communitiesBans(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().CommunitiesBans(rctx, obj)
+		return obj.CommunitiesBans(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16797,9 +17841,9 @@ func (ec *executionContext) _User_communitiesBans(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityUsersBan)
+	res := resTmp.([]*ent.CommunityUserBan)
 	fc.Result = res
-	return ec.marshalOCommunityUsersBan2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityUserBan2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserBanᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesBans(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16807,25 +17851,25 @@ func (ec *executionContext) fieldContext_User_communitiesBans(_ context.Context,
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityUsersBan_id(ctx, field)
+				return ec.fieldContext_CommunityUserBan_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityUsersBan_userID(ctx, field)
+				return ec.fieldContext_CommunityUserBan_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityUsersBan_communityID(ctx, field)
+				return ec.fieldContext_CommunityUserBan_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityUsersBan_createdAt(ctx, field)
+				return ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityUsersBan_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityUsersBan_user(ctx, field)
+				return ec.fieldContext_CommunityUserBan_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityUsersBan_community(ctx, field)
+				return ec.fieldContext_CommunityUserBan_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityUsersBan", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserBan", field.Name)
 		},
 	}
 	return fc, nil
@@ -16845,7 +17889,7 @@ func (ec *executionContext) _User_communitiesMutes(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().CommunitiesMutes(rctx, obj)
+		return obj.CommunitiesMutes(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16854,9 +17898,9 @@ func (ec *executionContext) _User_communitiesMutes(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityUsersMute)
+	res := resTmp.([]*ent.CommunityUserMute)
 	fc.Result = res
-	return ec.marshalOCommunityUsersMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityUserMute2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserMuteᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesMutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16864,25 +17908,25 @@ func (ec *executionContext) fieldContext_User_communitiesMutes(_ context.Context
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityUsersMute_id(ctx, field)
+				return ec.fieldContext_CommunityUserMute_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityUsersMute_userID(ctx, field)
+				return ec.fieldContext_CommunityUserMute_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityUsersMute_communityID(ctx, field)
+				return ec.fieldContext_CommunityUserMute_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityUsersMute_createdAt(ctx, field)
+				return ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityUsersMute_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityUsersMute_user(ctx, field)
+				return ec.fieldContext_CommunityUserMute_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityUsersMute_community(ctx, field)
+				return ec.fieldContext_CommunityUserMute_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityUsersMute", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserMute", field.Name)
 		},
 	}
 	return fc, nil
@@ -16902,7 +17946,7 @@ func (ec *executionContext) _User_posts(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().Posts(rctx, obj)
+		return obj.Posts(ctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16911,9 +17955,9 @@ func (ec *executionContext) _User_posts(ctx context.Context, field graphql.Colle
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Post)
+	res := resTmp.([]*ent.Post)
 	fc.Result = res
-	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostᚄ(ctx, field.Selections, res)
+	return ec.marshalOPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_posts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16921,7 +17965,7 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 		Object:     "User",
 		Field:      field,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -16942,16 +17986,16 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_meta(ctx, field)
 			case "views":
 				return ec.fieldContext_Post_views(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Post_hasDeleted(ctx, field)
-			case "publishedAt":
-				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Post_updatedAt(ctx, field)
-			case "heroimage":
-				return ec.fieldContext_Post_heroimage(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
 			case "comments":
 				return ec.fieldContext_Post_comments(ctx, field)
 			case "relatedPost":
@@ -17333,9 +18377,9 @@ func (ec *executionContext) _User_communitiesModerator(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityModerators)
+	res := resTmp.([]*CommunityModerator)
 	fc.Result = res
-	return ec.marshalOCommunityModerators2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesModerator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -17347,21 +18391,21 @@ func (ec *executionContext) fieldContext_User_communitiesModerator(_ context.Con
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_CommunityModerators_id(ctx, field)
+				return ec.fieldContext_CommunityModerator_id(ctx, field)
 			case "userID":
-				return ec.fieldContext_CommunityModerators_userID(ctx, field)
+				return ec.fieldContext_CommunityModerator_userID(ctx, field)
 			case "communityID":
-				return ec.fieldContext_CommunityModerators_communityID(ctx, field)
+				return ec.fieldContext_CommunityModerator_communityID(ctx, field)
 			case "createdAt":
-				return ec.fieldContext_CommunityModerators_createdAt(ctx, field)
+				return ec.fieldContext_CommunityModerator_createdAt(ctx, field)
 			case "updatedAt":
-				return ec.fieldContext_CommunityModerators_updatedAt(ctx, field)
+				return ec.fieldContext_CommunityModerator_updatedAt(ctx, field)
 			case "user":
-				return ec.fieldContext_CommunityModerators_user(ctx, field)
+				return ec.fieldContext_CommunityModerator_user(ctx, field)
 			case "community":
-				return ec.fieldContext_CommunityModerators_community(ctx, field)
+				return ec.fieldContext_CommunityModerator_community(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityModerators", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommunityModerator", field.Name)
 		},
 	}
 	return fc, nil
@@ -21447,8 +22491,8 @@ func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityModeratorsWhereInput(ctx context.Context, obj any) (CommunityModeratorsWhereInput, error) {
-	var it CommunityModeratorsWhereInput
+func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx context.Context, obj any) (CommunityModeratorWhereInput, error) {
+	var it CommunityModeratorWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -21463,21 +22507,21 @@ func (ec *executionContext) unmarshalInputCommunityModeratorsWhereInput(ctx cont
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityModeratorsWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityModeratorsWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityModeratorsWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -22215,8 +23259,8 @@ func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityUsersBanWhereInput(ctx context.Context, obj any) (CommunityUsersBanWhereInput, error) {
-	var it CommunityUsersBanWhereInput
+func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context.Context, obj any) (CommunityUserBanWhereInput, error) {
+	var it CommunityUserBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -22231,21 +23275,21 @@ func (ec *executionContext) unmarshalInputCommunityUsersBanWhereInput(ctx contex
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -22508,8 +23552,8 @@ func (ec *executionContext) unmarshalInputCommunityUsersBanWhereInput(ctx contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityUsersMuteWhereInput(ctx context.Context, obj any) (CommunityUsersMuteWhereInput, error) {
-	var it CommunityUsersMuteWhereInput
+func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx context.Context, obj any) (CommunityUserMuteWhereInput, error) {
+	var it CommunityUserMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -22524,21 +23568,21 @@ func (ec *executionContext) unmarshalInputCommunityUsersMuteWhereInput(ctx conte
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -23573,7 +24617,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasModerators = data
 		case "hasModeratorsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasModeratorsWith"))
-			data, err := ec.unmarshalOCommunityModeratorsWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -23629,7 +24673,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasBans = data
 		case "hasBansWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBansWith"))
-			data, err := ec.unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -23643,7 +24687,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasMutes = data
 		case "hasMutesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasMutesWith"))
-			data, err := ec.unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -23996,8 +25040,8 @@ func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostCommunitiesBanWhereInput(ctx context.Context, obj any) (HostCommunitiesBanWhereInput, error) {
-	var it HostCommunitiesBanWhereInput
+func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context.Context, obj any) (HostCommunityBanWhereInput, error) {
+	var it HostCommunityBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -24012,21 +25056,21 @@ func (ec *executionContext) unmarshalInputHostCommunitiesBanWhereInput(ctx conte
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostCommunitiesBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostCommunitiesBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostCommunitiesBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -24247,8 +25291,8 @@ func (ec *executionContext) unmarshalInputHostCommunitiesBanWhereInput(ctx conte
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostCommunitiesMuteWhereInput(ctx context.Context, obj any) (HostCommunitiesMuteWhereInput, error) {
-	var it HostCommunitiesMuteWhereInput
+func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx context.Context, obj any) (HostCommunityMuteWhereInput, error) {
+	var it HostCommunityMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -24263,21 +25307,21 @@ func (ec *executionContext) unmarshalInputHostCommunitiesMuteWhereInput(ctx cont
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostCommunitiesMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostCommunitiesMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostCommunitiesMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -24505,7 +25549,7 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "badgeID", "badgeIDNEQ", "badgeIDIn", "badgeIDNotIn", "badgeIDIsNil", "badgeIDNotNil", "color", "colorNEQ", "colorIn", "colorNotIn", "colorGT", "colorGTE", "colorLT", "colorLTE", "colorContains", "colorHasPrefix", "colorHasSuffix", "colorIsNil", "colorNotNil", "colorEqualFold", "colorContainsFold", "communityRolesManagement", "communityRolesManagementNEQ", "hostUserBan", "hostUserBanNEQ", "hostUserMute", "hostUserMuteNEQ", "hostCommunityDeletePost", "hostCommunityDeletePostNEQ", "hostCommunityRemovePostFromPublication", "hostCommunityRemovePostFromPublicationNEQ", "hostCommunityDeleteComments", "hostCommunityDeleteCommentsNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasBadge", "hasBadgeWith", "hasUsers", "hasUsersWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "badgeID", "badgeIDNEQ", "badgeIDIn", "badgeIDNotIn", "badgeIDIsNil", "badgeIDNotNil", "color", "colorNEQ", "colorIn", "colorNotIn", "colorGT", "colorGTE", "colorLT", "colorLTE", "colorContains", "colorHasPrefix", "colorHasSuffix", "colorIsNil", "colorNotNil", "colorEqualFold", "colorContainsFold", "communityRolesManagement", "communityRolesManagementNEQ", "hostUserBan", "hostUserBanNEQ", "hostUserMute", "hostUserMuteNEQ", "hostCommunityDeletePost", "hostCommunityDeletePostNEQ", "hostCommunityRemovePostFromPublication", "hostCommunityRemovePostFromPublicationNEQ", "hostCommunityDeleteComments", "hostCommunityDeleteCommentsNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasBadge", "hasBadgeWith", "hasUsers", "hasUsersWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -24589,97 +25633,97 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 				return it, err
 			}
 			it.IDLte = data
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Name = data
-		case "nameNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNEQ"))
+			it.Title = data
+		case "titleNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameNeq = data
-		case "nameIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameIn"))
+			it.TitleNeq = data
+		case "titleIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameIn = data
-		case "nameNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNotIn"))
+			it.TitleIn = data
+		case "titleNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameNotIn = data
-		case "nameGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGT"))
+			it.TitleNotIn = data
+		case "titleGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameGt = data
-		case "nameGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGTE"))
+			it.TitleGt = data
+		case "titleGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameGte = data
-		case "nameLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLT"))
+			it.TitleGte = data
+		case "titleLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameLt = data
-		case "nameLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLTE"))
+			it.TitleLt = data
+		case "titleLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameLte = data
-		case "nameContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContains"))
+			it.TitleLte = data
+		case "titleContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameContains = data
-		case "nameHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasPrefix"))
+			it.TitleContains = data
+		case "titleHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameHasPrefix = data
-		case "nameHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasSuffix"))
+			it.TitleHasPrefix = data
+		case "titleHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameHasSuffix = data
-		case "nameEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameEqualFold"))
+			it.TitleHasSuffix = data
+		case "titleEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameEqualFold = data
-		case "nameContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContainsFold"))
+			it.TitleEqualFold = data
+		case "titleContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameContainsFold = data
+			it.TitleContainsFold = data
 		case "badgeID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -26887,8 +27931,8 @@ func (ec *executionContext) unmarshalInputHostSocialNavigationWhereInput(ctx con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostUsersBanWhereInput(ctx context.Context, obj any) (HostUsersBanWhereInput, error) {
-	var it HostUsersBanWhereInput
+func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Context, obj any) (HostUserBanWhereInput, error) {
+	var it HostUserBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -26903,21 +27947,21 @@ func (ec *executionContext) unmarshalInputHostUsersBanWhereInput(ctx context.Con
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27110,8 +28154,8 @@ func (ec *executionContext) unmarshalInputHostUsersBanWhereInput(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostUsersMuteWhereInput(ctx context.Context, obj any) (HostUsersMuteWhereInput, error) {
-	var it HostUsersMuteWhereInput
+func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Context, obj any) (HostUserMuteWhereInput, error) {
+	var it HostUserMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -27126,21 +28170,21 @@ func (ec *executionContext) unmarshalInputHostUsersMuteWhereInput(ctx context.Co
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29101,7 +30145,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "views", "viewsNEQ", "viewsIn", "viewsNotIn", "viewsGT", "viewsGTE", "viewsLT", "viewsLTE", "hasDeleted", "hasDeletedNEQ", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "views", "viewsNEQ", "viewsIn", "viewsNotIn", "viewsGT", "viewsGTE", "viewsLT", "viewsLTE", "status", "statusNEQ", "statusIn", "statusNotIn", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -29521,90 +30565,34 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.ViewsLte = data
-		case "hasDeleted":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasDeleted"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasDeleted = data
-		case "hasDeletedNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasDeletedNEQ"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			it.Status = data
+		case "statusNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
+			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HasDeletedNeq = data
-		case "publishedAt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			it.StatusNeq = data
+		case "statusIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
+			data, err := ec.unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.PublishedAt = data
-		case "publishedAtNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNEQ"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			it.StatusIn = data
+		case "statusNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
+			data, err := ec.unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.PublishedAtNeq = data
-		case "publishedAtIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtIn"))
-			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtIn = data
-		case "publishedAtNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNotIn"))
-			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtNotIn = data
-		case "publishedAtGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtGT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtGt = data
-		case "publishedAtGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtGTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtGte = data
-		case "publishedAtLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtLT"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtLt = data
-		case "publishedAtLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtLTE"))
-			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtLte = data
-		case "publishedAtIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtIsNil"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtIsNil = data
-		case "publishedAtNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNotNil"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PublishedAtNotNil = data
+			it.StatusNotIn = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -29717,6 +30705,76 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.UpdatedAtLte = data
+		case "publishedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAt = data
+		case "publishedAtNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNEQ"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtNeq = data
+		case "publishedAtIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtIn"))
+			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtIn = data
+		case "publishedAtNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNotIn"))
+			data, err := ec.unmarshalOTime2ᚕᚖtimeᚐTimeᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtNotIn = data
+		case "publishedAtGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtGT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtGt = data
+		case "publishedAtGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtGTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtGte = data
+		case "publishedAtLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtLT"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtLt = data
+		case "publishedAtLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtLTE"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtLte = data
+		case "publishedAtIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtIsNil"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtIsNil = data
+		case "publishedAtNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAtNotNil"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAtNotNil = data
 		case "hasHeroImage":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasHeroImage"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -29828,7 +30886,7 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "badgeID", "badgeIDNEQ", "badgeIDIn", "badgeIDNotIn", "badgeIDIsNil", "badgeIDNotNil", "color", "colorNEQ", "colorIn", "colorNotIn", "colorGT", "colorGTE", "colorLT", "colorLTE", "colorContains", "colorHasPrefix", "colorHasSuffix", "colorIsNil", "colorNotNil", "colorEqualFold", "colorContainsFold", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "communityRolesManagement", "communityRolesManagementNEQ", "communityUserBan", "communityUserBanNEQ", "communityUserMute", "communityUserMuteNEQ", "communityDeletePost", "communityDeletePostNEQ", "communityRemovePostFromPublication", "communityRemovePostFromPublicationNEQ", "communityDeleteComments", "communityDeleteCommentsNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasBadge", "hasBadgeWith", "hasCommunity", "hasCommunityWith", "hasUsers", "hasUsersWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "badgeID", "badgeIDNEQ", "badgeIDIn", "badgeIDNotIn", "badgeIDIsNil", "badgeIDNotNil", "color", "colorNEQ", "colorIn", "colorNotIn", "colorGT", "colorGTE", "colorLT", "colorLTE", "colorContains", "colorHasPrefix", "colorHasSuffix", "colorIsNil", "colorNotNil", "colorEqualFold", "colorContainsFold", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "communityRolesManagement", "communityRolesManagementNEQ", "communityUserBan", "communityUserBanNEQ", "communityUserMute", "communityUserMuteNEQ", "communityDeletePost", "communityDeletePostNEQ", "communityRemovePostFromPublication", "communityRemovePostFromPublicationNEQ", "communityDeleteComments", "communityDeleteCommentsNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasBadge", "hasBadgeWith", "hasCommunity", "hasCommunityWith", "hasUsers", "hasUsersWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -29912,97 +30970,97 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.IDLte = data
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Name = data
-		case "nameNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNEQ"))
+			it.Title = data
+		case "titleNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameNeq = data
-		case "nameIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameIn"))
+			it.TitleNeq = data
+		case "titleIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameIn = data
-		case "nameNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameNotIn"))
+			it.TitleIn = data
+		case "titleNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameNotIn = data
-		case "nameGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGT"))
+			it.TitleNotIn = data
+		case "titleGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameGt = data
-		case "nameGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameGTE"))
+			it.TitleGt = data
+		case "titleGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameGte = data
-		case "nameLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLT"))
+			it.TitleGte = data
+		case "titleLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameLt = data
-		case "nameLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameLTE"))
+			it.TitleLt = data
+		case "titleLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameLte = data
-		case "nameContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContains"))
+			it.TitleLte = data
+		case "titleContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameContains = data
-		case "nameHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasPrefix"))
+			it.TitleContains = data
+		case "titleHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameHasPrefix = data
-		case "nameHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameHasSuffix"))
+			it.TitleHasPrefix = data
+		case "titleHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameHasSuffix = data
-		case "nameEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameEqualFold"))
+			it.TitleHasSuffix = data
+		case "titleEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameEqualFold = data
-		case "nameContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameContainsFold"))
+			it.TitleEqualFold = data
+		case "titleContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameContainsFold = data
+			it.TitleContainsFold = data
 		case "badgeID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -31717,7 +32775,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesBans = data
 		case "hasCommunitiesBansWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesBansWith"))
-			data, err := ec.unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31731,7 +32789,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesMutes = data
 		case "hasCommunitiesMutesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesMutesWith"))
-			data, err := ec.unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31829,7 +32887,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesModerator = data
 		case "hasCommunitiesModeratorWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesModeratorWith"))
-			data, err := ec.unmarshalOCommunityModeratorsWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31916,9 +32974,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._User(ctx, sel, obj)
-	case Role:
-		return ec._Role(ctx, sel, &obj)
-	case *Role:
+	case *ent.Role:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -31930,9 +32986,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._PostLike(ctx, sel, obj)
-	case Post:
-		return ec._Post(ctx, sel, &obj)
-	case *Post:
+	case *ent.Post:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -31942,20 +32996,18 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Media(ctx, sel, obj)
-	case HostUsersMute:
-		return ec._HostUsersMute(ctx, sel, &obj)
-	case *HostUsersMute:
+	case HostUserMute:
+		return ec._HostUserMute(ctx, sel, &obj)
+	case *HostUserMute:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._HostUsersMute(ctx, sel, obj)
-	case HostUsersBan:
-		return ec._HostUsersBan(ctx, sel, &obj)
-	case *HostUsersBan:
+		return ec._HostUserMute(ctx, sel, obj)
+	case *ent.HostUserBan:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._HostUsersBan(ctx, sel, obj)
+		return ec._HostUserBan(ctx, sel, obj)
 	case *ent.HostSocialNavigation:
 		if obj == nil {
 			return graphql.Null
@@ -31983,20 +33035,20 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostRole(ctx, sel, obj)
-	case HostCommunitiesMute:
-		return ec._HostCommunitiesMute(ctx, sel, &obj)
-	case *HostCommunitiesMute:
+	case HostCommunityMute:
+		return ec._HostCommunityMute(ctx, sel, &obj)
+	case *HostCommunityMute:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._HostCommunitiesMute(ctx, sel, obj)
-	case HostCommunitiesBan:
-		return ec._HostCommunitiesBan(ctx, sel, &obj)
-	case *HostCommunitiesBan:
+		return ec._HostCommunityMute(ctx, sel, obj)
+	case HostCommunityBan:
+		return ec._HostCommunityBan(ctx, sel, &obj)
+	case *HostCommunityBan:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._HostCommunitiesBan(ctx, sel, obj)
+		return ec._HostCommunityBan(ctx, sel, obj)
 	case *ent.Host:
 		if obj == nil {
 			return graphql.Null
@@ -32009,20 +33061,16 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._EmailVerification(ctx, sel, obj)
-	case CommunityUsersMute:
-		return ec._CommunityUsersMute(ctx, sel, &obj)
-	case *CommunityUsersMute:
+	case *ent.CommunityUserMute:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._CommunityUsersMute(ctx, sel, obj)
-	case CommunityUsersBan:
-		return ec._CommunityUsersBan(ctx, sel, &obj)
-	case *CommunityUsersBan:
+		return ec._CommunityUserMute(ctx, sel, obj)
+	case *ent.CommunityUserBan:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._CommunityUsersBan(ctx, sel, obj)
+		return ec._CommunityUserBan(ctx, sel, obj)
 	case CommunityRule:
 		return ec._CommunityRule(ctx, sel, &obj)
 	case *CommunityRule:
@@ -32030,13 +33078,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._CommunityRule(ctx, sel, obj)
-	case CommunityModerators:
-		return ec._CommunityModerators(ctx, sel, &obj)
-	case *CommunityModerators:
+	case CommunityModerator:
+		return ec._CommunityModerator(ctx, sel, &obj)
+	case *CommunityModerator:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._CommunityModerators(ctx, sel, obj)
+		return ec._CommunityModerator(ctx, sel, obj)
 	case CommunityFollow:
 		return ec._CommunityFollow(ctx, sel, &obj)
 	case *CommunityFollow:
@@ -32868,49 +33916,49 @@ func (ec *executionContext) _CommunityFollow(ctx context.Context, sel ast.Select
 	return out
 }
 
-var communityModeratorsImplementors = []string{"CommunityModerators", "Node"}
+var communityModeratorImplementors = []string{"CommunityModerator", "Node"}
 
-func (ec *executionContext) _CommunityModerators(ctx context.Context, sel ast.SelectionSet, obj *CommunityModerators) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, communityModeratorsImplementors)
+func (ec *executionContext) _CommunityModerator(ctx context.Context, sel ast.SelectionSet, obj *CommunityModerator) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, communityModeratorImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("CommunityModerators")
+			out.Values[i] = graphql.MarshalString("CommunityModerator")
 		case "id":
-			out.Values[i] = ec._CommunityModerators_id(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "userID":
-			out.Values[i] = ec._CommunityModerators_userID(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_userID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "communityID":
-			out.Values[i] = ec._CommunityModerators_communityID(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "createdAt":
-			out.Values[i] = ec._CommunityModerators_createdAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "updatedAt":
-			out.Values[i] = ec._CommunityModerators_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "user":
-			out.Values[i] = ec._CommunityModerators_user(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_user(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "community":
-			out.Values[i] = ec._CommunityModerators_community(ctx, field, obj)
+			out.Values[i] = ec._CommunityModerator_community(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -32994,52 +34042,114 @@ func (ec *executionContext) _CommunityRule(ctx context.Context, sel ast.Selectio
 	return out
 }
 
-var communityUsersBanImplementors = []string{"CommunityUsersBan", "Node"}
+var communityUserBanImplementors = []string{"CommunityUserBan", "Node"}
 
-func (ec *executionContext) _CommunityUsersBan(ctx context.Context, sel ast.SelectionSet, obj *CommunityUsersBan) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, communityUsersBanImplementors)
+func (ec *executionContext) _CommunityUserBan(ctx context.Context, sel ast.SelectionSet, obj *ent.CommunityUserBan) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, communityUserBanImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("CommunityUsersBan")
+			out.Values[i] = graphql.MarshalString("CommunityUserBan")
 		case "id":
-			out.Values[i] = ec._CommunityUsersBan_id(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserBan_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "userID":
-			out.Values[i] = ec._CommunityUsersBan_userID(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserBan_userID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityID":
-			out.Values[i] = ec._CommunityUsersBan_communityID(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserBan_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
-			out.Values[i] = ec._CommunityUsersBan_createdAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserBan_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
-			out.Values[i] = ec._CommunityUsersBan_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserBan_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "user":
-			out.Values[i] = ec._CommunityUsersBan_user(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CommunityUserBan_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "community":
-			out.Values[i] = ec._CommunityUsersBan_community(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CommunityUserBan_community(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -33063,52 +34173,114 @@ func (ec *executionContext) _CommunityUsersBan(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var communityUsersMuteImplementors = []string{"CommunityUsersMute", "Node"}
+var communityUserMuteImplementors = []string{"CommunityUserMute", "Node"}
 
-func (ec *executionContext) _CommunityUsersMute(ctx context.Context, sel ast.SelectionSet, obj *CommunityUsersMute) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, communityUsersMuteImplementors)
+func (ec *executionContext) _CommunityUserMute(ctx context.Context, sel ast.SelectionSet, obj *ent.CommunityUserMute) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, communityUserMuteImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("CommunityUsersMute")
+			out.Values[i] = graphql.MarshalString("CommunityUserMute")
 		case "id":
-			out.Values[i] = ec._CommunityUsersMute_id(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserMute_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "userID":
-			out.Values[i] = ec._CommunityUsersMute_userID(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserMute_userID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityID":
-			out.Values[i] = ec._CommunityUsersMute_communityID(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserMute_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
-			out.Values[i] = ec._CommunityUsersMute_createdAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserMute_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
-			out.Values[i] = ec._CommunityUsersMute_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._CommunityUserMute_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "user":
-			out.Values[i] = ec._CommunityUsersMute_user(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CommunityUserMute_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "community":
-			out.Values[i] = ec._CommunityUsersMute_community(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._CommunityUserMute_community(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -33421,39 +34593,39 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
-var hostCommunitiesBanImplementors = []string{"HostCommunitiesBan", "Node"}
+var hostCommunityBanImplementors = []string{"HostCommunityBan", "Node"}
 
-func (ec *executionContext) _HostCommunitiesBan(ctx context.Context, sel ast.SelectionSet, obj *HostCommunitiesBan) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunitiesBanImplementors)
+func (ec *executionContext) _HostCommunityBan(ctx context.Context, sel ast.SelectionSet, obj *HostCommunityBan) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunityBanImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HostCommunitiesBan")
+			out.Values[i] = graphql.MarshalString("HostCommunityBan")
 		case "id":
-			out.Values[i] = ec._HostCommunitiesBan_id(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityBan_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "communityID":
-			out.Values[i] = ec._HostCommunitiesBan_communityID(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityBan_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "createdAt":
-			out.Values[i] = ec._HostCommunitiesBan_createdAt(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityBan_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "updatedAt":
-			out.Values[i] = ec._HostCommunitiesBan_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityBan_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "community":
-			out.Values[i] = ec._HostCommunitiesBan_community(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityBan_community(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -33480,39 +34652,39 @@ func (ec *executionContext) _HostCommunitiesBan(ctx context.Context, sel ast.Sel
 	return out
 }
 
-var hostCommunitiesMuteImplementors = []string{"HostCommunitiesMute", "Node"}
+var hostCommunityMuteImplementors = []string{"HostCommunityMute", "Node"}
 
-func (ec *executionContext) _HostCommunitiesMute(ctx context.Context, sel ast.SelectionSet, obj *HostCommunitiesMute) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunitiesMuteImplementors)
+func (ec *executionContext) _HostCommunityMute(ctx context.Context, sel ast.SelectionSet, obj *HostCommunityMute) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunityMuteImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HostCommunitiesMute")
+			out.Values[i] = graphql.MarshalString("HostCommunityMute")
 		case "id":
-			out.Values[i] = ec._HostCommunitiesMute_id(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityMute_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "communityID":
-			out.Values[i] = ec._HostCommunitiesMute_communityID(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityMute_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "createdAt":
-			out.Values[i] = ec._HostCommunitiesMute_createdAt(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityMute_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "updatedAt":
-			out.Values[i] = ec._HostCommunitiesMute_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityMute_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "community":
-			out.Values[i] = ec._HostCommunitiesMute_community(ctx, field, obj)
+			out.Values[i] = ec._HostCommunityMute_community(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -33555,8 +34727,8 @@ func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "name":
-			out.Values[i] = ec._HostRole_name(ctx, field, obj)
+		case "title":
+			out.Values[i] = ec._HostRole_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -34024,37 +35196,68 @@ func (ec *executionContext) _HostSocialNavigation(ctx context.Context, sel ast.S
 	return out
 }
 
-var hostUsersBanImplementors = []string{"HostUsersBan", "Node"}
+var hostUserBanImplementors = []string{"HostUserBan", "Node"}
 
-func (ec *executionContext) _HostUsersBan(ctx context.Context, sel ast.SelectionSet, obj *HostUsersBan) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, hostUsersBanImplementors)
+func (ec *executionContext) _HostUserBan(ctx context.Context, sel ast.SelectionSet, obj *ent.HostUserBan) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostUserBanImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HostUsersBan")
+			out.Values[i] = graphql.MarshalString("HostUserBan")
 		case "id":
-			out.Values[i] = ec._HostUsersBan_id(ctx, field, obj)
+			out.Values[i] = ec._HostUserBan_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
-			out.Values[i] = ec._HostUsersBan_createdAt(ctx, field, obj)
+			out.Values[i] = ec._HostUserBan_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
-			out.Values[i] = ec._HostUsersBan_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._HostUserBan_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "user":
-			out.Values[i] = ec._HostUsersBan_user(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._HostUserBan_user(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -34078,34 +35281,34 @@ func (ec *executionContext) _HostUsersBan(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var hostUsersMuteImplementors = []string{"HostUsersMute", "Node"}
+var hostUserMuteImplementors = []string{"HostUserMute", "Node"}
 
-func (ec *executionContext) _HostUsersMute(ctx context.Context, sel ast.SelectionSet, obj *HostUsersMute) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, hostUsersMuteImplementors)
+func (ec *executionContext) _HostUserMute(ctx context.Context, sel ast.SelectionSet, obj *HostUserMute) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hostUserMuteImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("HostUsersMute")
+			out.Values[i] = graphql.MarshalString("HostUserMute")
 		case "id":
-			out.Values[i] = ec._HostUsersMute_id(ctx, field, obj)
+			out.Values[i] = ec._HostUserMute_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "createdAt":
-			out.Values[i] = ec._HostUsersMute_createdAt(ctx, field, obj)
+			out.Values[i] = ec._HostUserMute_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "updatedAt":
-			out.Values[i] = ec._HostUsersMute_updatedAt(ctx, field, obj)
+			out.Values[i] = ec._HostUserMute_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "user":
-			out.Values[i] = ec._HostUsersMute_user(ctx, field, obj)
+			out.Values[i] = ec._HostUserMute_user(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -34288,7 +35491,7 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 
 var postImplementors = []string{"Post", "Node"}
 
-func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj *Post) graphql.Marshaler {
+func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj *ent.Post) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, postImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -34300,79 +35503,389 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Post_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "title":
 			out.Values[i] = ec._Post_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "slug":
 			out.Values[i] = ec._Post_slug(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "content":
-			out.Values[i] = ec._Post_content(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_content(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "heroImageID":
 			out.Values[i] = ec._Post_heroImageID(ctx, field, obj)
 		case "communityID":
 			out.Values[i] = ec._Post_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "authorID":
 			out.Values[i] = ec._Post_authorID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "meta":
-			out.Values[i] = ec._Post_meta(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_meta(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "views":
-			out.Values[i] = ec._Post_views(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_views(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
-		case "hasDeleted":
-			out.Values[i] = ec._Post_hasDeleted(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
 			}
-		case "publishedAt":
-			out.Values[i] = ec._Post_publishedAt(ctx, field, obj)
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "status":
+			out.Values[i] = ec._Post_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "createdAt":
 			out.Values[i] = ec._Post_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Post_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "heroimage":
-			out.Values[i] = ec._Post_heroimage(ctx, field, obj)
+		case "publishedAt":
+			out.Values[i] = ec._Post_publishedAt(ctx, field, obj)
+		case "heroImage":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_heroImage(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "comments":
-			out.Values[i] = ec._Post_comments(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_comments(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "relatedPost":
-			out.Values[i] = ec._Post_relatedPost(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_relatedPost(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "community":
-			out.Values[i] = ec._Post_community(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_community(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "author":
-			out.Values[i] = ec._Post_author(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_author(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "likes":
-			out.Values[i] = ec._Post_likes(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_likes(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "bookmarks":
-			out.Values[i] = ec._Post_bookmarks(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_bookmarks(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -34525,6 +36038,44 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "media":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_media(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "community":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_community(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "communities":
 			field := field
 
@@ -34547,7 +36098,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "community":
+		case "communityUserBan":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -34556,7 +36107,45 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_community(ctx, field)
+				res = ec._Query_communityUserBan(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityUserMute":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityUserMute(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_user(ctx, field)
 				return res
 			}
 
@@ -34588,7 +36177,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "user":
+		case "post":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -34597,7 +36186,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_user(ctx, field)
+				res = ec._Query_post(ctx, field)
 				return res
 			}
 
@@ -34607,7 +36196,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "media":
+		case "posts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_posts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "role":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -34616,7 +36227,48 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_media(ctx, field)
+				res = ec._Query_role(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "roles":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_roles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostRole":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostRole(ctx, field)
 				return res
 			}
 
@@ -34636,6 +36288,47 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_hostRoles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostUserBan":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostUserBan(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostUsersBan":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostUsersBan(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -34760,7 +36453,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var roleImplementors = []string{"Role", "Node"}
 
-func (ec *executionContext) _Role(ctx context.Context, sel ast.SelectionSet, obj *Role) graphql.Marshaler {
+func (ec *executionContext) _Role(ctx context.Context, sel ast.SelectionSet, obj *ent.Role) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, roleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -34772,12 +36465,12 @@ func (ec *executionContext) _Role(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Role_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "name":
-			out.Values[i] = ec._Role_name(ctx, field, obj)
+		case "title":
+			out.Values[i] = ec._Role_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "badgeID":
 			out.Values[i] = ec._Role_badgeID(ctx, field, obj)
@@ -34786,57 +36479,150 @@ func (ec *executionContext) _Role(ctx context.Context, sel ast.SelectionSet, obj
 		case "communityID":
 			out.Values[i] = ec._Role_communityID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityRolesManagement":
 			out.Values[i] = ec._Role_communityRolesManagement(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityUserBan":
 			out.Values[i] = ec._Role_communityUserBan(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityUserMute":
 			out.Values[i] = ec._Role_communityUserMute(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityDeletePost":
 			out.Values[i] = ec._Role_communityDeletePost(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityRemovePostFromPublication":
 			out.Values[i] = ec._Role_communityRemovePostFromPublication(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "communityDeleteComments":
 			out.Values[i] = ec._Role_communityDeleteComments(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Role_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Role_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "badge":
-			out.Values[i] = ec._Role_badge(ctx, field, obj)
-		case "community":
-			out.Values[i] = ec._Role_community(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Role_badge(ctx, field, obj)
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "community":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Role_community(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "users":
-			out.Values[i] = ec._Role_users(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Role_users(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -36073,18 +37859,18 @@ func (ec *executionContext) unmarshalNCommunityFollowWhereInput2ᚖstormlinkᚋs
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCommunityModerators2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerators(ctx context.Context, sel ast.SelectionSet, v *CommunityModerators) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerator(ctx context.Context, sel ast.SelectionSet, v *CommunityModerator) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._CommunityModerators(ctx, sel, v)
+	return ec._CommunityModerator(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityModeratorsWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInput(ctx context.Context, v any) (*CommunityModeratorsWhereInput, error) {
-	res, err := ec.unmarshalInputCommunityModeratorsWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*CommunityModeratorWhereInput, error) {
+	res, err := ec.unmarshalInputCommunityModeratorWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -36103,33 +37889,33 @@ func (ec *executionContext) unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋser
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCommunityUsersBan2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBan(ctx context.Context, sel ast.SelectionSet, v *CommunityUsersBan) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserBan) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._CommunityUsersBan(ctx, sel, v)
+	return ec._CommunityUserBan(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInput(ctx context.Context, v any) (*CommunityUsersBanWhereInput, error) {
-	res, err := ec.unmarshalInputCommunityUsersBanWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*CommunityUserBanWhereInput, error) {
+	res, err := ec.unmarshalInputCommunityUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCommunityUsersMute2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMute(ctx context.Context, sel ast.SelectionSet, v *CommunityUsersMute) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserMute) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._CommunityUsersMute(ctx, sel, v)
+	return ec._CommunityUserMute(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInput(ctx context.Context, v any) (*CommunityUsersMuteWhereInput, error) {
-	res, err := ec.unmarshalInputCommunityUsersMuteWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*CommunityUserMuteWhereInput, error) {
+	res, err := ec.unmarshalInputCommunityUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -36167,13 +37953,13 @@ func (ec *executionContext) marshalNHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 	return ec._Host(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostCommunitiesBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInput(ctx context.Context, v any) (*HostCommunitiesBanWhereInput, error) {
-	res, err := ec.unmarshalInputHostCommunitiesBanWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*HostCommunityBanWhereInput, error) {
+	res, err := ec.unmarshalInputHostCommunityBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostCommunitiesMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInput(ctx context.Context, v any) (*HostCommunitiesMuteWhereInput, error) {
-	res, err := ec.unmarshalInputHostCommunitiesMuteWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*HostCommunityMuteWhereInput, error) {
+	res, err := ec.unmarshalInputHostCommunityMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -36330,13 +38116,67 @@ func (ec *executionContext) unmarshalNHostSocialNavigationWhereInput2ᚖstormlin
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInput(ctx context.Context, v any) (*HostUsersBanWhereInput, error) {
-	res, err := ec.unmarshalInputHostUsersBanWhereInput(ctx, v)
+func (ec *executionContext) marshalNHostUserBan2ᚕᚖstormlinkᚋserverᚋentᚐHostUserBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostUserBan) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostUserBan2ᚖstormlinkᚋserverᚋentᚐHostUserBan(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostUserBan2ᚖstormlinkᚋserverᚋentᚐHostUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.HostUserBan) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HostUserBan(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx context.Context, v any) (*HostUserBanWhereInput, error) {
+	res, err := ec.unmarshalInputHostUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInput(ctx context.Context, v any) (*HostUsersMuteWhereInput, error) {
-	res, err := ec.unmarshalInputHostUsersMuteWhereInput(ctx, v)
+func (ec *executionContext) unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx context.Context, v any) (*HostUserMuteWhereInput, error) {
+	res, err := ec.unmarshalInputHostUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -36482,11 +38322,51 @@ func (ec *executionContext) marshalNNode2ᚕstormlinkᚋserverᚋentᚐNoder(ctx
 	return ret
 }
 
-func (ec *executionContext) marshalNPost2stormlinkᚋserverᚋgraphqlᚐPost(ctx context.Context, sel ast.SelectionSet, v Post) graphql.Marshaler {
-	return ec._Post(ctx, sel, &v)
+func (ec *executionContext) marshalNPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Post) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
-func (ec *executionContext) marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx context.Context, sel ast.SelectionSet, v *Post) graphql.Marshaler {
+func (ec *executionContext) marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx context.Context, sel ast.SelectionSet, v *ent.Post) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -36511,12 +38391,66 @@ func (ec *executionContext) unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, v any) (post.Status, error) {
+	var res post.Status
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, sel ast.SelectionSet, v post.Status) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx context.Context, v any) (*PostWhereInput, error) {
 	res, err := ec.unmarshalInputPostWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRole2ᚖstormlinkᚋserverᚋgraphqlᚐRole(ctx context.Context, sel ast.SelectionSet, v *Role) graphql.Marshaler {
+func (ec *executionContext) marshalNRole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Role) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v *ent.Role) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -37300,7 +39234,7 @@ func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋs
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCommunityModerators2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityModerators) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityModerator) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -37327,7 +39261,7 @@ func (ec *executionContext) marshalOCommunityModerators2ᚕᚖstormlinkᚋserver
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityModerators2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerators(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerator(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -37347,17 +39281,17 @@ func (ec *executionContext) marshalOCommunityModerators2ᚕᚖstormlinkᚋserver
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityModeratorsWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInputᚄ(ctx context.Context, v any) ([]*CommunityModeratorsWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx context.Context, v any) ([]*CommunityModeratorWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityModeratorsWhereInput, len(vSlice))
+	res := make([]*CommunityModeratorWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityModeratorsWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -37365,11 +39299,11 @@ func (ec *executionContext) unmarshalOCommunityModeratorsWhereInput2ᚕᚖstorml
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityModeratorsWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorsWhereInput(ctx context.Context, v any) (*CommunityModeratorsWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*CommunityModeratorWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputCommunityModeratorsWhereInput(ctx, v)
+	res, err := ec.unmarshalInputCommunityModeratorWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -37446,7 +39380,7 @@ func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚖstormlinkᚋser
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCommunityUsersBan2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityUsersBan) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityUserBan2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CommunityUserBan) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -37473,7 +39407,7 @@ func (ec *executionContext) marshalOCommunityUsersBan2ᚕᚖstormlinkᚋserver�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityUsersBan2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBan(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -37493,17 +39427,24 @@ func (ec *executionContext) marshalOCommunityUsersBan2ᚕᚖstormlinkᚋserver�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUsersBanWhereInput, error) {
+func (ec *executionContext) marshalOCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserBan) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CommunityUserBan(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityUsersBanWhereInput, len(vSlice))
+	res := make([]*CommunityUserBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -37511,15 +39452,15 @@ func (ec *executionContext) unmarshalOCommunityUsersBanWhereInput2ᚕᚖstormlin
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersBanWhereInput(ctx context.Context, v any) (*CommunityUsersBanWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*CommunityUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputCommunityUsersBanWhereInput(ctx, v)
+	res, err := ec.unmarshalInputCommunityUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCommunityUsersMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityUsersMute) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityUserMute2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserMuteᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CommunityUserMute) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -37546,7 +39487,7 @@ func (ec *executionContext) marshalOCommunityUsersMute2ᚕᚖstormlinkᚋserver�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityUsersMute2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMute(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -37566,17 +39507,24 @@ func (ec *executionContext) marshalOCommunityUsersMute2ᚕᚖstormlinkᚋserver�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUsersMuteWhereInput, error) {
+func (ec *executionContext) marshalOCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserMute) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CommunityUserMute(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityUsersMuteWhereInput, len(vSlice))
+	res := make([]*CommunityUserMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -37584,11 +39532,11 @@ func (ec *executionContext) unmarshalOCommunityUsersMuteWhereInput2ᚕᚖstormli
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUsersMuteWhereInput(ctx context.Context, v any) (*CommunityUsersMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*CommunityUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputCommunityUsersMuteWhereInput(ctx, v)
+	res, err := ec.unmarshalInputCommunityUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -37716,17 +39664,17 @@ func (ec *executionContext) marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 	return ec._Host(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHostCommunitiesBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunitiesBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunityBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostCommunitiesBanWhereInput, len(vSlice))
+	res := make([]*HostCommunityBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostCommunitiesBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -37734,25 +39682,25 @@ func (ec *executionContext) unmarshalOHostCommunitiesBanWhereInput2ᚕᚖstormli
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostCommunitiesBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesBanWhereInput(ctx context.Context, v any) (*HostCommunitiesBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*HostCommunityBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputHostCommunitiesBanWhereInput(ctx, v)
+	res, err := ec.unmarshalInputHostCommunityBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostCommunitiesMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunitiesMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunityMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostCommunitiesMuteWhereInput, len(vSlice))
+	res := make([]*HostCommunityMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostCommunitiesMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -37760,11 +39708,11 @@ func (ec *executionContext) unmarshalOHostCommunitiesMuteWhereInput2ᚕᚖstorml
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostCommunitiesMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunitiesMuteWhereInput(ctx context.Context, v any) (*HostCommunitiesMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*HostCommunityMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputHostCommunitiesMuteWhereInput(ctx, v)
+	res, err := ec.unmarshalInputHostCommunityMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -37813,6 +39761,13 @@ func (ec *executionContext) marshalOHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHo
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx context.Context, sel ast.SelectionSet, v *ent.HostRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostRole(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInputᚄ(ctx context.Context, v any) ([]*HostRoleWhereInput, error) {
@@ -38053,17 +40008,24 @@ func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚖstormlin
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostUsersBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInputᚄ(ctx context.Context, v any) ([]*HostUsersBanWhereInput, error) {
+func (ec *executionContext) marshalOHostUserBan2ᚖstormlinkᚋserverᚋentᚐHostUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.HostUserBan) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostUserBan(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx context.Context, v any) ([]*HostUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostUsersBanWhereInput, len(vSlice))
+	res := make([]*HostUserBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -38071,25 +40033,25 @@ func (ec *executionContext) unmarshalOHostUsersBanWhereInput2ᚕᚖstormlinkᚋs
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostUsersBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersBanWhereInput(ctx context.Context, v any) (*HostUsersBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx context.Context, v any) (*HostUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputHostUsersBanWhereInput(ctx, v)
+	res, err := ec.unmarshalInputHostUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostUsersMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostUsersMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostUsersMuteWhereInput, len(vSlice))
+	res := make([]*HostUserMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -38097,11 +40059,11 @@ func (ec *executionContext) unmarshalOHostUsersMuteWhereInput2ᚕᚖstormlinkᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostUsersMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUsersMuteWhereInput(ctx context.Context, v any) (*HostUsersMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx context.Context, v any) (*HostUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := ec.unmarshalInputHostUsersMuteWhereInput(ctx, v)
+	res, err := ec.unmarshalInputHostUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -38315,7 +40277,7 @@ func (ec *executionContext) marshalONode2stormlinkᚋserverᚋentᚐNoder(ctx co
 	return ec._Node(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*Post) graphql.Marshaler {
+func (ec *executionContext) marshalOPost2ᚕᚖstormlinkᚋserverᚋentᚐPostᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Post) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -38342,7 +40304,7 @@ func (ec *executionContext) marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPo
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNPost2ᚖstormlinkᚋserverᚋgraphqlᚐPost(ctx, sel, v[i])
+			ret[i] = ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -38360,6 +40322,13 @@ func (ec *executionContext) marshalOPost2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPo
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx context.Context, sel ast.SelectionSet, v *ent.Post) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Post(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*PostLike) graphql.Marshaler {
@@ -38435,17 +40404,17 @@ func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*PostWhereInput, error) {
+func (ec *executionContext) unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx context.Context, v any) ([]post.Status, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*PostWhereInput, len(vSlice))
+	res := make([]post.Status, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -38453,15 +40422,7 @@ func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx context.Context, v any) (*PostWhereInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputPostWhereInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalORole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*Role) graphql.Marshaler {
+func (ec *executionContext) marshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []post.Status) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -38488,7 +40449,7 @@ func (ec *executionContext) marshalORole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRo
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNRole2ᚖstormlinkᚋserverᚋgraphqlᚐRole(ctx, sel, v[i])
+			ret[i] = ec.marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -38506,6 +40467,102 @@ func (ec *executionContext) marshalORole2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRo
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, v any) (*post.Status, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(post.Status)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, sel ast.SelectionSet, v *post.Status) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*PostWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*PostWhereInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx context.Context, v any) (*PostWhereInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPostWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalORole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Role) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalORole2ᚖstormlinkᚋserverᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v *ent.Role) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Role(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx context.Context, v any) ([]*RoleWhereInput, error) {

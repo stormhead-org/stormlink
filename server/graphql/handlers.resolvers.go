@@ -8,6 +8,10 @@ import (
 	"context"
 	"stormlink/server/ent"
 	"stormlink/server/ent/community"
+	"stormlink/server/ent/communityuserban"
+	"stormlink/server/ent/communityusermute"
+	"stormlink/server/ent/post"
+	"stormlink/server/ent/role"
 	"strconv"
 )
 
@@ -33,13 +37,13 @@ func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*en
 	return upd.Save(ctx)
 }
 
-// Communities возвращает все или только не забаненные сообщества.
-func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error) {
-	q := r.Client.Community.Query()
-	if onlyNotBanned == nil || *onlyNotBanned {
-		q = q.Where(community.CommunityHasBanned(false))
+// Media возвращает медиа по ID.
+func (r *queryResolver) Media(ctx context.Context, id string) (*ent.Media, error) {
+	mediaId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
 	}
-	return q.Order(ent.Asc("id")).All(ctx)
+	return r.Client.Media.Get(ctx, mediaId)
 }
 
 // Community отдает одно сообщество по ID.
@@ -51,12 +55,59 @@ func (r *queryResolver) Community(ctx context.Context, id string) (*ent.Communit
 	return r.Client.Community.Get(ctx, communityId)
 }
 
-// Users возвращает всех пользователей.
-func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
-	return r.Client.User.
+// Communities возвращает все или только не забаненные сообщества.
+func (r *queryResolver) Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error) {
+	q := r.Client.Community.Query()
+	if onlyNotBanned == nil || *onlyNotBanned {
+		q = q.Where(community.CommunityHasBanned(false))
+	}
+	return q.Order(ent.Asc("id")).All(ctx)
+}
+
+// CommunityUserBan отдает запись о бане юзера по userID и communityID.
+func (r *queryResolver) CommunityUserBan(ctx context.Context, communityID string, userID string) (*ent.CommunityUserBan, error) {
+	cid, err := strconv.Atoi(communityID)
+	if err != nil {
+		return nil, err
+	}
+	uid, err := strconv.Atoi(userID)
+	if err != nil {
+		return nil, err
+	}
+	ban, err := r.Client.CommunityUserBan.
 		Query().
-		Order(ent.Asc("id")).
-		All(ctx)
+		Where(
+			communityuserban.CommunityIDEQ(cid),
+			communityuserban.UserIDEQ(uid),
+		).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	return ban, err
+}
+
+// CommunityUserMute отдает запись о муте юзера по userID и communityID.
+func (r *queryResolver) CommunityUserMute(ctx context.Context, communityID string, userID string) (*ent.CommunityUserMute, error) {
+	cid, err := strconv.Atoi(communityID)
+	if err != nil {
+		return nil, err
+	}
+	uid, err := strconv.Atoi(userID)
+	if err != nil {
+		return nil, err
+	}
+	mute, err := r.Client.CommunityUserMute.
+		Query().
+		Where(
+			communityusermute.CommunityIDEQ(cid),
+			communityusermute.UserIDEQ(uid),
+		).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil, nil
+	}
+	return mute, err
 }
 
 // User отдает одного пользователя по ID.
@@ -68,18 +119,79 @@ func (r *queryResolver) User(ctx context.Context, id string) (*ent.User, error) 
 	return r.Client.User.Get(ctx, userId)
 }
 
-// Media возвращает медиа по ID.
-func (r *queryResolver) Media(ctx context.Context, id string) (*ent.Media, error) {
-	mediaId, err := strconv.Atoi(id)
+// Users возвращает всех пользователей.
+func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
+	return r.Client.User.
+		Query().
+		Order(ent.Asc("id")).
+		All(ctx)
+}
+
+// Post отдает один пост по ID.
+func (r *queryResolver) Post(ctx context.Context, id string) (*ent.Post, error) {
+	postId, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	return r.Client.Media.Get(ctx, mediaId)
+	return r.Client.Post.Get(ctx, postId)
+}
+
+// Posts возвращает посты в зависимости от их статуса.
+func (r *queryResolver) Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error) {
+	q := r.Client.Post.Query()
+	q = q.Where(post.StatusEQ(post.Status(string(*status))))
+	return q.Order(ent.Asc("id")).All(ctx)
+}
+
+// Role возвращает роль по ее ID.
+func (r *queryResolver) Role(ctx context.Context, id string) (*ent.Role, error) {
+	roleId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Role.Get(ctx, roleId)
+}
+
+// Roles возвращает все роли сообщества по ID сообщества.
+func (r *queryResolver) Roles(ctx context.Context, id string) ([]*ent.Role, error) {
+	communityId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	q := r.Client.Role.Query()
+	q = q.Where(role.CommunityIDEQ(communityId))
+	return q.Order(ent.Asc("id")).All(ctx)
+}
+
+// HostRole возвращает роль хоста по ее ID.
+func (r *queryResolver) HostRole(ctx context.Context, id string) (*ent.HostRole, error) {
+	hostRoleId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.HostRole.Get(ctx, hostRoleId)
 }
 
 // HostRoles возвращает список всех ролей платформы.
 func (r *queryResolver) HostRoles(ctx context.Context) ([]*ent.HostRole, error) {
 	return r.Client.HostRole.
+		Query().
+		Order(ent.Asc("id")).
+		All(ctx)
+}
+
+// HostUserBan отдает одного забаненного пользователя по ID.
+func (r *queryResolver) HostUserBan(ctx context.Context, id string) (*ent.HostUserBan, error) {
+	hostUserBanId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.HostUserBan.Get(ctx, hostUserBanId)
+}
+
+// HostUsersBan возвращает список забаненных юзеров на платформе.
+func (r *queryResolver) HostUsersBan(ctx context.Context) ([]*ent.HostUserBan, error) {
+	return r.Client.HostUserBan.
 		Query().
 		Order(ent.Asc("id")).
 		All(ctx)
