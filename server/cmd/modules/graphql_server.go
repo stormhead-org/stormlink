@@ -6,14 +6,18 @@ import (
 
 	"stormlink/server/ent"
 	"stormlink/server/graphql"
+	"stormlink/server/usecase"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 )
 
 func StartGraphQLServer(client *ent.Client) {
+	uc := usecase.NewUserUsecase(client)
+
 	resolver := &graphql.Resolver{
-		Client: client, // важно: клиент Ent, используемый в резолверах
+		Client: client,
+		UC:     uc,
 	}
 
 	srv := handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.Config{

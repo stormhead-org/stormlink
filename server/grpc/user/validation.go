@@ -4,8 +4,9 @@ import (
 	"errors"
 	"regexp"
 
-	"github.com/go-playground/validator/v10"
 	"stormlink/server/grpc/user/protobuf"
+
+	"github.com/go-playground/validator/v10"
 )
 
 var validate = validator.New()
@@ -31,7 +32,6 @@ func ValidateRegisterRequest(req *protobuf.RegisterUserRequest) error {
 
 // Примитивная проверка на XSS/SQL
 func hasDangerousInput(input string) bool {
-	// Можно усложнить при необходимости
 	pattern := regexp.MustCompile(`[<>'"%;()&+]`)
 	return pattern.MatchString(input)
 }

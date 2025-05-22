@@ -160,6 +160,8 @@ models:
       - github.com/99designs/gqlgen/graphql.Int64
   Community:
     model: stormlink/server/ent.Community
+  CommunityPermissions:
+    model: stormlink/server/model.CommunityPermissions
   CommunityUserBan:
     model: stormlink/server/ent.CommunityUserBan
   CommunityUserMute:

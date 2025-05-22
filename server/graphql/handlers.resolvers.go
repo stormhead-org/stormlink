@@ -6,12 +6,18 @@ package graphql
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"stormlink/server/ent"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityuserban"
 	"stormlink/server/ent/communityusermute"
 	"stormlink/server/ent/post"
 	"stormlink/server/ent/role"
+	"stormlink/server/model"
+	"stormlink/server/model/converter"
+	"stormlink/server/pkg/auth"
+	"stormlink/server/pkg/permissionloader"
 	"strconv"
 )
 
@@ -35,6 +41,56 @@ func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*en
 		upd = upd.SetFirstSettings(*input.FirstSettings)
 	}
 	return upd.Save(ctx)
+}
+
+// Мутация Post для редактирования поста
+func (r *mutationResolver) Post(ctx context.Context, input UpdatePostInput) (*ent.Post, error) {
+	id, err := strconv.Atoi(input.ID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid post ID %q: %w", input.ID, err)
+	}
+	upd := r.Client.Post.
+		UpdateOneID(id)
+	if input.Title != nil {
+		upd = upd.SetTitle(*input.Title)
+	}
+	if input.Slug != nil {
+		upd = upd.SetSlug(*input.Slug)
+	}
+	if input.Content != nil {
+		var content map[string]interface{}
+		if err := json.Unmarshal([]byte(*input.Content), &content); err != nil {
+			return nil, fmt.Errorf("invalid JSON for content: %w", err)
+		}
+		upd = upd.SetContent(content)
+	}
+	if input.HeroImageID != nil {
+		heroID, err := strconv.Atoi(*input.HeroImageID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid heroImageID %q: %w", *input.HeroImageID, err)
+		}
+		upd = upd.SetHeroImageID(heroID)
+	}
+	if input.Views != nil {
+		upd = upd.SetViews(int(*input.Views))
+	}
+	if input.Status != nil {
+		upd = upd.SetStatus(*input.Status)
+	}
+	if input.PublishedAt != nil {
+		upd = upd.SetPublishedAt(*input.PublishedAt)
+	}
+	return upd.Save(ctx)
+}
+
+// ViewerPermissions отдает каждому юзеру права в зависимости от того, какие у него есть роли в сообществах.
+func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
+	loader, ok := ctx.Value(permissionloader.ContextKey).(*permissionloader.PermLoader)
+	if !ok {
+		return converter.ConvertPermissionsToCommunityPermissions(&model.CommunityPermissions{}), nil
+	}
+	perm := loader.ForCommunity(obj.Edges.Community.ID)
+	return converter.ConvertPermissionsToCommunityPermissions(perm), nil
 }
 
 // Media возвращает медиа по ID.
@@ -138,9 +194,36 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*ent.Post, error) 
 
 // Posts возвращает посты в зависимости от их статуса.
 func (r *queryResolver) Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error) {
-	q := r.Client.Post.Query()
-	q = q.Where(post.StatusEQ(post.Status(string(*status))))
-	return q.Order(ent.Asc("id")).All(ctx)
+	posts, err := r.Client.Post.
+		Query().
+		Where(post.StatusEQ(post.Status(string(*status)))).
+		WithCommunity().
+		WithAuthor().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Получаем текущего пользователя из контекста
+	userID, _ := auth.UserIDFromContext(ctx)
+
+	// Собираем уникальные communityIDs
+	set := map[int]struct{}{}
+	for _, p := range posts {
+		set[p.Edges.Community.ID] = struct{}{}
+	}
+	communityIDs := make([]int, 0, len(set))
+	for cid := range set {
+		communityIDs = append(communityIDs, cid)
+	}
+	// Загружаем все права
+	loader := permissionloader.NewPermLoader(r.UC)
+	if err := loader.LoadAll(ctx, userID, communityIDs); err != nil {
+		return nil, err
+	}
+	// Кладём loader в контекст, чтобы его видел postResolver
+	ctx = context.WithValue(ctx, permissionloader.ContextKey, loader)
+
+	return posts, nil
 }
 
 // Role возвращает роль по ее ID.

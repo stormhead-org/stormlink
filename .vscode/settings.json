@@ -9,12 +9,17 @@
 		"entc",
 		"entcommunity",
 		"entgql",
+		"gqlgen",
 		"gwmux",
 		"gwruntime",
 		"hostrole",
 		"hostsidebarnavigation",
 		"IDEQ",
+		"Nillable",
+		"permissioncache",
+		"permissionloader",
 		"stormlink",
+		"usecase",
 		"userpb"
 	]
 }

@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"stormlink/server/ent"
+	"stormlink/server/model"
 )
 
 type UserUsecase interface {
 	GetUserByID(ctx context.Context, id int) (*ent.User, error)
+	GetPermissionsByCommunities(ctx context.Context, userID int, communityIDs []int) (map[int]*model.CommunityPermissions, error)
 }
 
 type userUsecase struct {

@@ -1951,6 +1951,18 @@ type UpdateHostInput struct {
 	FirstSettings *bool   `json:"firstSettings,omitempty"`
 }
 
+type UpdatePostInput struct {
+	ID          string       `json:"id"`
+	Title       *string      `json:"title,omitempty"`
+	Slug        *string      `json:"slug,omitempty"`
+	Content     *string      `json:"content,omitempty"`
+	CommunityID *string      `json:"communityID,omitempty"`
+	HeroImageID *string      `json:"heroImageID,omitempty"`
+	Views       *int32       `json:"views,omitempty"`
+	Status      *post.Status `json:"status,omitempty"`
+	PublishedAt *time.Time   `json:"publishedAt,omitempty"`
+}
+
 type UserFollow struct {
 	ID         string    `json:"id"`
 	FollowerID string    `json:"followerID"`

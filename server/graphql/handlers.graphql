@@ -1,3 +1,20 @@
+type CommunityPermissions {
+	communityRolesManagement: Boolean!
+	communityUserBan: Boolean!
+	communityUserMute: Boolean!
+	communityDeletePost: Boolean!
+	communityDeleteComments: Boolean!
+	communityRemovePostFromPublication: Boolean!
+	communityOwner: Boolean!
+	hostOwner: Boolean!
+	communityUserHasBanned: Boolean!
+	communityUserHasMuted: Boolean!
+}
+
+extend type Post {
+	viewerPermissions: CommunityPermissions!
+}
+
 extend type Query {
 	media(id: ID!): Media
 
@@ -35,6 +52,7 @@ extend type Mutation {
 	Установить firstSettings у конкретного Host (здесь фиксированного, с id=1)
 	"""
 	host(input: UpdateHostInput!): Host!
+	post(input: UpdatePostInput!): Post!
 }
 
 input UpdateHostInput {
@@ -46,4 +64,16 @@ input UpdateHostInput {
 	bannerID: ID
 	authBannerID: ID
 	firstSettings: Boolean
+}
+
+input UpdatePostInput {
+	id: ID!
+	title: String
+	slug: String
+	content: JSON
+	communityID: ID
+	heroImageID: ID
+	views: Int
+	status: PostStatus
+	publishedAt: Time
 }
