@@ -733,6 +733,23 @@ type CommunityWhereInput struct {
 	HasCommentsWith []*CommentWhereInput `json:"hasCommentsWith,omitempty"`
 }
 
+type CreateCommunityInput struct {
+	Title       string  `json:"title"`
+	Slug        string  `json:"slug"`
+	Description *string `json:"description,omitempty"`
+	OwnerID     string  `json:"ownerID"`
+}
+
+type CreatePostInput struct {
+	Title       string       `json:"title"`
+	Content     string       `json:"content"`
+	AuthorID    string       `json:"authorID"`
+	CommunityID string       `json:"communityID"`
+	HeroImageID *string      `json:"heroImageID,omitempty"`
+	Status      *post.Status `json:"status,omitempty"`
+	PublishedAt *time.Time   `json:"publishedAt,omitempty"`
+}
+
 type EmailVerification struct {
 	ID        string    `json:"id"`
 	Token     string    `json:"token"`

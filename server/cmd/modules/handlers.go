@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"stormlink/server/ent"
 	authpb "stormlink/server/grpc/auth/protobuf"
 	mediapb "stormlink/server/grpc/media/protobuf"
 	"stormlink/server/utils"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // loginHandler обрабатывает запрос на вход пользователя
@@ -186,11 +187,15 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 		return
 	}
 
+	grpcResp.Id = int64(m.ID)
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(m); err != nil {
-		log.Printf("❌ [MediaUpload] Failed to encode response: %v", err)
-		http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
-		return
+	// json.Marshal по умолчанию поработает с protobuf-структурой и выведет поля
+	// в snake_case:{"url":"…","filename":"…","id":123}
+	if err := json.NewEncoder(w).Encode(grpcResp); err != nil {
+    log.Printf("❌ [MediaUpload] Failed to encode response: %v", err)
+    http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
+    return
 	}
 }
 

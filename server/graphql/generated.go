@@ -308,8 +308,10 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		Host func(childComplexity int, input UpdateHostInput) int
-		Post func(childComplexity int, input UpdatePostInput) int
+		CreateCommunity func(childComplexity int, input CreateCommunityInput) int
+		CreatePost      func(childComplexity int, input CreatePostInput) int
+		Host            func(childComplexity int, input UpdateHostInput) int
+		Post            func(childComplexity int, input UpdatePostInput) int
 	}
 
 	PageInfo struct {
@@ -456,6 +458,8 @@ type HostResolver interface {
 type MutationResolver interface {
 	Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error)
 	Post(ctx context.Context, input UpdatePostInput) (*ent.Post, error)
+	CreatePost(ctx context.Context, input CreatePostInput) (*ent.Post, error)
+	CreateCommunity(ctx context.Context, input CreateCommunityInput) (*ent.Community, error)
 }
 type PostResolver interface {
 	Content(ctx context.Context, obj *ent.Post) (string, error)
@@ -1835,6 +1839,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Media.UpdatedAt(childComplexity), true
 
+	case "Mutation.createCommunity":
+		if e.complexity.Mutation.CreateCommunity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createCommunity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateCommunity(childComplexity, args["input"].(CreateCommunityInput)), true
+
+	case "Mutation.createPost":
+		if e.complexity.Mutation.CreatePost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createPost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreatePost(childComplexity, args["input"].(CreatePostInput)), true
+
 	case "Mutation.host":
 		if e.complexity.Mutation.Host == nil {
 			break
@@ -2688,6 +2716,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCommunityUserBanWhereInput,
 		ec.unmarshalInputCommunityUserMuteWhereInput,
 		ec.unmarshalInputCommunityWhereInput,
+		ec.unmarshalInputCreateCommunityInput,
+		ec.unmarshalInputCreatePostInput,
 		ec.unmarshalInputEmailVerificationWhereInput,
 		ec.unmarshalInputHostCommunityBanWhereInput,
 		ec.unmarshalInputHostCommunityMuteWhereInput,
@@ -2823,6 +2853,52 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_createCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_createCommunity_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_createCommunity_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (CreateCommunityInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚐCreateCommunityInput(ctx, tmp)
+	}
+
+	var zeroVal CreateCommunityInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_createPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_createPost_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_createPost_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (CreatePostInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚐCreatePostInput(ctx, tmp)
+	}
+
+	var zeroVal CreatePostInput
+	return zeroVal, nil
+}
 
 func (ec *executionContext) field_Mutation_host_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -13426,6 +13502,208 @@ func (ec *executionContext) fieldContext_Mutation_post(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_post_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createPost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createPost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreatePost(rctx, fc.Args["input"].(CreatePostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Post)
+	fc.Result = res
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Post_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
+			case "content":
+				return ec.fieldContext_Post_content(ctx, field)
+			case "heroImageID":
+				return ec.fieldContext_Post_heroImageID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Post_communityID(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Post_authorID(ctx, field)
+			case "meta":
+				return ec.fieldContext_Post_meta(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "status":
+				return ec.fieldContext_Post_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Post_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Post_updatedAt(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
+			case "comments":
+				return ec.fieldContext_Post_comments(ctx, field)
+			case "relatedPost":
+				return ec.fieldContext_Post_relatedPost(ctx, field)
+			case "community":
+				return ec.fieldContext_Post_community(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
+			case "likes":
+				return ec.fieldContext_Post_likes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Post_viewerPermissions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createCommunity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createCommunity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateCommunity(rctx, fc.Args["input"].(CreateCommunityInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Community)
+	fc.Result = res
+	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createCommunity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Community_id(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Community_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Community_bannerID(ctx, field)
+			case "ownerID":
+				return ec.fieldContext_Community_ownerID(ctx, field)
+			case "title":
+				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Community_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Community_description(ctx, field)
+			case "tableInfo":
+				return ec.fieldContext_Community_tableInfo(ctx, field)
+			case "communityHasBanned":
+				return ec.fieldContext_Community_communityHasBanned(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Community_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Community_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Community_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Community_banner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Community_owner(ctx, field)
+			case "moderators":
+				return ec.fieldContext_Community_moderators(ctx, field)
+			case "roles":
+				return ec.fieldContext_Community_roles(ctx, field)
+			case "rules":
+				return ec.fieldContext_Community_rules(ctx, field)
+			case "followers":
+				return ec.fieldContext_Community_followers(ctx, field)
+			case "bans":
+				return ec.fieldContext_Community_bans(ctx, field)
+			case "mutes":
+				return ec.fieldContext_Community_mutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_Community_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_Community_comments(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createCommunity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -25480,6 +25758,127 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateCommunityInput(ctx context.Context, obj any) (CreateCommunityInput, error) {
+	var it CreateCommunityInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "slug", "description", "ownerID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "ownerID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownerID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnerID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, obj any) (CreatePostInput, error) {
+	var it CreatePostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["status"]; !present {
+		asMap["status"] = "DRAFT"
+	}
+
+	fieldsInOrder := [...]string{"title", "content", "authorID", "communityID", "heroImageID", "status", "publishedAt"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "content":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+			data, err := ec.unmarshalNJSON2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Content = data
+		case "authorID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authorID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthorID = data
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		case "heroImageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("heroImageID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HeroImageID = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "publishedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PublishedAt = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx context.Context, obj any) (EmailVerificationWhereInput, error) {
 	var it EmailVerificationWhereInput
 	asMap := map[string]any{}
@@ -36346,6 +36745,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createPost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createPost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createCommunity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createCommunity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -38754,6 +39167,10 @@ func (ec *executionContext) unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNCommunity2stormlinkᚋserverᚋentᚐCommunity(ctx context.Context, sel ast.SelectionSet, v ent.Community) graphql.Marshaler {
+	return ec._Community(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNCommunity2ᚕᚖstormlinkᚋserverᚋentᚐCommunityᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Community) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -38900,6 +39317,16 @@ func (ec *executionContext) unmarshalNCommunityUserMuteWhereInput2ᚖstormlink�
 func (ec *executionContext) unmarshalNCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInput(ctx context.Context, v any) (*CommunityWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚐCreateCommunityInput(ctx context.Context, v any) (CreateCommunityInput, error) {
+	res, err := ec.unmarshalInputCreateCommunityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚐCreatePostInput(ctx context.Context, v any) (CreatePostInput, error) {
+	res, err := ec.unmarshalInputCreatePostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNEmailVerification2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerification(ctx context.Context, sel ast.SelectionSet, v *EmailVerification) graphql.Marshaler {

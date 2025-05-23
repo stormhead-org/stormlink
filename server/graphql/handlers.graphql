@@ -53,6 +53,8 @@ extend type Mutation {
 	"""
 	host(input: UpdateHostInput!): Host!
 	post(input: UpdatePostInput!): Post!
+	createPost(input: CreatePostInput!): Post!
+	createCommunity(input: CreateCommunityInput!): Community!
 }
 
 input UpdateHostInput {
@@ -76,4 +78,21 @@ input UpdatePostInput {
 	views: Int
 	status: PostStatus
 	publishedAt: Time
+}
+
+input CreatePostInput {
+	title: String!
+	content: JSON!
+	authorID: ID!
+	communityID: ID!
+	heroImageID: ID
+	status: PostStatus = DRAFT
+	publishedAt: Time
+}
+
+input CreateCommunityInput {
+	title: String!
+	slug: String!
+	description: String
+	ownerID: ID!
 }
