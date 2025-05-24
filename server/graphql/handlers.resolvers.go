@@ -22,9 +22,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vektah/gqlparser/v2/gqlerror"
-
 	"github.com/gosimple/slug"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // Мутация Host для настроек платформы.
@@ -99,15 +98,22 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput
 	if err := json.Unmarshal([]byte(input.Content), &contentData); err != nil {
 		return nil, fmt.Errorf("invalid JSON in content: %w", err)
 	}
+
 	communityID, err := strconv.Atoi(input.CommunityID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid communityID: %w", err)
+	}
+
+	authorID, err := strconv.Atoi(input.AuthorID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid authorID: %w", err)
 	}
 	builder := r.Client.Post.
 		Create().
 		SetTitle(input.Title).
 		SetSlug(finalSlug).
 		SetContent(contentData).
+		SetAuthorID(authorID).
 		SetCommunityID(communityID)
 
 	if input.HeroImageID != nil {
@@ -134,30 +140,30 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput
 // CreateCommunity создает новое сообщество.
 func (r *mutationResolver) CreateCommunity(ctx context.Context, input CreateCommunityInput) (*ent.Community, error) {
 	exists, err := r.Client.Community.
-	Query().
-	Where(community.SlugEQ(input.Slug)).
-	Exist(ctx)
-if err != nil {
-	return nil, fmt.Errorf("failed to check existing slug: %w", err)
-}
-if exists {
-	return nil, gqlerror.Errorf("Community with slug %q already exists", input.Slug)
-}
+		Query().
+		Where(community.SlugEQ(input.Slug)).
+		Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing slug: %w", err)
+	}
+	if exists {
+		return nil, gqlerror.Errorf("Community with slug %q already exists", input.Slug)
+	}
 
-newComm, err := r.Client.Community.
-	Create().
-	SetTitle(input.Title).
-	SetSlug(input.Slug).
-	SetNillableDescription(input.Description).
-	SetOwnerID(func() int {
+	newComm, err := r.Client.Community.
+		Create().
+		SetTitle(input.Title).
+		SetSlug(input.Slug).
+		SetNillableDescription(input.Description).
+		SetOwnerID(func() int {
 			id, _ := strconv.Atoi(input.OwnerID)
 			return id
-	}()).
-	Save(ctx)
-if err != nil {
-	return nil, fmt.Errorf("failed to create community: %w", err)
-}
-return newComm, nil
+		}()).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create community: %w", err)
+	}
+	return newComm, nil
 }
 
 // ViewerPermissions отдает каждому юзеру права в зависимости от того, какие у него есть роли в сообществах.
@@ -384,15 +390,3 @@ func (r *queryResolver) Host(ctx context.Context) (*ent.Host, error) {
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 type mutationResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-*/

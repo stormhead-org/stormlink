@@ -1,3 +1,5 @@
+scalar JSON
+
 type CommunityPermissions {
 	communityRolesManagement: Boolean!
 	communityUserBan: Boolean!
