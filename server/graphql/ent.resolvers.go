@@ -10,11 +10,6 @@ import (
 	"stormlink/server/ent"
 )
 
-// TableInfo is the resolver for the tableInfo field.
-func (r *communityResolver) TableInfo(ctx context.Context, obj *ent.Community) (*string, error) {
-	panic(fmt.Errorf("not implemented: TableInfo - tableInfo"))
-}
-
 // Moderators is the resolver for the moderators field.
 func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerator, error) {
 	panic(fmt.Errorf("not implemented: Moderators - moderators"))
@@ -40,21 +35,6 @@ func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, e
 	panic(fmt.Errorf("not implemented: Rules - rules"))
 }
 
-// Content is the resolver for the content field.
-func (r *postResolver) Content(ctx context.Context, obj *ent.Post) (string, error) {
-	panic(fmt.Errorf("not implemented: Content - content"))
-}
-
-// Meta is the resolver for the meta field.
-func (r *postResolver) Meta(ctx context.Context, obj *ent.Post) (*string, error) {
-	panic(fmt.Errorf("not implemented: Meta - meta"))
-}
-
-// Views is the resolver for the views field.
-func (r *postResolver) Views(ctx context.Context, obj *ent.Post) (int32, error) {
-	panic(fmt.Errorf("not implemented: Views - views"))
-}
-
 // Comments is the resolver for the comments field.
 func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*Comment, error) {
 	panic(fmt.Errorf("not implemented: Comments - comments"))
@@ -78,11 +58,6 @@ func (r *queryResolver) Node(ctx context.Context, id string) (ent.Noder, error) 
 // Nodes is the resolver for the nodes field.
 func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, error) {
 	panic(fmt.Errorf("not implemented: Nodes - nodes"))
-}
-
-// TableInfo is the resolver for the tableInfo field.
-func (r *userResolver) TableInfo(ctx context.Context, obj *ent.User) (*string, error) {
-	panic(fmt.Errorf("not implemented: TableInfo - tableInfo"))
 }
 
 // Comments is the resolver for the comments field.

@@ -21,6 +21,7 @@ func (Host) Fields() []ent.Field {
 		field.Int("logo_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
 		field.Int("auth_banner_id").Optional().Nillable(),
+		field.Int("owner_id").Optional().Nillable(),
 
 		field.Bool("first_settings").Default(true),
 
@@ -44,6 +45,7 @@ func (Host) Edges() []ent.Edge {
 			Unique(),
 
 		edge.To("owner", User.Type).
+			Field("owner_id").
 			Unique(),
 
 		edge.To("rules", HostRule.Type),

@@ -175,7 +175,6 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 		return
 	}
 
-	// теперь сохраняем в Ent
 	m, err := client.Media.
 		Create().
 		SetFilename(grpcResp.GetFilename()).
@@ -190,8 +189,6 @@ func MediaUploadHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.C
 	grpcResp.Id = int64(m.ID)
 
 	w.Header().Set("Content-Type", "application/json")
-	// json.Marshal по умолчанию поработает с protobuf-структурой и выведет поля
-	// в snake_case:{"url":"…","filename":"…","id":123}
 	if err := json.NewEncoder(w).Encode(grpcResp); err != nil {
     log.Printf("❌ [MediaUpload] Failed to encode response: %v", err)
     http.Error(w, `{"error": "failed to encode response"}`, http.StatusInternalServerError)
@@ -206,7 +203,6 @@ func StorageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad storage path", http.StatusBadRequest)
 		return
 	}
-	// используем глобальную переменную
 	contentType, data, err := S3Client.GetFile(r.Context(), key)
 	if err != nil {
 		log.Printf("❌ StorageHandler GetFile(%q): %v", key, err)

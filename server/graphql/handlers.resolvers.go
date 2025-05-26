@@ -6,7 +6,6 @@ package graphql
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"stormlink/server/ent"
@@ -14,11 +13,11 @@ import (
 	"stormlink/server/ent/communityuserban"
 	"stormlink/server/ent/communityusermute"
 	"stormlink/server/ent/post"
+	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/ent/role"
 	"stormlink/server/model"
 	"stormlink/server/model/converter"
 	"stormlink/server/pkg/auth"
-	"stormlink/server/pkg/permissionloader"
 	"strconv"
 	"time"
 
@@ -63,11 +62,7 @@ func (r *mutationResolver) Post(ctx context.Context, input UpdatePostInput) (*en
 		upd = upd.SetSlug(*input.Slug)
 	}
 	if input.Content != nil {
-		var content map[string]interface{}
-		if err := json.Unmarshal([]byte(*input.Content), &content); err != nil {
-			return nil, fmt.Errorf("invalid JSON for content: %w", err)
-		}
-		upd = upd.SetContent(content)
+		upd = upd.SetContent(input.Content)
 	}
 	if input.HeroImageID != nil {
 		heroID, err := strconv.Atoi(*input.HeroImageID)
@@ -94,11 +89,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput
 	suffix := rand.Intn(90_000_000) + 10_000_000
 	finalSlug := fmt.Sprintf("%s-%d", baseSlug, suffix)
 
-	var contentData map[string]interface{}
-	if err := json.Unmarshal([]byte(input.Content), &contentData); err != nil {
-		return nil, fmt.Errorf("invalid JSON in content: %w", err)
-	}
-
 	communityID, err := strconv.Atoi(input.CommunityID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid communityID: %w", err)
@@ -112,7 +102,7 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput
 		Create().
 		SetTitle(input.Title).
 		SetSlug(finalSlug).
-		SetContent(contentData).
+		SetContent(input.Content).
 		SetAuthorID(authorID).
 		SetCommunityID(communityID)
 
@@ -168,12 +158,45 @@ func (r *mutationResolver) CreateCommunity(ctx context.Context, input CreateComm
 
 // ViewerPermissions отдает каждому юзеру права в зависимости от того, какие у него есть роли в сообществах.
 func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
-	loader, ok := ctx.Value(permissionloader.ContextKey).(*permissionloader.PermLoader)
-	if !ok {
-		return converter.ConvertPermissionsToCommunityPermissions(&model.CommunityPermissions{}), nil
+	// 1) Пытаемся достать userID из контекста
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		// аноним — никаких прав
+		return &model.CommunityPermissions{}, nil
 	}
-	perm := loader.ForCommunity(obj.Edges.Community.ID)
-	return converter.ConvertPermissionsToCommunityPermissions(perm), nil
+
+	cid := obj.CommunityID
+
+	// 2) Спрашиваем именно по одному сообществу
+	permsMap, err := r.UC.GetPermissionsByCommunities(ctx, userID, []int{cid})
+	if err != nil {
+		return nil, fmt.Errorf("failed loading perms: %w", err)
+	}
+	base := permsMap[cid]
+	if base == nil {
+		base = &model.CommunityPermissions{}
+	}
+	cm := converter.ConvertPermissionsToCommunityPermissions(base)
+
+	// 3) Если юзер — владелец сообщества, даём ему полный набор community-прав
+	communityEntity, err := r.Client.Community.Get(ctx, cid)
+	if err == nil && communityEntity.OwnerID == userID {
+		cm.CommunityOwner = true
+		cm.CommunityRolesManagement = true
+		cm.CommunityUserBan = true
+		cm.CommunityUserMute = true
+		cm.CommunityDeletePost = true
+		cm.CommunityDeleteComments = true
+		cm.CommunityRemovePostFromPublication = true
+	}
+
+	// 4) Если юзер — владелец платформы
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err == nil && hostEntity.OwnerID != nil && *hostEntity.OwnerID == userID {
+		cm.HostOwner = true
+	}
+
+	return cm, nil
 }
 
 // Media возвращает медиа по ID.
@@ -266,46 +289,64 @@ func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
 		All(ctx)
 }
 
+// ProfileTableInfoItem возвращает один итем профиля по ID итема.
+func (r *queryResolver) ProfileTableInfoItem(ctx context.Context, id string) (*ent.ProfileTableInfoItem, error) {
+	itemId, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.ProfileTableInfoItem.Get(ctx, itemId)
+}
+
+// ProfileTableInfoItems отдает все итемы, которые есть у профиля.
+func (r *queryResolver) ProfileTableInfoItems(ctx context.Context, id string, typeArg profiletableinfoitem.Type) ([]*ent.ProfileTableInfoItem, error) {
+	profileID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	q := r.Client.ProfileTableInfoItem.Query()
+	switch typeArg {
+	case profiletableinfoitem.TypeCommunity:
+		q = q.Where(profiletableinfoitem.CommunityIDEQ(profileID))
+	case profiletableinfoitem.TypeUser:
+		q = q.Where(profiletableinfoitem.UserIDEQ(profileID))
+	default:
+		return nil, fmt.Errorf("unsupported ProfileTableInfoItemType %q", typeArg)
+	}
+
+	return q.Order(ent.Asc("id")).All(ctx)
+}
+
 // Post отдает один пост по ID.
 func (r *queryResolver) Post(ctx context.Context, id string) (*ent.Post, error) {
 	postId, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	return r.Client.Post.Get(ctx, postId)
+	return r.Client.Post.
+		Query().
+		Where(post.IDEQ(postId)).
+		WithCommunity().
+		WithAuthor().
+		Only(ctx)
 }
 
 // Posts возвращает посты в зависимости от их статуса.
 func (r *queryResolver) Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error) {
+	st := post.StatusPublished
+	if status != nil {
+		st = *status
+	}
+
 	posts, err := r.Client.Post.
 		Query().
-		Where(post.StatusEQ(post.Status(string(*status)))).
+		Where(post.StatusEQ(st)).
 		WithCommunity().
 		WithAuthor().
 		All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	// Получаем текущего пользователя из контекста
-	userID, _ := auth.UserIDFromContext(ctx)
-
-	// Собираем уникальные communityIDs
-	set := map[int]struct{}{}
-	for _, p := range posts {
-		set[p.Edges.Community.ID] = struct{}{}
-	}
-	communityIDs := make([]int, 0, len(set))
-	for cid := range set {
-		communityIDs = append(communityIDs, cid)
-	}
-	// Загружаем все права
-	loader := permissionloader.NewPermLoader(r.UC)
-	if err := loader.LoadAll(ctx, userID, communityIDs); err != nil {
-		return nil, err
-	}
-	// Кладём loader в контекст, чтобы его видел postResolver
-	ctx = context.WithValue(ctx, permissionloader.ContextKey, loader)
-
 	return posts, nil
 }
 

@@ -158,6 +158,9 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
   Community:
     model: stormlink/server/ent.Community
   CommunityPermissions:
@@ -195,3 +198,6 @@ models:
   HostUserBan:
     model:
       - stormlink/server/ent.HostUserBan
+  ProfileTableInfoItem:
+    model:
+      - stormlink/server/ent.ProfileTableInfoItem

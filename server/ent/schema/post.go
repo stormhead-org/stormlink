@@ -30,9 +30,11 @@ func (Post) Fields() []ent.Field {
 		}{}).
 			Optional().
 			StructTag(`json:"meta,omitempty"`).
-			Annotations(entgql.Type("JSON")),
+			Annotations(entgql.Type("JSON")).
+			Annotations(entgql.Skip()),
 
-		field.Int("views").Default(0),
+		field.Int("views").Default(0).
+    Annotations(entgql.Skip()),
 		field.Enum("status").
 			Values("published", "draft", "deleted").
 			Default("draft"),

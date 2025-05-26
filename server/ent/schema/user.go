@@ -3,8 +3,6 @@ package schema
 import (
 	"time"
 
-	"entgo.io/contrib/entgql"
-
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -24,15 +22,6 @@ func (User) Fields() []ent.Field {
 		field.Int("avatar_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
 		field.String("description").Optional().Nillable(),
-
-		field.JSON("table_info", []struct {
-			Label string  `json:"label"`
-			Value string  `json:"value"`
-			ID    *string `json:"id,omitempty"`
-		}{}).
-			Optional().
-			StructTag(`json:"table_info,omitempty"`).
-			Annotations(entgql.Type("JSON")),
 
 		field.String("email").Unique().NotEmpty(),
 		field.String("password_hash").NotEmpty(),
@@ -54,6 +43,9 @@ func (User) Edges() []ent.Edge {
 		edge.To("banner", Media.Type).
 			Field("banner_id").
 			Unique(),
+
+		edge.From("user_info", ProfileTableInfoItem.Type).
+      Ref("user"),
 
 		// Роли хоста (HostRole)
 		edge.To("host_roles", HostRole.Type),

@@ -18,9 +18,11 @@
 		"hostrole",
 		"hostsidebarnavigation",
 		"IDEQ",
+		"mediapb",
 		"Nillable",
 		"permissioncache",
 		"permissionloader",
+		"profiletableinfoitem",
 		"stormlink",
 		"usecase",
 		"userpb"

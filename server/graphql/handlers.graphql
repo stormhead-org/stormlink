@@ -29,6 +29,12 @@ extend type Query {
 	user(id: ID!): User
 	users: [User!]!
 
+	profileTableInfoItem(id: ID!): ProfileTableInfoItem
+	profileTableInfoItems(
+		id: ID!
+		type: ProfileTableInfoItemType!
+	): [ProfileTableInfoItem!]!
+
 	post(id: ID!): Post
 	posts(status: PostStatus = PUBLISHED): [Post!]!
 
