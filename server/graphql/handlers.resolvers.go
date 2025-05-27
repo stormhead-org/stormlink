@@ -160,6 +160,7 @@ func (r *mutationResolver) CreateCommunity(ctx context.Context, input CreateComm
 func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
 	// 1) Пытаемся достать userID из контекста
 	userID, err := auth.UserIDFromContext(ctx)
+	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
 	if err != nil {
 		// аноним — никаких прав
 		return &model.CommunityPermissions{}, nil

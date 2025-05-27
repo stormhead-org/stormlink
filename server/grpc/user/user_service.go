@@ -88,6 +88,15 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 	firstSettings := hostFirstSettingsRecord.FirstSettings
 
 	if firstSettings {
+		err = s.client.Host.
+      UpdateOne(hostFirstSettingsRecord).
+      SetOwnerID(newUser.ID).
+      SetFirstSettings(false).
+      Exec(ctx)
+      if err != nil {
+        return nil, status.Errorf(codes.Internal, "failed to update host owner and first_settings: %v", err)
+    }
+
 		ownerRole, err := s.client.HostRole.
 			Query().
 			Where(hostrole.TitleEQ("owner")).

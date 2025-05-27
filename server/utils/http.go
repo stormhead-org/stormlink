@@ -3,7 +3,7 @@ package utils
 import (
 	"context"
 	"net/http"
-	"time"
+	"os"
 )
 
 type contextKey string
@@ -34,25 +34,32 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    accessToken,
-		HttpOnly: false,
-		Secure:   false, // Для localhost
-		Path:     "/",
-		Domain:   "localhost", // Доступно для всех портов localhost
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(15 * time.Minute),
+	secure := false
+	domain := "localhost"
+	if os.Getenv("ENV") == "production" {
+			secure = true
+			domain = os.Getenv("APP_DOMAIN")
+	}
+
+    http.SetCookie(w, &http.Cookie{
+			Name:     "auth_token",
+			Value:    accessToken,
+			HttpOnly: true,
+			Secure:   secure,
+			Path:     "/",
+			Domain:   domain,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   15 * 60,
 	})
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		HttpOnly: true,
-		Secure:   false,
-		Path:     "/",
-		Domain:   "localhost",
-		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(7 * 24 * time.Hour),
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			HttpOnly: true,
+			Secure:   secure,
+			Path:     "/",
+			Domain:   domain,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   7 * 24 * 3600,
 	})
 }
