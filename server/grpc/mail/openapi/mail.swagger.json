@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "user.proto",
+    "title": "mail.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "UserService"
+      "name": "MailService"
     }
   ],
   "consumes": [
@@ -16,14 +16,14 @@
     "application/json"
   ],
   "paths": {
-    "/v1/user/register": {
+    "/v1/mail/resend-user-verify-email": {
       "post": {
-        "operationId": "UserService_RegisterUser",
+        "operationId": "MailService_ResendVerifyEmail",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/RegisterUserResponse"
+              "$ref": "#/definitions/authResendVerifyEmailResponse"
             }
           },
           "default": {
@@ -39,37 +39,66 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/RegisterUserRequest"
+              "$ref": "#/definitions/authResendVerifyEmailRequest"
             }
           }
         ],
         "tags": [
-          "UserService"
+          "MailService"
+        ]
+      }
+    },
+    "/v1/mail/user-verify-email": {
+      "get": {
+        "operationId": "MailService_VerifyEmail",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authVerifyEmailResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MailService"
         ]
       }
     }
   },
   "definitions": {
-    "RegisterUserRequest": {
+    "authResendVerifyEmailRequest": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
         "email": {
-          "type": "string"
-        },
-        "password": {
           "type": "string"
         }
       }
     },
-    "RegisterUserResponse": {
+    "authResendVerifyEmailResponse": {
       "type": "object",
       "properties": {
-        "userId": {
+        "message": {
           "type": "string"
-        },
+        }
+      }
+    },
+    "authVerifyEmailResponse": {
+      "type": "object",
+      "properties": {
         "message": {
           "type": "string"
         }

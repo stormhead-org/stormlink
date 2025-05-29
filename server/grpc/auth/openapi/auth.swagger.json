@@ -16,38 +16,7 @@
     "application/json"
   ],
   "paths": {
-    "/v1/auth/verify-email": {
-      "get": {
-        "summary": "Подтверждение почты при переходе по ссылке в письме",
-        "operationId": "AuthService_VerifyEmail",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/authVerifyEmailResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "token",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AuthService"
-        ]
-      }
-    },
-    "/v1/users/login": {
+    "/v1/auth/login": {
       "post": {
         "operationId": "AuthService_Login",
         "responses": {
@@ -79,7 +48,7 @@
         ]
       }
     },
-    "/v1/users/logout": {
+    "/v1/auth/logout": {
       "post": {
         "operationId": "AuthService_Logout",
         "responses": {
@@ -112,9 +81,30 @@
         ]
       }
     },
-    "/v1/users/refresh-token": {
+    "/v1/auth/me": {
+      "get": {
+        "operationId": "AuthService_GetMe",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authGetMeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "AuthService"
+        ]
+      }
+    },
+    "/v1/auth/user-refresh-token": {
       "post": {
-        "summary": "Обновление токена сессии",
         "operationId": "AuthService_RefreshToken",
         "responses": {
           "200": {
@@ -145,15 +135,14 @@
         ]
       }
     },
-    "/v1/users/resend-verification-email": {
+    "/v1/auth/validate-token": {
       "post": {
-        "summary": "Метод для повторной отправки верификационного письма",
-        "operationId": "AuthService_ResendVerificationEmail",
+        "operationId": "AuthService_ValidateToken",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authResendVerificationResponse"
+              "$ref": "#/definitions/authValidateTokenResponse"
             }
           },
           "default": {
@@ -169,7 +158,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/authResendVerificationRequest"
+              "$ref": "#/definitions/authValidateTokenRequest"
             }
           }
         ],
@@ -180,6 +169,89 @@
     }
   },
   "definitions": {
+    "authAvatar": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "authCommunityRole": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "communityRolesManagement": {
+          "type": "boolean"
+        },
+        "communityUserBan": {
+          "type": "boolean"
+        },
+        "communityUserMute": {
+          "type": "boolean"
+        },
+        "communityDeletePost": {
+          "type": "boolean"
+        },
+        "communityDeleteComments": {
+          "type": "boolean"
+        },
+        "communityRemovePostFromPublication": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authGetMeResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/authUser"
+        }
+      }
+    },
+    "authHostRole": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "communityRolesManagement": {
+          "type": "boolean"
+        },
+        "hostUserBan": {
+          "type": "boolean"
+        },
+        "hostUserMute": {
+          "type": "boolean"
+        },
+        "hostCommunityDeletePost": {
+          "type": "boolean"
+        },
+        "hostCommunityDeleteComments": {
+          "type": "boolean"
+        },
+        "hostCommunityRemovePostFromPublication": {
+          "type": "boolean"
+        }
+      }
+    },
     "authLoginRequest": {
       "type": "object",
       "properties": {
@@ -199,6 +271,10 @@
         },
         "refreshToken": {
           "type": "string"
+        },
+        "userId": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },
@@ -216,32 +292,92 @@
         "refreshToken": {
           "type": "string"
         }
-      },
-      "title": "Запрос на RefreshToken"
+      }
     },
-    "authResendVerificationRequest": {
+    "authUser": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "avatar": {
+          "$ref": "#/definitions/authAvatar"
+        },
         "email": {
           "type": "string"
-        }
-      },
-      "title": "Запрос для повторной отправки верификационного письма"
-    },
-    "authResendVerificationResponse": {
-      "type": "object",
-      "properties": {
-        "message": {
+        },
+        "description": {
+          "type": "string"
+        },
+        "userInfo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authUserInfo"
+          }
+        },
+        "hostRoles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authHostRole"
+          }
+        },
+        "communitiesRoles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authCommunityRole"
+          }
+        },
+        "isVerified": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
           "type": "string"
         }
-      },
-      "title": "Ответ на запрос повторной отправки верификационного письма"
+      }
     },
-    "authVerifyEmailResponse": {
+    "authUserInfo": {
       "type": "object",
       "properties": {
-        "message": {
+        "id": {
           "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "authValidateTokenRequest": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "authValidateTokenResponse": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "valid": {
+          "type": "boolean"
         }
       }
     },

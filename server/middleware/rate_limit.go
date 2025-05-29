@@ -2,35 +2,16 @@ package middleware
 
 import (
 	"context"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"log"
+	"strings"
+	"sync"
+
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"log"
-	"strings"
-	"sync"
-)
-
-// Метрики Prometheus
-var (
-	rateLimitHits = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "grpc_rate_limit_hits_total",
-			Help: "Total number of rate limit hits",
-		},
-		[]string{"client_id", "method"},
-	)
-	rateLimitPasses = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "grpc_rate_limit_passes_total",
-			Help: "Total number of rate limit passes",
-		},
-		[]string{"client_id", "method"},
-	)
 )
 
 // RateLimiter хранит лимитеры для каждого клиента
@@ -70,8 +51,8 @@ func (rl *RateLimiter) getLimiter(clientID string) (*rate.Limiter, *sync.Mutex) 
 	return limiter, clientMu
 }
 
-// RateLimitInterceptor создает gRPC middleware для ограничения запросов
-func RateLimitInterceptor(rl *RateLimiter) grpc.UnaryServerInterceptor {
+// RateLimitMiddleware создает gRPC middleware для ограничения запросов
+func RateLimitMiddleware(rl *RateLimiter) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -100,19 +81,16 @@ func RateLimitInterceptor(rl *RateLimiter) grpc.UnaryServerInterceptor {
 
 		reservation := limiter.Reserve()
 		if !reservation.OK() {
-			rateLimitHits.WithLabelValues(clientID, info.FullMethod).Inc()
 			log.Printf("🚫 Rate limit exceeded for client %s on method %s (no tokens available)", clientID, info.FullMethod)
 			return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
 		}
 
 		delay := reservation.Delay()
 		if delay > 0 {
-			rateLimitHits.WithLabelValues(clientID, info.FullMethod).Inc()
 			log.Printf("🚫 Rate limit exceeded for client %s on method %s (delay required: %v)", clientID, info.FullMethod, delay)
 			return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
 		}
 
-		rateLimitPasses.WithLabelValues(clientID, info.FullMethod).Inc()
 		log.Printf("✅ Rate limit check passed for client %s on method %s", clientID, info.FullMethod)
 		return handler(ctx, req)
 	}

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "stormlink/server/grpc/mail/protobuf;protobuf";
+
+import "google/api/annotations.proto";
+import "validate/validate.proto";
+import "google/protobuf/empty.proto";
+
+service MailService {
+
+  rpc VerifyEmail (VerifyEmailRequest) returns (VerifyEmailResponse) {
+    option (google.api.http) = {
+      get: "/v1/mail/user-verify-email"
+    };
+  }
+
+  rpc ResendVerifyEmail (ResendVerifyEmailRequest) returns (ResendVerifyEmailResponse) {
+    option (google.api.http) = {
+      post: "/v1/mail/resend-user-verify-email"
+      body: "*"
+    };
+  };
+}
+
+message VerifyEmailRequest {
+  string token = 1 [(validate.rules).string.min_len = 1];
+}
+
+message VerifyEmailResponse {
+  string message = 1;
+}
+
+message ResendVerifyEmailRequest {
+  string email = 1 [(validate.rules).string.email = true];
+}
+
+message ResendVerifyEmailResponse {
+  string message = 1;
+}

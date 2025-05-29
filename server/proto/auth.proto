@@ -8,40 +8,87 @@ import "google/api/annotations.proto";
 import "validate/validate.proto";
 import "google/protobuf/empty.proto";
 
+message Avatar {
+  string id = 1;
+  string url = 2;
+}
+
+message UserInfo {
+  string id = 1;
+  string key = 2;
+  string value = 3;
+}
+
+message HostRole {
+  string id = 1;
+  string title = 2;
+  string color = 3;
+  bool community_roles_management = 4;
+  bool host_user_ban = 5;
+  bool host_user_mute = 6;
+  bool host_community_delete_post = 7;
+  bool host_community_delete_comments = 8;
+  bool host_community_remove_post_from_publication = 9;
+}
+
+message CommunityRole {
+  string id = 1;
+  string title = 2;
+  string color = 3;
+  bool community_roles_management = 4;
+  bool community_user_ban = 5;
+  bool community_user_mute = 6;
+  bool community_delete_post = 7;
+  bool community_delete_comments = 8;
+  bool community_remove_post_from_publication = 9;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  Avatar avatar = 4;
+  string email = 5;
+  string description = 6;
+  repeated UserInfo user_info = 7;
+  repeated HostRole host_roles = 8;
+  repeated CommunityRole communities_roles = 9;
+  bool is_verified = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
 service AuthService {
   rpc Login (LoginRequest) returns (LoginResponse) {
     option (google.api.http) = {
-      post: "/v1/users/login"
+      post: "/v1/auth/login"
       body: "*"
     };
   };
 
   rpc Logout (google.protobuf.Empty) returns (LogoutResponse) {
     option (google.api.http) = {
-      post: "/v1/users/logout"
+      post: "/v1/auth/logout"
       body: "*"
     };
   };
 
-  // Метод для повторной отправки верификационного письма
-  rpc ResendVerificationEmail (ResendVerificationRequest) returns (ResendVerificationResponse) {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
     option (google.api.http) = {
-      post: "/v1/users/resend-verification-email"
+      post: "/v1/auth/validate-token"
       body: "*"
-    };
-  };
-
-  // Подтверждение почты при переходе по ссылке в письме
-  rpc VerifyEmail (VerifyEmailRequest) returns (VerifyEmailResponse) {
-    option (google.api.http) = {
-      get: "/v1/auth/verify-email"
     };
   }
 
-  // Обновление токена сессии
+  rpc GetMe(google.protobuf.Empty) returns (GetMeResponse) {
+    option (google.api.http) = {
+      get: "/v1/auth/me"
+    };
+  }
+
   rpc RefreshToken (RefreshTokenRequest) returns (LoginResponse) {
     option (google.api.http) = {
-      post: "/v1/users/refresh-token"
+      post: "/v1/auth/user-refresh-token"
       body: "*"
     };
   }  
@@ -55,31 +102,27 @@ message LoginRequest {
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
+  int32 user_id = 3;
 }
 
 message LogoutResponse {
   string message = 1;
 }
 
-// Запрос на RefreshToken
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  int32 user_id = 1;
+  bool valid = 2;
+}
+
+message GetMeResponse {
+  User user = 1;
+}
+
 message RefreshTokenRequest {
   string refresh_token = 1 [(validate.rules).string.min_len = 1];
-}
-
-// Запрос для повторной отправки верификационного письма
-message ResendVerificationRequest {
-  string email = 1 [(validate.rules).string.email = true];
-}
-
-// Ответ на запрос повторной отправки верификационного письма
-message ResendVerificationResponse {
-  string message = 1;
-}
-
-message VerifyEmailRequest {
-  string token = 1 [(validate.rules).string.min_len = 1];
-}
-
-message VerifyEmailResponse {
-  string message = 1;
 }

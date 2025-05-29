@@ -3,21 +3,10 @@ package media
 import (
 	"context"
 	"stormlink/server/grpc/media/protobuf"
-	"stormlink/server/utils"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type MediaService struct {
-	protobuf.UnimplementedMediaServiceServer
-	s3 *utils.S3Client
-}
-
-// используем фабрику с внешним S3Client
-func NewMediaServiceWithClient(client *utils.S3Client) *MediaService {
-	return &MediaService{s3: client}
-}
 
 func (s *MediaService) UploadMedia(ctx context.Context, req *protobuf.UploadMediaRequest) (*protobuf.UploadMediaResponse, error) {
 	if err := req.Validate(); err != nil {

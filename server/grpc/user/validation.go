@@ -15,6 +15,12 @@ var (
 	ErrInvalidInput = errors.New("invalid input")
 )
 
+// Примитивная проверка на XSS/SQL
+func hasDangerousInput(input string) bool {
+	pattern := regexp.MustCompile(`[<>'"%;()&+]`)
+	return pattern.MatchString(input)
+}
+
 func ValidateRegisterRequest(req *protobuf.RegisterUserRequest) error {
 	// Базовая валидация через теги
 	err := validate.Struct(req)
@@ -28,10 +34,4 @@ func ValidateRegisterRequest(req *protobuf.RegisterUserRequest) error {
 	}
 
 	return nil
-}
-
-// Примитивная проверка на XSS/SQL
-func hasDangerousInput(input string) bool {
-	pattern := regexp.MustCompile(`[<>'"%;()&+]`)
-	return pattern.MatchString(input)
 }

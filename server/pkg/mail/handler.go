@@ -1,45 +1,25 @@
-package utils
+package mail
 
 import (
 	"fmt"
 	"log"
 	"net/smtp"
 	"os"
-	"strconv"
 )
 
-type EmailConfig struct {
-	SMTPHost     string
-	SMTPPort     int
-	SMTPUsername string
-	SMTPPassword string
-	FromEmail    string
-}
-
-func NewEmailConfig() *EmailConfig {
-	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	return &EmailConfig{
-		SMTPHost:     os.Getenv("SMTP_HOST"),
-		SMTPPort:     port,
-		SMTPUsername: os.Getenv("SMTP_USERNAME"),
-		SMTPPassword: os.Getenv("SMTP_PASSWORD"),
-		FromEmail:    os.Getenv("SMTP_USERNAME"),
-	}
-}
-
-func SendVerificationEmail(to, token string) error {
+func SendVerifyEmail(to, token string) error {
 	config := NewEmailConfig()
 	appDomain := os.Getenv("APP_DOMAIN")
 	verificationLink := fmt.Sprintf("%s/verify-email?token=%s", appDomain, token)
 
 	// Формируем тело письма
-	subject := "Subject: Verify Your Email Address\r\n"
+	subject := "Subject: Подтверждение почты\r\n"
 	mime := "MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n"
 	body := fmt.Sprintf(`
-        <h2>Email Verification</h2>
-        <p>Please verify your email by clicking the link below:</p>
-        <a href="%s">Verify Email</a>
-        <p>This link will expire in 24 hours.</p>
+        <h2>Подтверждение почты</h2>
+        <p>Подтвердите свою почту, перейдя по ссылке:</p>
+        <a href="%s">Подтвердить почту</a>
+        <p>Эта ссылка будет доступна следующие 24 часа.</p>
     `, verificationLink)
 	message := []byte(subject + mime + body)
 

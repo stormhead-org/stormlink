@@ -6,45 +6,22 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "validate/validate.proto";
 
-message User {
-  string id = 1;
-  string name = 2;
-  string email = 3;
-  bool is_verified = 4;
-  string created_at = 5;
-  string updated_at = 6;
-}
-
-// Сервис для работы с пользователями
 service UserService {
-  // Метод регистрации
+
   rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse) {
     option (google.api.http) = {
-      post: "/v1/users/register"
+      post: "/v1/user/register"
       body: "*"
     };
   }
-
-  rpc GetMe(google.protobuf.Empty) returns (UserResponse) {
-    option (google.api.http) = {
-      get: "/v1/users/me"
-    };
-  }
 }
 
-// Ответ на GetMe
-message UserResponse {
-  User user = 1;
-}
-
-// Запрос для регистрации
 message RegisterUserRequest {
   string name = 1 [(validate.rules).string.min_len = 1, (validate.rules).string.max_len = 24];
   string email = 2 [(validate.rules).string.email = true];
   string password = 3 [(validate.rules).string.min_len = 8];
 }
 
-// Ответ на регистрацию
 message RegisterUserResponse {
   string user_id = 1;
   string message = 2;

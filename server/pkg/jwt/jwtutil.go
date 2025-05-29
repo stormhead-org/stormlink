@@ -1,12 +1,13 @@
-package utils
+package jwt
 
 import (
 	"errors"
 	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"strconv"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func getJWTSecret() []byte {

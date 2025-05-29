@@ -5,9 +5,10 @@ import (
 	"log"
 	"net/http"
 
+	"stormlink/server/cmd/modules"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"stormlink/server/cmd/modules"
 )
 
 func main() {
@@ -47,15 +48,15 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Регистрация HTTP-хендлеров из modules/handlers.go
-	mux.HandleFunc("/v1/users/login", func(w http.ResponseWriter, r *http.Request) {
-		modules.LoginHandler(w, r, grpcConn)
-	})
-	mux.HandleFunc("/v1/users/logout", func(w http.ResponseWriter, r *http.Request) {
-		modules.LogoutHandler(w, r, grpcConn)
-	})
-	mux.HandleFunc("/v1/users/refresh-token", func(w http.ResponseWriter, r *http.Request) {
-		modules.RefreshTokenHandler(w, r, grpcConn)
-	})
+	// mux.HandleFunc("/v1/users/login", func(w http.ResponseWriter, r *http.Request) {
+	// 	modules.LoginHandler(w, r, grpcConn)
+	// })
+	// mux.HandleFunc("/v1/users/logout", func(w http.ResponseWriter, r *http.Request) {
+	// 	modules.LogoutHandler(w, r, grpcConn)
+	// })
+	// mux.HandleFunc("/v1/users/refresh-token", func(w http.ResponseWriter, r *http.Request) {
+	// 	modules.RefreshTokenHandler(w, r, grpcConn)
+	// })
 	mux.HandleFunc("/v1/media/upload", func(w http.ResponseWriter, r *http.Request) {
 		modules.MediaUploadHandler(w, r, grpcConn, client)
 	})

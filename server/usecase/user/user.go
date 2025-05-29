@@ -1,8 +1,9 @@
-package usecase
+package user
 
 import (
 	"context"
 	"stormlink/server/ent"
+	"stormlink/server/ent/user"
 	"stormlink/server/model"
 )
 
@@ -20,5 +21,12 @@ func NewUserUsecase(client *ent.Client) UserUsecase {
 }
 
 func (uc *userUsecase) GetUserByID(ctx context.Context, id int) (*ent.User, error) {
-	return uc.client.User.Get(ctx, id)
+	return uc.client.User.
+			Query().
+			Where(user.IDEQ(id)).
+			WithAvatar().
+			WithUserInfo().
+			WithHostRoles().
+			WithCommunitiesRoles().
+			Only(ctx)
 }

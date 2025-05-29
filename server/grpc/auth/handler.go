@@ -2,17 +2,22 @@ package auth
 
 import (
 	"context"
-	"stormlink/server/ent/emailverification"
 	"stormlink/server/ent/user"
-	"stormlink/server/utils"
+	"stormlink/server/pkg/http"
+	"stormlink/server/pkg/jwt"
 	"strconv"
-	"time"
+
+	"stormlink/server/pkg/auth"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"google.golang.org/protobuf/types/known/emptypb"
 	"stormlink/server/grpc/auth/protobuf"
+
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	"stormlink/server/ent"
+	"stormlink/server/pkg/mapper"
 )
 
 func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*protobuf.LoginResponse, error) {
@@ -34,7 +39,7 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 	}
 
 	// Проверяем пароль
-	err = utils.ComparePassword(user.PasswordHash, password, user.Salt)
+	err = jwt.ComparePassword(user.PasswordHash, password, user.Salt)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
@@ -45,11 +50,11 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 	}
 
 	// Генерируем токены
-	accessToken, err := utils.GenerateAccessToken(user.ID)
+	accessToken, err := jwt.GenerateAccessToken(user.ID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
 	}
-	refreshToken, err := utils.GenerateRefreshToken(user.ID)
+	refreshToken, err := jwt.GenerateRefreshToken(user.ID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error generating refresh token: %v", err)
 	}
@@ -57,6 +62,7 @@ func (s *AuthService) Login(ctx context.Context, req *protobuf.LoginRequest) (*p
 	return &protobuf.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		UserId:       int32(user.ID),
 	}, nil
 }
 
@@ -66,103 +72,33 @@ func (s *AuthService) Logout(ctx context.Context, _ *emptypb.Empty) (*protobuf.L
 	}, nil
 }
 
-func (s *AuthService) ResendVerificationEmail(ctx context.Context, req *protobuf.ResendVerificationRequest) (*protobuf.ResendVerificationResponse, error) {
-	// ✅ Проверяем входные данные
-	if err := req.Validate(); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
-	}
-
-	email := req.GetEmail()
-
-	// 🔍 Ищем пользователя по email
-	u, err := s.client.User.
-		Query().
-		Where(user.EmailEQ(email)).
-		Only(ctx)
+func (s *AuthService) ValidateToken(ctx context.Context, req *protobuf.ValidateTokenRequest) (*protobuf.ValidateTokenResponse, error) {
+	claims, err := jwt.ParseAccessToken(req.Token)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "user not found")
+			return &protobuf.ValidateTokenResponse{Valid: false}, nil
 	}
-
-	// ⛔ Проверяем, что пользователь ещё не верифицирован
-	if u.IsVerified {
-		return nil, status.Errorf(codes.FailedPrecondition, "user already verified")
-	}
-
-	// Удаляем предыдущие токены
-	_, err = s.client.EmailVerification.
-		Delete().
-		Where(emailverification.HasUserWith(user.EmailEQ(email))).
-		Exec(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to clear old verification tokens: %v", err)
-	}
-
-	// 🔐 Генерируем новый токен
-	token, err := utils.GenerateToken(16)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to generate verification token: %v", err)
-	}
-
-	// 🕓 Сохраняем новый токен
-	expiresAt := time.Now().Add(24 * time.Hour)
-	_, err = s.client.EmailVerification.
-		Create().
-		SetToken(token).
-		SetExpiresAt(expiresAt).
-		SetUser(u).
-		Save(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to save verification token: %v", err)
-	}
-
-	// 📧 Отправляем письмо
-	err = utils.SendVerificationEmail(u.Email, token)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to send email: %v", err)
-	}
-
-	return &protobuf.ResendVerificationResponse{
-		Message: "Verification email sent successfully.",
+	return &protobuf.ValidateTokenResponse{
+			UserId: int32(claims.UserID),
+			Valid:  true,
 	}, nil
 }
 
-func (s *AuthService) VerifyEmail(ctx context.Context, req *protobuf.VerifyEmailRequest) (*protobuf.VerifyEmailResponse, error) {
-	token := req.GetToken()
-	if token == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "token is required")
-	}
-
-	// 🔍 Ищем запись по токену
-	ev, err := s.client.EmailVerification.
-		Query().
-		Where(emailverification.TokenEQ(token)).
-		WithUser().
-		Only(ctx)
+func (s *AuthService) GetMe(ctx context.Context, _ *emptypb.Empty) (*protobuf.GetMeResponse, error) {
+	userID, err := auth.UserIDFromContext(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "invalid or expired token")
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
 	}
 
-	// ⏰ Проверяем срок действия токена
-	if time.Now().After(ev.ExpiresAt) {
-		// Удаляем истёкший токен
-		_ = s.client.EmailVerification.DeleteOne(ev).Exec(ctx)
-		return nil, status.Errorf(codes.DeadlineExceeded, "verification token has expired")
-	}
-
-	// ✅ Обновляем пользователя
-	_, err = s.client.User.
-		UpdateOne(ev.Edges.User).
-		SetIsVerified(true).
-		Save(ctx)
+	user, err := s.uc.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to verify user: %v", err)
+		if ent.IsNotFound(err) {
+			return nil, status.Errorf(codes.NotFound, "user not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
 
-	// 🧹 Удаляем использованный токен
-	_ = s.client.EmailVerification.DeleteOne(ev).Exec(ctx)
-
-	return &protobuf.VerifyEmailResponse{
-		Message: "Email verified successfully.",
+	return &protobuf.GetMeResponse{
+		User: mapper.UserToProto(user),
 	}, nil
 }
 
@@ -176,7 +112,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, req *protobuf.RefreshTok
 
 	// Попробуем получить refreshToken из куки, если он не передан в запросе
 	if refreshToken == "" {
-		httpReq := utils.GetHTTPRequest(ctx)
+		httpReq := http.GetHTTPRequest(ctx)
 		if httpReq != nil {
 			cookie, err := httpReq.Cookie("refresh_token")
 			if err == nil && cookie != nil {
@@ -190,7 +126,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, req *protobuf.RefreshTok
 	}
 
 	// Извлекаем claims
-	claims, err := utils.ParseToken(refreshToken)
+	claims, err := jwt.ParseToken(refreshToken)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid refresh token: %v", err)
 	}
@@ -215,11 +151,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, req *protobuf.RefreshTok
 	}
 
 	// Генерируем новые токены
-	newAccessToken, err := utils.GenerateAccessToken(userID)
+	newAccessToken, err := jwt.GenerateAccessToken(userID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to generate access token")
 	}
-	newRefreshToken, err := utils.GenerateRefreshToken(userID)
+	newRefreshToken, err := jwt.GenerateRefreshToken(userID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to generate refresh token")
 	}

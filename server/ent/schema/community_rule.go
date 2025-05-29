@@ -17,8 +17,8 @@ func (CommunityRule) Fields() []ent.Field {
 		field.Int("id").Unique(),
 
 		field.Int("rule_id").Optional().Nillable(),
-		field.String("community_name_rule").Optional().Nillable(),
-		field.String("community_description_rule").Optional().Nillable(),
+		field.String("community_name_rule").Optional(),
+		field.String("community_description_rule").Optional(),
 
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

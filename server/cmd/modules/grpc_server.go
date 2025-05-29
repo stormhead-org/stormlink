@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 
-	"google.golang.org/grpc"
 	"stormlink/server/ent"
 	"stormlink/server/grpc/auth"
 	authpb "stormlink/server/grpc/auth/protobuf"
@@ -14,8 +13,10 @@ import (
 	"stormlink/server/grpc/user"
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/middleware"
-	"stormlink/server/usecase"
-	"stormlink/server/utils"
+	"stormlink/server/pkg/s3"
+	usecase "stormlink/server/usecase/user"
+
+	"google.golang.org/grpc"
 
 	"golang.org/x/time/rate"
 )
@@ -46,8 +47,8 @@ func chainInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnarySe
 func SetupGRPCServer(client *ent.Client) *grpc.Server {
 	rl := middleware.NewRateLimiter(rate.Limit(1), 3)
 	chain := []grpc.UnaryServerInterceptor{
-		middleware.RateLimitInterceptor(rl),
-		middleware.GRPCAuthInterceptor,
+		middleware.RateLimitMiddleware(rl),
+		middleware.GRPCAuthMiddleware,
 	}
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(chainInterceptors(chain...)),
@@ -57,10 +58,10 @@ func SetupGRPCServer(client *ent.Client) *grpc.Server {
 	userService := user.NewUserService(client, userUsecase)
 	userpb.RegisterUserServiceServer(grpcServer, userService)
 
-	authService := auth.NewAuthService(client)
+	authService := auth.NewAuthService(client, userUsecase)
 	authpb.RegisterAuthServiceServer(grpcServer, authService)
 
-	s3Client, err := utils.NewS3Client()
+	s3Client, err := s3.NewS3Client()
 	if err != nil {
 		log.Fatalf("failed to init S3 client: %v", err)
 	}

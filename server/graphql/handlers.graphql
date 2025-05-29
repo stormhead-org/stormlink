@@ -1,5 +1,7 @@
 scalar JSON
+scalar Upload
 
+# Тип прав пользователей
 type CommunityPermissions {
 	communityRolesManagement: Boolean!
 	communityUserBan: Boolean!
@@ -13,6 +15,83 @@ type CommunityPermissions {
 	communityUserHasMuted: Boolean!
 }
 
+# Запросы авторизации и аутентификации
+type LoginUserResponse {
+	accessToken: String!
+	refreshToken: String!
+	user: User!
+}
+
+type LogoutUserResponse {
+	message: String!
+}
+
+type RegisterUserResponse {
+	user: User!
+}
+
+type VerifyEmailResponse {
+	message: String!
+}
+
+type ResendVerifyEmailResponse {
+	message: String!
+}
+
+type RefreshTokenResponse {
+	accessToken: String!
+	refreshToken: String!
+}
+
+# Ответ на запрос пользователя
+type UserAvatarResponse {
+	id: String!
+	url: String!
+}
+type UserInfoResponse {
+	id: ID!
+	key: String!
+	value: String!
+}
+type UserHostRoleResponse {
+	id: ID!
+	title: String!
+	color: String!
+	communityRolesManagement: Boolean!
+	hostUserBan: Boolean!
+	hostUserMute: Boolean!
+	hostCommunityDeletePost: Boolean!
+	hostCommunityDeleteComments: Boolean!
+	hostCommunityRemovePostFromPublication: Boolean!
+}
+type UserCommunityRoleResponse {
+	id: ID!
+	title: String!
+	color: String!
+	communityRolesManagement: Boolean!
+	communityUserBan: Boolean!
+	communityUserMute: Boolean!
+	communityDeletePost: Boolean!
+	communityDeleteComments: Boolean!
+	communityRemovePostFromPublication: Boolean!
+}
+type UserResponse {
+	id: ID!
+	name: String!
+	slug: String!
+	avatar: UserAvatarResponse
+	email: String!
+	description: String!
+	userInfo: [UserInfoResponse!]!
+	hostRoles: [UserHostRoleResponse!]!
+	communitiesRoles: [UserCommunityRoleResponse!]!
+	isVerified: Boolean!
+	createdAt: String!
+	updatedAt: String!
+}
+#------------------------
+
+# Расширение модели Posts
 extend type Post {
 	viewerPermissions: CommunityPermissions!
 }
@@ -25,6 +104,8 @@ extend type Query {
 
 	communityUserBan(communityId: ID!, userId: ID!): CommunityUserBan
 	communityUserMute(communityId: ID!, userId: ID!): CommunityUserMute
+
+	getMe: UserResponse!
 
 	user(id: ID!): User
 	users: [User!]!
@@ -56,15 +137,24 @@ extend type Query {
 }
 
 extend type Mutation {
-	"""
-	Установить firstSettings у конкретного Host (здесь фиксированного, с id=1)
-	"""
 	host(input: UpdateHostInput!): Host!
 	post(input: UpdatePostInput!): Post!
 	createPost(input: CreatePostInput!): Post!
 	createCommunity(input: CreateCommunityInput!): Community!
+
+	loginUser(input: LoginUserInput!): LoginUserResponse!
+	logoutUser: LogoutUserResponse!
+	registerUser(input: RegisterUserInput!): RegisterUserResponse!
+	userVerifyEmail(input: VerifyEmailInput!): VerifyEmailResponse!
+	resendUserVerifyEmail(
+		input: ResendVerifyEmailInput!
+	): ResendVerifyEmailResponse!
+	userRefreshToken: RefreshTokenResponse!
+
+	uploadMedia(file: Upload!, dir: String): Media!
 }
 
+# Входные типы обновления настроек платформы
 input UpdateHostInput {
 	title: String
 	slogan: String
@@ -76,6 +166,7 @@ input UpdateHostInput {
 	firstSettings: Boolean
 }
 
+# Входные типы обновления поста
 input UpdatePostInput {
 	id: ID!
 	title: String
@@ -88,6 +179,7 @@ input UpdatePostInput {
 	publishedAt: Time
 }
 
+# Входные типы создания нового поста
 input CreatePostInput {
 	title: String!
 	content: JSON!
@@ -98,9 +190,30 @@ input CreatePostInput {
 	publishedAt: Time
 }
 
+# Входные типы создания сообщества
 input CreateCommunityInput {
 	title: String!
 	slug: String!
 	description: String
 	ownerID: ID!
+}
+
+# Входные типы авторизации и аутентификации
+input LoginUserInput {
+	email: String!
+	password: String!
+}
+
+input RegisterUserInput {
+	name: String!
+	email: String!
+	password: String!
+}
+
+input VerifyEmailInput {
+	token: String!
+}
+
+input ResendVerifyEmailInput {
+	email: String!
 }

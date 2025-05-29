@@ -21,7 +21,7 @@ func (User) Fields() []ent.Field {
 		field.String("slug").Unique().NotEmpty(),
 		field.Int("avatar_id").Optional().Nillable(),
 		field.Int("banner_id").Optional().Nillable(),
-		field.String("description").Optional().Nillable(),
+		field.String("description").Optional(),
 
 		field.String("email").Unique().NotEmpty(),
 		field.String("password_hash").NotEmpty(),

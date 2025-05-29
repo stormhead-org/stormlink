@@ -10,10 +10,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"stormlink/server/utils"
+	"stormlink/server/pkg/jwt"
 )
 
-func GRPCAuthInterceptor(
+func GRPCAuthMiddleware(
 	ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -27,6 +27,7 @@ func GRPCAuthInterceptor(
 		"/UserService/RegisterUser":                 true,
 		"/auth.AuthService/VerifyEmail":             true,
 		"/auth.AuthService/ResendVerificationEmail": true,
+		"/auth.AuthService/ValidateToken":           true,
 	}
 
 	if publicMethods[info.FullMethod] {
@@ -55,7 +56,7 @@ func GRPCAuthInterceptor(
 	tokenStr := strings.TrimPrefix(authHeader[0], "Bearer ")
 
 	// Валидируем токен
-	claims, err := utils.ParseAccessToken(tokenStr)
+	claims, err := jwt.ParseAccessToken(tokenStr)
 	if err != nil {
 		log.Println("❌ [AuthInterceptor] Invalid token:", err)
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)

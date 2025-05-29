@@ -1,4 +1,4 @@
-package utils
+package http
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
     http.SetCookie(w, &http.Cookie{
 			Name:     "auth_token",
 			Value:    accessToken,
-			HttpOnly: true,
+			HttpOnly: false,
 			Secure:   secure,
 			Path:     "/",
 			Domain:   domain,
