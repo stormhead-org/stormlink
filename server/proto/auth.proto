@@ -86,7 +86,7 @@ service AuthService {
     };
   }
 
-  rpc RefreshToken (RefreshTokenRequest) returns (LoginResponse) {
+  rpc RefreshToken (RefreshTokenRequest) returns (RefreshTokenResponse) {
     option (google.api.http) = {
       post: "/v1/auth/user-refresh-token"
       body: "*"
@@ -102,13 +102,17 @@ message LoginRequest {
 message LoginResponse {
   string accessToken = 1;
   string refreshToken = 2;
-  int32 user_id = 3;
+  User user = 3;
 }
 
 message LogoutResponse {
   string message = 1;
 }
 
+message RefreshTokenResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
 
 message ValidateTokenRequest {
   string token = 1;

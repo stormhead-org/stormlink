@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net/http"
 	"stormlink/server/ent"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityuserban"
@@ -18,23 +17,28 @@ import (
 	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/ent/role"
+	"stormlink/server/graphql/models"
 	authpb "stormlink/server/grpc/auth/protobuf"
+	mailpb "stormlink/server/grpc/mail/protobuf"
+	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/model"
 	"stormlink/server/model/converter"
 	"stormlink/server/pkg/auth"
-	httpWithCookies "stormlink/server/pkg/http"
+	"stormlink/server/pkg/mapper"
 	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gosimple/slug"
 	"github.com/vektah/gqlparser/v2/gqlerror"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // Мутация Host для настроек платформы.
-func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error) {
+func (r *mutationResolver) Host(ctx context.Context, input models.UpdateHostInput) (*ent.Host, error) {
 	upd := r.Client.Host.UpdateOneID(1)
 	// каждый Set* вызываем только если в input поле не nil
 	if input.Title != nil {
@@ -56,7 +60,7 @@ func (r *mutationResolver) Host(ctx context.Context, input UpdateHostInput) (*en
 }
 
 // Мутация Post для редактирования поста
-func (r *mutationResolver) Post(ctx context.Context, input UpdatePostInput) (*ent.Post, error) {
+func (r *mutationResolver) Post(ctx context.Context, input models.UpdatePostInput) (*ent.Post, error) {
 	id, err := strconv.Atoi(input.ID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid post ID %q: %w", input.ID, err)
@@ -92,7 +96,7 @@ func (r *mutationResolver) Post(ctx context.Context, input UpdatePostInput) (*en
 }
 
 // CreatePost создает новый пост и генерирует slug.
-func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput) (*ent.Post, error) {
+func (r *mutationResolver) CreatePost(ctx context.Context, input models.CreatePostInput) (*ent.Post, error) {
 	baseSlug := slug.Make(input.Title)
 	suffix := rand.Intn(90_000_000) + 10_000_000
 	finalSlug := fmt.Sprintf("%s-%d", baseSlug, suffix)
@@ -136,7 +140,7 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input CreatePostInput
 }
 
 // CreateCommunity создает новое сообщество.
-func (r *mutationResolver) CreateCommunity(ctx context.Context, input CreateCommunityInput) (*ent.Community, error) {
+func (r *mutationResolver) CreateCommunity(ctx context.Context, input models.CreateCommunityInput) (*ent.Community, error) {
 	exists, err := r.Client.Community.
 		Query().
 		Where(community.SlugEQ(input.Slug)).
@@ -165,104 +169,110 @@ func (r *mutationResolver) CreateCommunity(ctx context.Context, input CreateComm
 }
 
 // Мутация авторизации юзера
-func (r *mutationResolver) LoginUser(ctx context.Context, input LoginUserInput) (*LoginUserResponse, error) {
+func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error) {
 	// Вызываем gRPC-метод Login
 	resp, err := r.AuthClient.Login(ctx, &authpb.LoginRequest{
 		Email:    input.Email,
 		Password: input.Password,
 	})
 	if err != nil {
+		log.Printf("❌ [LoginUser] gRPC Login error: %v", err)
 		return nil, err
 	}
 
-	// Получаем пользователя через usecase
-	user, err := r.UC.GetUserByID(ctx, int(resp.UserId))
+	// Мапим gRPC-пользователя в GraphQL-пользователя
+	user, err := mapper.ProtoToGraphQLUser(resp.User)
 	if err != nil {
-		return nil, err
+		log.Printf("❌ [LoginUser] Failed to map user: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to map user: %v", err)
 	}
 
-	// Устанавливаем куки
-	if w := httpWithCookies.GetHTTPResponseWriter(ctx); w != nil {
-		httpWithCookies.SetAuthCookies(w, resp.AccessToken, resp.RefreshToken)
-	}
-
-	return &LoginUserResponse{
+	return &models.LoginUserResponse{
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
 		User:         user,
 	}, nil
 }
 
-// Мутация удаляет куки и сессию у авторизованного пользователя.
-func (r *mutationResolver) LogoutUser(ctx context.Context) (*LogoutUserResponse, error) {
-	// Проверяем, аутентифицирован ли пользователь
-	userID, ok := ctx.Value("userID").(int)
-	if !ok || userID == 0 {
-		return nil, errors.New("unauthenticated")
-	}
-
-	// Извлекаем заголовок Authorization
-	authHeader, ok := ctx.Value("authorization").(string)
-	if !ok || authHeader == "" {
-		return nil, errors.New("missing authorization header")
-	}
-
-	// Передаём заголовок в gRPC
-	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authHeader)
-
+// Мутация LogoutUser удаляет куки и сессию у авторизованного пользователя.
+func (r *mutationResolver) LogoutUser(ctx context.Context) (*models.LogoutUserResponse, error) {
 	// Вызываем gRPC-метод Logout
 	resp, err := r.AuthClient.Logout(ctx, &emptypb.Empty{})
 	if err != nil {
+		log.Printf("❌ [LogoutUser] gRPC Logout error: %v", err)
 		return nil, err
 	}
 
-	// Очищаем куки
-	if w := httpWithCookies.GetHTTPResponseWriter(ctx); w != nil {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "auth_token",
-			Value:    "",
-			Path:     "/",
-			Domain:   "localhost",
-			Expires:  time.Unix(0, 0),
-			MaxAge:   -1,
-			HttpOnly: false,
-			SameSite: http.SameSiteLaxMode,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:     "refresh_token",
-			Value:    "",
-			Path:     "/",
-			Domain:   "localhost",
-			Expires:  time.Unix(0, 0),
-			MaxAge:   -1,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-	}
-
-	return &LogoutUserResponse{
+	return &models.LogoutUserResponse{
 		Message: resp.Message,
 	}, nil
 }
 
-// RegisterUser is the resolver for the registerUser field.
-func (r *mutationResolver) RegisterUser(ctx context.Context, input RegisterUserInput) (*RegisterUserResponse, error) {
-	panic(fmt.Errorf("not implemented: RegisterUser - registerUser"))
+// Мутация RegisterUser вызывает gRPC методы для регистрации пользователей.
+func (r *mutationResolver) RegisterUser(ctx context.Context, input models.RegisterUserInput) (*models.RegisterUserResponse, error) {
+	// Проверяем входные данные
+	if input.Name == "" || input.Email == "" || input.Password == "" {
+		log.Println("❌ [RegisterUser] Missing required fields")
+		return nil, errors.New("name, email, and password are required")
+	}
+
+	// Вызываем gRPC-метод RegisterUser
+	resp, err := r.UserClient.RegisterUser(ctx, &userpb.RegisterUserRequest{
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: input.Password,
+	})
+	if err != nil {
+		log.Printf("❌ [RegisterUser] gRPC RegisterUser error: %v", err)
+		return nil, err
+	}
+
+	// Формируем ответ GraphQL
+	return &models.RegisterUserResponse{
+		Message: resp.Message,
+	}, nil
 }
 
-// UserVerifyEmail is the resolver for the userVerifyEmail field.
-func (r *mutationResolver) UserVerifyEmail(ctx context.Context, input VerifyEmailInput) (*VerifyEmailResponse, error) {
-	panic(fmt.Errorf("not implemented: UserVerifyEmail - userVerifyEmail"))
+// Мутация UserVerifyEmail проверяет токен из письма и подтверждает статус юзера.
+func (r *mutationResolver) UserVerifyEmail(ctx context.Context, input models.VerifyEmailInput) (*models.VerifyEmailResponse, error) {
+	// Проверяем входной токен
+	if input.Token == "" {
+		log.Println("❌ [UserVerifyEmail] Token is required")
+		return nil, errors.New("token is required")
+	}
+
+	// Вызываем gRPC-метод VerifyEmail
+	resp, err := r.MailClient.VerifyEmail(ctx, &mailpb.VerifyEmailRequest{
+		Token: input.Token,
+	})
+	if err != nil {
+		log.Printf("❌ [UserVerifyEmail] gRPC VerifyEmail error: %v", err)
+		return nil, err
+	}
+
+	return &models.VerifyEmailResponse{
+		Message: resp.Message,
+	}, nil
 }
 
 // ResendUserVerifyEmail is the resolver for the resendUserVerifyEmail field.
-func (r *mutationResolver) ResendUserVerifyEmail(ctx context.Context, input ResendVerifyEmailInput) (*ResendVerifyEmailResponse, error) {
+func (r *mutationResolver) ResendUserVerifyEmail(ctx context.Context, input models.ResendVerifyEmailInput) (*models.ResendVerifyEmailResponse, error) {
 	panic(fmt.Errorf("not implemented: ResendUserVerifyEmail - resendUserVerifyEmail"))
 }
 
-// UserRefreshToken is the resolver for the userRefreshToken field.
-func (r *mutationResolver) UserRefreshToken(ctx context.Context) (*RefreshTokenResponse, error) {
-	panic(fmt.Errorf("not implemented: UserRefreshToken - userRefreshToken"))
+// Мутация UserRefreshToken обновляет сессию пользователя.
+func (r *mutationResolver) UserRefreshToken(ctx context.Context) (*models.RefreshTokenResponse, error) {
+	// Вызываем gRPC-метод RefreshToken
+	resp, err := r.AuthClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{})
+	if err != nil {
+			log.Printf("❌ [UserRefreshToken] gRPC RefreshToken error: %v", err)
+			return nil, err
+	}
+
+	return &models.RefreshTokenResponse{
+			AccessToken:  resp.AccessToken,
+			RefreshToken: resp.RefreshToken,
+	}, nil
 }
 
 // UploadMedia is the resolver for the uploadMedia field.
@@ -388,7 +398,7 @@ func (r *queryResolver) CommunityUserMute(ctx context.Context, communityID strin
 }
 
 // GetMe отдает текущего авторизованного пользователя.
-func (r *queryResolver) GetMe(ctx context.Context) (*UserResponse, error) {
+func (r *queryResolver) GetMe(ctx context.Context) (*models.UserResponse, error) {
 	// Извлекаем userID из контекста
 	userID, ok := ctx.Value("userID").(int)
 	if !ok || userID == 0 {
@@ -413,72 +423,14 @@ func (r *queryResolver) GetMe(ctx context.Context) (*UserResponse, error) {
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
 
-	// Маппим UserInfo
-	userInfo := make([]*UserInfoResponse, 0, len(resp.User.UserInfo))
-	for _, info := range resp.User.UserInfo {
-		userInfo = append(userInfo, &UserInfoResponse{
-			ID:    info.Id,
-			Key:   info.Key,
-			Value: info.Value,
-		})
+	// Мапим gRPC-пользователя в GraphQL-пользователя
+	user, err := mapper.ProtoToGraphQLUser(resp.User)
+	if err != nil {
+			log.Printf("❌ [LoginUser] Failed to map user: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to map user: %v", err)
 	}
 
-	// Маппим Avatar
-	var avatar *UserAvatarResponse
-	if resp.User.Avatar != nil {
-		avatar = &UserAvatarResponse{
-			ID:  resp.User.Avatar.Id,
-			URL: resp.User.Avatar.Url,
-		}
-	}
-
-	// Маппим HostRoles
-	hostRoles := make([]*UserHostRoleResponse, 0, len(resp.User.HostRoles))
-	for _, role := range resp.User.HostRoles {
-		hostRoles = append(hostRoles, &UserHostRoleResponse{
-			ID:                                     role.Id,
-			Title:                                  role.Title,
-			Color:                                  role.Color,
-			CommunityRolesManagement:               role.CommunityRolesManagement,
-			HostUserBan:                            role.HostUserBan,
-			HostUserMute:                           role.HostUserMute,
-			HostCommunityDeletePost:                role.HostCommunityDeletePost,
-			HostCommunityDeleteComments:            role.HostCommunityDeleteComments,
-			HostCommunityRemovePostFromPublication: role.HostCommunityRemovePostFromPublication,
-		})
-	}
-
-	// Маппим CommunitiesRoles
-	communitiesRoles := make([]*UserCommunityRoleResponse, 0, len(resp.User.CommunitiesRoles))
-	for _, role := range resp.User.CommunitiesRoles {
-		communitiesRoles = append(communitiesRoles, &UserCommunityRoleResponse{
-			ID:                                 role.Id,
-			Title:                              role.Title,
-			Color:                              role.Color,
-			CommunityRolesManagement:           role.CommunityRolesManagement,
-			CommunityUserBan:                   role.CommunityUserBan,
-			CommunityUserMute:                  role.CommunityUserMute,
-			CommunityDeletePost:                role.CommunityDeletePost,
-			CommunityDeleteComments:            role.CommunityDeleteComments,
-			CommunityRemovePostFromPublication: role.CommunityRemovePostFromPublication,
-		})
-	}
-
-	// Преобразуем proto-пользователя в GraphQL-тип UserResponse
-	return &UserResponse{
-		ID:               resp.User.Id,
-		Name:             resp.User.Name,
-		Slug:             resp.User.Slug,
-		Avatar:           avatar,
-		Email:            resp.User.Email,
-		Description:      resp.User.Description,
-		UserInfo:         userInfo,
-		HostRoles:        hostRoles,
-		CommunitiesRoles: communitiesRoles,
-		IsVerified:       resp.User.IsVerified,
-		CreatedAt:        resp.User.CreatedAt,
-		UpdatedAt:        resp.User.UpdatedAt,
-	}, nil
+	return user, nil
 }
 
 // User отдает одного пользователя по ID.

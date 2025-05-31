@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 )
 
 type contextKey string
@@ -61,5 +62,42 @@ func SetAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
 			Domain:   domain,
 			SameSite: http.SameSiteLaxMode,
 			MaxAge:   7 * 24 * 3600,
+	})
+}
+
+func ClearAuthCookies(w http.ResponseWriter) {
+	if w == nil {
+			return
+	}
+
+	secure := false
+	domain := "localhost"
+	if os.Getenv("ENV") == "production" {
+			secure = true
+			domain = os.Getenv("APP_DOMAIN")
+	}
+
+	http.SetCookie(w, &http.Cookie{
+			Name:     "auth_token",
+			Value:    "",
+			HttpOnly: false,
+			Secure:   secure,
+			Path:     "/",
+			Domain:   domain,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			HttpOnly: true,
+			Secure:   secure,
+			Path:     "/",
+			Domain:   domain,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
 	})
 }

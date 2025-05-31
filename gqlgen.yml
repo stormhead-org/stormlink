@@ -28,8 +28,8 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: server/graphql/models_gen.go
-  package: graphql
+  filename: server/graphql/models/models_gen.go
+  package: models
 
   # Optional: Pass in a path to a new gotpl template to use for generating the models
   # model_template: [your/path/model.gotpl]

@@ -10,8 +10,11 @@ import (
 	"stormlink/server/ent"
 	"stormlink/server/graphql"
 	authpb "stormlink/server/grpc/auth/protobuf"
+	mailpb "stormlink/server/grpc/mail/protobuf"
+	mediapb "stormlink/server/grpc/media/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/middleware"
+	httpWithCookies "stormlink/server/pkg/http"
 	"stormlink/server/usecase/user"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -29,6 +32,8 @@ func StartGraphQLServer(client *ent.Client) {
     // Создаем gRPC-клиенты
     authClient := authpb.NewAuthServiceClient(conn)
     userClient := userpb.NewUserServiceClient(conn)
+    mailClient := mailpb.NewMailServiceClient(conn)
+    mediaClient := mediapb.NewMediaServiceClient(conn)
 
     // Инициализируем HTTPAuthMiddleware с gRPC-клиентом
     middleware.InitHTTPAuthMiddleware(authClient)
@@ -39,6 +44,8 @@ func StartGraphQLServer(client *ent.Client) {
         UC:         uc,
         AuthClient: authClient,
         UserClient: userClient,
+        MailClient: mailClient,
+        MediaClient: mediaClient,
     }
 
     srv := handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.Config{
@@ -47,7 +54,11 @@ func StartGraphQLServer(client *ent.Client) {
 
     mux := http.NewServeMux()
     mux.Handle("/", playground.Handler("GraphQL", "/query"))
-    mux.Handle("/query", middleware.HTTPAuthMiddleware(srv))
+    mux.Handle("/query", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        ctx := httpWithCookies.WithHTTPContext(r.Context(), w, r)
+        r = r.WithContext(ctx)
+        middleware.HTTPAuthMiddleware(srv).ServeHTTP(w, r)
+    }))
 
     // Настройка CORS
     corsHandler := cors.New(cors.Options{

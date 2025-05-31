@@ -11,6 +11,7 @@ import (
 	"stormlink/server/ent"
 	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
+	"stormlink/server/graphql/models"
 	"stormlink/server/model"
 	"strconv"
 	"sync"
@@ -320,17 +321,17 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateCommunity       func(childComplexity int, input CreateCommunityInput) int
-		CreatePost            func(childComplexity int, input CreatePostInput) int
-		Host                  func(childComplexity int, input UpdateHostInput) int
-		LoginUser             func(childComplexity int, input LoginUserInput) int
+		CreateCommunity       func(childComplexity int, input models.CreateCommunityInput) int
+		CreatePost            func(childComplexity int, input models.CreatePostInput) int
+		Host                  func(childComplexity int, input models.UpdateHostInput) int
+		LoginUser             func(childComplexity int, input models.LoginUserInput) int
 		LogoutUser            func(childComplexity int) int
-		Post                  func(childComplexity int, input UpdatePostInput) int
-		RegisterUser          func(childComplexity int, input RegisterUserInput) int
-		ResendUserVerifyEmail func(childComplexity int, input ResendVerifyEmailInput) int
+		Post                  func(childComplexity int, input models.UpdatePostInput) int
+		RegisterUser          func(childComplexity int, input models.RegisterUserInput) int
+		ResendUserVerifyEmail func(childComplexity int, input models.ResendVerifyEmailInput) int
 		UploadMedia           func(childComplexity int, file graphql.Upload, dir *string) int
 		UserRefreshToken      func(childComplexity int) int
-		UserVerifyEmail       func(childComplexity int, input VerifyEmailInput) int
+		UserVerifyEmail       func(childComplexity int, input models.VerifyEmailInput) int
 	}
 
 	PageInfo struct {
@@ -418,7 +419,7 @@ type ComplexityRoot struct {
 	}
 
 	RegisterUserResponse struct {
-		User func(childComplexity int) int
+		Message func(childComplexity int) int
 	}
 
 	ResendVerifyEmailResponse struct {
@@ -543,34 +544,34 @@ type ComplexityRoot struct {
 }
 
 type CommunityResolver interface {
-	Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerator, error)
+	Moderators(ctx context.Context, obj *ent.Community) ([]*models.CommunityModerator, error)
 
-	Rules(ctx context.Context, obj *ent.Community) ([]*CommunityRule, error)
-	Followers(ctx context.Context, obj *ent.Community) ([]*CommunityFollow, error)
+	Rules(ctx context.Context, obj *ent.Community) ([]*models.CommunityRule, error)
+	Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error)
 
-	Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error)
+	Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error)
 }
 type HostResolver interface {
-	Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error)
+	Rules(ctx context.Context, obj *ent.Host) ([]*models.HostRule, error)
 }
 type MutationResolver interface {
-	Host(ctx context.Context, input UpdateHostInput) (*ent.Host, error)
-	Post(ctx context.Context, input UpdatePostInput) (*ent.Post, error)
-	CreatePost(ctx context.Context, input CreatePostInput) (*ent.Post, error)
-	CreateCommunity(ctx context.Context, input CreateCommunityInput) (*ent.Community, error)
-	LoginUser(ctx context.Context, input LoginUserInput) (*LoginUserResponse, error)
-	LogoutUser(ctx context.Context) (*LogoutUserResponse, error)
-	RegisterUser(ctx context.Context, input RegisterUserInput) (*RegisterUserResponse, error)
-	UserVerifyEmail(ctx context.Context, input VerifyEmailInput) (*VerifyEmailResponse, error)
-	ResendUserVerifyEmail(ctx context.Context, input ResendVerifyEmailInput) (*ResendVerifyEmailResponse, error)
-	UserRefreshToken(ctx context.Context) (*RefreshTokenResponse, error)
+	Host(ctx context.Context, input models.UpdateHostInput) (*ent.Host, error)
+	Post(ctx context.Context, input models.UpdatePostInput) (*ent.Post, error)
+	CreatePost(ctx context.Context, input models.CreatePostInput) (*ent.Post, error)
+	CreateCommunity(ctx context.Context, input models.CreateCommunityInput) (*ent.Community, error)
+	LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error)
+	LogoutUser(ctx context.Context) (*models.LogoutUserResponse, error)
+	RegisterUser(ctx context.Context, input models.RegisterUserInput) (*models.RegisterUserResponse, error)
+	UserVerifyEmail(ctx context.Context, input models.VerifyEmailInput) (*models.VerifyEmailResponse, error)
+	ResendUserVerifyEmail(ctx context.Context, input models.ResendVerifyEmailInput) (*models.ResendVerifyEmailResponse, error)
+	UserRefreshToken(ctx context.Context) (*models.RefreshTokenResponse, error)
 	UploadMedia(ctx context.Context, file graphql.Upload, dir *string) (*ent.Media, error)
 }
 type PostResolver interface {
-	Comments(ctx context.Context, obj *ent.Post) ([]*Comment, error)
+	Comments(ctx context.Context, obj *ent.Post) ([]*models.Comment, error)
 
-	Likes(ctx context.Context, obj *ent.Post) ([]*PostLike, error)
-	Bookmarks(ctx context.Context, obj *ent.Post) ([]*Bookmark, error)
+	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
+	Bookmarks(ctx context.Context, obj *ent.Post) ([]*models.Bookmark, error)
 	ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error)
 }
 type QueryResolver interface {
@@ -581,7 +582,7 @@ type QueryResolver interface {
 	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
 	CommunityUserBan(ctx context.Context, communityID string, userID string) (*ent.CommunityUserBan, error)
 	CommunityUserMute(ctx context.Context, communityID string, userID string) (*ent.CommunityUserMute, error)
-	GetMe(ctx context.Context) (*UserResponse, error)
+	GetMe(ctx context.Context) (*models.UserResponse, error)
 	User(ctx context.Context, id string) (*ent.User, error)
 	Users(ctx context.Context) ([]*ent.User, error)
 	ProfileTableInfoItem(ctx context.Context, id string) (*ent.ProfileTableInfoItem, error)
@@ -600,16 +601,16 @@ type QueryResolver interface {
 	Host(ctx context.Context) (*ent.Host, error)
 }
 type UserResolver interface {
-	Comments(ctx context.Context, obj *ent.User) ([]*Comment, error)
-	Following(ctx context.Context, obj *ent.User) ([]*UserFollow, error)
-	Followers(ctx context.Context, obj *ent.User) ([]*UserFollow, error)
-	CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*CommunityFollow, error)
+	Comments(ctx context.Context, obj *ent.User) ([]*models.Comment, error)
+	Following(ctx context.Context, obj *ent.User) ([]*models.UserFollow, error)
+	Followers(ctx context.Context, obj *ent.User) ([]*models.UserFollow, error)
+	CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*models.CommunityFollow, error)
 
-	CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerator, error)
-	PostsLikes(ctx context.Context, obj *ent.User) ([]*PostLike, error)
-	CommentsLikes(ctx context.Context, obj *ent.User) ([]*CommentLike, error)
-	Bookmarks(ctx context.Context, obj *ent.User) ([]*Bookmark, error)
-	EmailVerifications(ctx context.Context, obj *ent.User) ([]*EmailVerification, error)
+	CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*models.CommunityModerator, error)
+	PostsLikes(ctx context.Context, obj *ent.User) ([]*models.PostLike, error)
+	CommentsLikes(ctx context.Context, obj *ent.User) ([]*models.CommentLike, error)
+	Bookmarks(ctx context.Context, obj *ent.User) ([]*models.Bookmark, error)
+	EmailVerifications(ctx context.Context, obj *ent.User) ([]*models.EmailVerification, error)
 }
 
 type executableSchema struct {
@@ -1985,7 +1986,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateCommunity(childComplexity, args["input"].(CreateCommunityInput)), true
+		return e.complexity.Mutation.CreateCommunity(childComplexity, args["input"].(models.CreateCommunityInput)), true
 
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
@@ -1997,7 +1998,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreatePost(childComplexity, args["input"].(CreatePostInput)), true
+		return e.complexity.Mutation.CreatePost(childComplexity, args["input"].(models.CreatePostInput)), true
 
 	case "Mutation.host":
 		if e.complexity.Mutation.Host == nil {
@@ -2009,7 +2010,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Host(childComplexity, args["input"].(UpdateHostInput)), true
+		return e.complexity.Mutation.Host(childComplexity, args["input"].(models.UpdateHostInput)), true
 
 	case "Mutation.loginUser":
 		if e.complexity.Mutation.LoginUser == nil {
@@ -2021,7 +2022,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.LoginUser(childComplexity, args["input"].(LoginUserInput)), true
+		return e.complexity.Mutation.LoginUser(childComplexity, args["input"].(models.LoginUserInput)), true
 
 	case "Mutation.logoutUser":
 		if e.complexity.Mutation.LogoutUser == nil {
@@ -2040,7 +2041,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.Post(childComplexity, args["input"].(UpdatePostInput)), true
+		return e.complexity.Mutation.Post(childComplexity, args["input"].(models.UpdatePostInput)), true
 
 	case "Mutation.registerUser":
 		if e.complexity.Mutation.RegisterUser == nil {
@@ -2052,7 +2053,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.RegisterUser(childComplexity, args["input"].(RegisterUserInput)), true
+		return e.complexity.Mutation.RegisterUser(childComplexity, args["input"].(models.RegisterUserInput)), true
 
 	case "Mutation.resendUserVerifyEmail":
 		if e.complexity.Mutation.ResendUserVerifyEmail == nil {
@@ -2064,7 +2065,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ResendUserVerifyEmail(childComplexity, args["input"].(ResendVerifyEmailInput)), true
+		return e.complexity.Mutation.ResendUserVerifyEmail(childComplexity, args["input"].(models.ResendVerifyEmailInput)), true
 
 	case "Mutation.uploadMedia":
 		if e.complexity.Mutation.UploadMedia == nil {
@@ -2095,7 +2096,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UserVerifyEmail(childComplexity, args["input"].(VerifyEmailInput)), true
+		return e.complexity.Mutation.UserVerifyEmail(childComplexity, args["input"].(models.VerifyEmailInput)), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -2639,12 +2640,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.RefreshTokenResponse.RefreshToken(childComplexity), true
 
-	case "RegisterUserResponse.user":
-		if e.complexity.RegisterUserResponse.User == nil {
+	case "RegisterUserResponse.message":
+		if e.complexity.RegisterUserResponse.Message == nil {
 			break
 		}
 
-		return e.complexity.RegisterUserResponse.User(childComplexity), true
+		return e.complexity.RegisterUserResponse.Message(childComplexity), true
 
 	case "ResendVerifyEmailResponse.message":
 		if e.complexity.ResendVerifyEmailResponse.Message == nil {
@@ -3449,13 +3450,13 @@ func (ec *executionContext) field_Mutation_createCommunity_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_createCommunity_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (CreateCommunityInput, error) {
+) (models.CreateCommunityInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚐCreateCommunityInput(ctx, tmp)
+		return ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput(ctx, tmp)
 	}
 
-	var zeroVal CreateCommunityInput
+	var zeroVal models.CreateCommunityInput
 	return zeroVal, nil
 }
 
@@ -3472,13 +3473,13 @@ func (ec *executionContext) field_Mutation_createPost_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_createPost_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (CreatePostInput, error) {
+) (models.CreatePostInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚐCreatePostInput(ctx, tmp)
+		return ec.unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput(ctx, tmp)
 	}
 
-	var zeroVal CreatePostInput
+	var zeroVal models.CreatePostInput
 	return zeroVal, nil
 }
 
@@ -3495,13 +3496,13 @@ func (ec *executionContext) field_Mutation_host_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Mutation_host_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (UpdateHostInput, error) {
+) (models.UpdateHostInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚐUpdateHostInput(ctx, tmp)
+		return ec.unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostInput(ctx, tmp)
 	}
 
-	var zeroVal UpdateHostInput
+	var zeroVal models.UpdateHostInput
 	return zeroVal, nil
 }
 
@@ -3518,13 +3519,13 @@ func (ec *executionContext) field_Mutation_loginUser_args(ctx context.Context, r
 func (ec *executionContext) field_Mutation_loginUser_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (LoginUserInput, error) {
+) (models.LoginUserInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚐLoginUserInput(ctx, tmp)
+		return ec.unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserInput(ctx, tmp)
 	}
 
-	var zeroVal LoginUserInput
+	var zeroVal models.LoginUserInput
 	return zeroVal, nil
 }
 
@@ -3541,13 +3542,13 @@ func (ec *executionContext) field_Mutation_post_args(ctx context.Context, rawArg
 func (ec *executionContext) field_Mutation_post_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (UpdatePostInput, error) {
+) (models.UpdatePostInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚐUpdatePostInput(ctx, tmp)
+		return ec.unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput(ctx, tmp)
 	}
 
-	var zeroVal UpdatePostInput
+	var zeroVal models.UpdatePostInput
 	return zeroVal, nil
 }
 
@@ -3564,13 +3565,13 @@ func (ec *executionContext) field_Mutation_registerUser_args(ctx context.Context
 func (ec *executionContext) field_Mutation_registerUser_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (RegisterUserInput, error) {
+) (models.RegisterUserInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚐRegisterUserInput(ctx, tmp)
+		return ec.unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserInput(ctx, tmp)
 	}
 
-	var zeroVal RegisterUserInput
+	var zeroVal models.RegisterUserInput
 	return zeroVal, nil
 }
 
@@ -3587,13 +3588,13 @@ func (ec *executionContext) field_Mutation_resendUserVerifyEmail_args(ctx contex
 func (ec *executionContext) field_Mutation_resendUserVerifyEmail_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (ResendVerifyEmailInput, error) {
+) (models.ResendVerifyEmailInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚐResendVerifyEmailInput(ctx, tmp)
+		return ec.unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailInput(ctx, tmp)
 	}
 
-	var zeroVal ResendVerifyEmailInput
+	var zeroVal models.ResendVerifyEmailInput
 	return zeroVal, nil
 }
 
@@ -3651,13 +3652,13 @@ func (ec *executionContext) field_Mutation_userVerifyEmail_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_userVerifyEmail_argsInput(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (VerifyEmailInput, error) {
+) (models.VerifyEmailInput, error) {
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚐVerifyEmailInput(ctx, tmp)
+		return ec.unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailInput(ctx, tmp)
 	}
 
-	var zeroVal VerifyEmailInput
+	var zeroVal models.VerifyEmailInput
 	return zeroVal, nil
 }
 
@@ -4206,7 +4207,7 @@ func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Bookmark_id(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_id(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4250,7 +4251,7 @@ func (ec *executionContext) fieldContext_Bookmark_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_userID(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_userID(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4294,7 +4295,7 @@ func (ec *executionContext) fieldContext_Bookmark_userID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_postID(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_postID(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_postID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4338,7 +4339,7 @@ func (ec *executionContext) fieldContext_Bookmark_postID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_createdAt(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4382,7 +4383,7 @@ func (ec *executionContext) fieldContext_Bookmark_createdAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4426,7 +4427,7 @@ func (ec *executionContext) fieldContext_Bookmark_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_user(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_user(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4532,7 +4533,7 @@ func (ec *executionContext) fieldContext_Bookmark_user(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Bookmark_post(ctx context.Context, field graphql.CollectedField, obj *Bookmark) (ret graphql.Marshaler) {
+func (ec *executionContext) _Bookmark_post(ctx context.Context, field graphql.CollectedField, obj *models.Bookmark) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Bookmark_post(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4616,7 +4617,7 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_id(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_id(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4660,7 +4661,7 @@ func (ec *executionContext) fieldContext_Comment_id(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_authorID(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_authorID(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_authorID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4704,7 +4705,7 @@ func (ec *executionContext) fieldContext_Comment_authorID(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_postID(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_postID(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_postID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4748,7 +4749,7 @@ func (ec *executionContext) fieldContext_Comment_postID(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_communityID(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_communityID(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4792,7 +4793,7 @@ func (ec *executionContext) fieldContext_Comment_communityID(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_parentCommentID(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_parentCommentID(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_parentCommentID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4833,7 +4834,7 @@ func (ec *executionContext) fieldContext_Comment_parentCommentID(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_mediaID(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_mediaID(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_mediaID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4874,7 +4875,7 @@ func (ec *executionContext) fieldContext_Comment_mediaID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_hasDeleted(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_hasDeleted(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_hasDeleted(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4918,7 +4919,7 @@ func (ec *executionContext) fieldContext_Comment_hasDeleted(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_hasUpdated(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_hasUpdated(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_hasUpdated(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -4962,7 +4963,7 @@ func (ec *executionContext) fieldContext_Comment_hasUpdated(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_content(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_content(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_content(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5006,7 +5007,7 @@ func (ec *executionContext) fieldContext_Comment_content(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_createdAt(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5050,7 +5051,7 @@ func (ec *executionContext) fieldContext_Comment_createdAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5094,7 +5095,7 @@ func (ec *executionContext) fieldContext_Comment_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_author(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_author(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_author(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5200,7 +5201,7 @@ func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_post(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_post(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_post(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5284,7 +5285,7 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_community(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_community(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5376,7 +5377,7 @@ func (ec *executionContext) fieldContext_Comment_community(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_media(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_media(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_media(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5433,7 +5434,7 @@ func (ec *executionContext) fieldContext_Comment_media(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_parentComment(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_parentComment(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_parentComment(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5456,9 +5457,9 @@ func (ec *executionContext) _Comment_parentComment(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Comment)
+	res := resTmp.(*models.Comment)
 	fc.Result = res
-	return ec.marshalOComment2ᚖstormlinkᚋserverᚋgraphqlᚐComment(ctx, field.Selections, res)
+	return ec.marshalOComment2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐComment(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Comment_parentComment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5512,7 +5513,7 @@ func (ec *executionContext) fieldContext_Comment_parentComment(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_childrenComment(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_childrenComment(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_childrenComment(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5535,9 +5536,9 @@ func (ec *executionContext) _Comment_childrenComment(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Comment)
+	res := resTmp.([]*models.Comment)
 	fc.Result = res
-	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentᚄ(ctx, field.Selections, res)
+	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Comment_childrenComment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5591,7 +5592,7 @@ func (ec *executionContext) fieldContext_Comment_childrenComment(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Comment_likes(ctx context.Context, field graphql.CollectedField, obj *Comment) (ret graphql.Marshaler) {
+func (ec *executionContext) _Comment_likes(ctx context.Context, field graphql.CollectedField, obj *models.Comment) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Comment_likes(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5614,9 +5615,9 @@ func (ec *executionContext) _Comment_likes(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommentLike)
+	res := resTmp.([]*models.CommentLike)
 	fc.Result = res
-	return ec.marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Comment_likes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5648,7 +5649,7 @@ func (ec *executionContext) fieldContext_Comment_likes(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_id(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_id(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5692,7 +5693,7 @@ func (ec *executionContext) fieldContext_CommentLike_id(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_userID(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_userID(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5736,7 +5737,7 @@ func (ec *executionContext) fieldContext_CommentLike_userID(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_commentID(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_commentID(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_commentID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5780,7 +5781,7 @@ func (ec *executionContext) fieldContext_CommentLike_commentID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5824,7 +5825,7 @@ func (ec *executionContext) fieldContext_CommentLike_createdAt(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5868,7 +5869,7 @@ func (ec *executionContext) fieldContext_CommentLike_updatedAt(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_user(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_user(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -5974,7 +5975,7 @@ func (ec *executionContext) fieldContext_CommentLike_user(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentLike_comment(ctx context.Context, field graphql.CollectedField, obj *CommentLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommentLike_comment(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_comment(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -6000,9 +6001,9 @@ func (ec *executionContext) _CommentLike_comment(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*Comment)
+	res := resTmp.(*models.Comment)
 	fc.Result = res
-	return ec.marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚐComment(ctx, field.Selections, res)
+	return ec.marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐComment(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_CommentLike_comment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -6834,9 +6835,9 @@ func (ec *executionContext) _Community_moderators(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityModerator)
+	res := resTmp.([]*models.CommunityModerator)
 	fc.Result = res
-	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_moderators(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -6966,9 +6967,9 @@ func (ec *executionContext) _Community_rules(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityRule)
+	res := resTmp.([]*models.CommunityRule)
 	fc.Result = res
-	return ec.marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_rules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7023,9 +7024,9 @@ func (ec *executionContext) _Community_followers(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityFollow)
+	res := resTmp.([]*models.CommunityFollow)
 	fc.Result = res
-	return ec.marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_followers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7275,9 +7276,9 @@ func (ec *executionContext) _Community_comments(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Comment)
+	res := resTmp.([]*models.Comment)
 	fc.Result = res
-	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentᚄ(ctx, field.Selections, res)
+	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Community_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -7331,7 +7332,7 @@ func (ec *executionContext) fieldContext_Community_comments(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_id(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_id(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7375,7 +7376,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_id(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_userID(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7419,7 +7420,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_userID(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_communityID(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7463,7 +7464,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_communityID(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7507,7 +7508,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_createdAt(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7551,7 +7552,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_updatedAt(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_user(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_user(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7657,7 +7658,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_user(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityFollow_community(ctx context.Context, field graphql.CollectedField, obj *CommunityFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityFollow_community(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7749,7 +7750,7 @@ func (ec *executionContext) fieldContext_CommunityFollow_community(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_id(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_id(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7793,7 +7794,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_id(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_userID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_userID(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7837,7 +7838,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_userID(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_communityID(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_communityID(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7881,7 +7882,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_communityID(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7925,7 +7926,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_createdAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -7969,7 +7970,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_updatedAt(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_user(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_user(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8075,7 +8076,7 @@ func (ec *executionContext) fieldContext_CommunityModerator_user(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityModerator_community(ctx context.Context, field graphql.CollectedField, obj *CommunityModerator) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityModerator_community(ctx context.Context, field graphql.CollectedField, obj *models.CommunityModerator) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityModerator_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8607,7 +8608,7 @@ func (ec *executionContext) fieldContext_CommunityPermissions_communityUserHasMu
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_id(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_id(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8651,7 +8652,7 @@ func (ec *executionContext) fieldContext_CommunityRule_id(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_ruleID(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_ruleID(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_ruleID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8692,7 +8693,7 @@ func (ec *executionContext) fieldContext_CommunityRule_ruleID(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_communityNameRule(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_communityNameRule(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_communityNameRule(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8733,7 +8734,7 @@ func (ec *executionContext) fieldContext_CommunityRule_communityNameRule(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_communityDescriptionRule(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_communityDescriptionRule(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_communityDescriptionRule(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8774,7 +8775,7 @@ func (ec *executionContext) fieldContext_CommunityRule_communityDescriptionRule(
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_createdAt(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8818,7 +8819,7 @@ func (ec *executionContext) fieldContext_CommunityRule_createdAt(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_updatedAt(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -8862,7 +8863,7 @@ func (ec *executionContext) fieldContext_CommunityRule_updatedAt(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityRule_community(ctx context.Context, field graphql.CollectedField, obj *CommunityRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _CommunityRule_community(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9787,7 +9788,7 @@ func (ec *executionContext) fieldContext_CommunityUserMute_community(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _EmailVerification_id(ctx context.Context, field graphql.CollectedField, obj *EmailVerification) (ret graphql.Marshaler) {
+func (ec *executionContext) _EmailVerification_id(ctx context.Context, field graphql.CollectedField, obj *models.EmailVerification) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailVerification_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9831,7 +9832,7 @@ func (ec *executionContext) fieldContext_EmailVerification_id(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _EmailVerification_token(ctx context.Context, field graphql.CollectedField, obj *EmailVerification) (ret graphql.Marshaler) {
+func (ec *executionContext) _EmailVerification_token(ctx context.Context, field graphql.CollectedField, obj *models.EmailVerification) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailVerification_token(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9875,7 +9876,7 @@ func (ec *executionContext) fieldContext_EmailVerification_token(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _EmailVerification_expiresAt(ctx context.Context, field graphql.CollectedField, obj *EmailVerification) (ret graphql.Marshaler) {
+func (ec *executionContext) _EmailVerification_expiresAt(ctx context.Context, field graphql.CollectedField, obj *models.EmailVerification) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailVerification_expiresAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9919,7 +9920,7 @@ func (ec *executionContext) fieldContext_EmailVerification_expiresAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _EmailVerification_createdAt(ctx context.Context, field graphql.CollectedField, obj *EmailVerification) (ret graphql.Marshaler) {
+func (ec *executionContext) _EmailVerification_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.EmailVerification) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailVerification_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -9963,7 +9964,7 @@ func (ec *executionContext) fieldContext_EmailVerification_createdAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _EmailVerification_user(ctx context.Context, field graphql.CollectedField, obj *EmailVerification) (ret graphql.Marshaler) {
+func (ec *executionContext) _EmailVerification_user(ctx context.Context, field graphql.CollectedField, obj *models.EmailVerification) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_EmailVerification_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10867,9 +10868,9 @@ func (ec *executionContext) _Host_rules(ctx context.Context, field graphql.Colle
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*HostRule)
+	res := resTmp.([]*models.HostRule)
 	fc.Result = res
-	return ec.marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleᚄ(ctx, field.Selections, res)
+	return ec.marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Host_rules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10901,7 +10902,7 @@ func (ec *executionContext) fieldContext_Host_rules(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityBan_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityBan_id(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityBan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityBan_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10945,7 +10946,7 @@ func (ec *executionContext) fieldContext_HostCommunityBan_id(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityBan_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityBan_communityID(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityBan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityBan_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -10989,7 +10990,7 @@ func (ec *executionContext) fieldContext_HostCommunityBan_communityID(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityBan_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityBan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityBan_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11033,7 +11034,7 @@ func (ec *executionContext) fieldContext_HostCommunityBan_createdAt(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityBan_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityBan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityBan_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11077,7 +11078,7 @@ func (ec *executionContext) fieldContext_HostCommunityBan_updatedAt(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityBan_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunityBan) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityBan_community(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityBan) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityBan_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11169,7 +11170,7 @@ func (ec *executionContext) fieldContext_HostCommunityBan_community(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityMute_id(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityMute_id(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityMute_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11213,7 +11214,7 @@ func (ec *executionContext) fieldContext_HostCommunityMute_id(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityMute_communityID(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityMute_communityID(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityMute_communityID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11257,7 +11258,7 @@ func (ec *executionContext) fieldContext_HostCommunityMute_communityID(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityMute_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11301,7 +11302,7 @@ func (ec *executionContext) fieldContext_HostCommunityMute_createdAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityMute_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -11345,7 +11346,7 @@ func (ec *executionContext) fieldContext_HostCommunityMute_updatedAt(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _HostCommunityMute_community(ctx context.Context, field graphql.CollectedField, obj *HostCommunityMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostCommunityMute_community(ctx context.Context, field graphql.CollectedField, obj *models.HostCommunityMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostCommunityMute_community(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12119,7 +12120,7 @@ func (ec *executionContext) fieldContext_HostRole_users(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_id(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_id(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12163,7 +12164,7 @@ func (ec *executionContext) fieldContext_HostRule_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_ruleID(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_ruleID(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_ruleID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12204,7 +12205,7 @@ func (ec *executionContext) fieldContext_HostRule_ruleID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_nameRule(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_nameRule(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_nameRule(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12245,7 +12246,7 @@ func (ec *executionContext) fieldContext_HostRule_nameRule(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_descriptionRule(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_descriptionRule(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_descriptionRule(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12286,7 +12287,7 @@ func (ec *executionContext) fieldContext_HostRule_descriptionRule(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12330,7 +12331,7 @@ func (ec *executionContext) fieldContext_HostRule_createdAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -12374,7 +12375,7 @@ func (ec *executionContext) fieldContext_HostRule_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_host(ctx context.Context, field graphql.CollectedField, obj *HostRule) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostRule_host(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostRule_host(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13614,7 +13615,7 @@ func (ec *executionContext) fieldContext_HostUserBan_user(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUserMute_id(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostUserMute_id(ctx context.Context, field graphql.CollectedField, obj *models.HostUserMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostUserMute_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13658,7 +13659,7 @@ func (ec *executionContext) fieldContext_HostUserMute_id(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUserMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostUserMute_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.HostUserMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostUserMute_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13702,7 +13703,7 @@ func (ec *executionContext) fieldContext_HostUserMute_createdAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUserMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostUserMute_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.HostUserMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostUserMute_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13746,7 +13747,7 @@ func (ec *executionContext) fieldContext_HostUserMute_updatedAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _HostUserMute_user(ctx context.Context, field graphql.CollectedField, obj *HostUserMute) (ret graphql.Marshaler) {
+func (ec *executionContext) _HostUserMute_user(ctx context.Context, field graphql.CollectedField, obj *models.HostUserMute) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_HostUserMute_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13852,7 +13853,7 @@ func (ec *executionContext) fieldContext_HostUserMute_user(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _LoginUserResponse_accessToken(ctx context.Context, field graphql.CollectedField, obj *LoginUserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _LoginUserResponse_accessToken(ctx context.Context, field graphql.CollectedField, obj *models.LoginUserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LoginUserResponse_accessToken(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13896,7 +13897,7 @@ func (ec *executionContext) fieldContext_LoginUserResponse_accessToken(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _LoginUserResponse_refreshToken(ctx context.Context, field graphql.CollectedField, obj *LoginUserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _LoginUserResponse_refreshToken(ctx context.Context, field graphql.CollectedField, obj *models.LoginUserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LoginUserResponse_refreshToken(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13940,7 +13941,7 @@ func (ec *executionContext) fieldContext_LoginUserResponse_refreshToken(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _LoginUserResponse_user(ctx context.Context, field graphql.CollectedField, obj *LoginUserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _LoginUserResponse_user(ctx context.Context, field graphql.CollectedField, obj *models.LoginUserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LoginUserResponse_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -13966,9 +13967,9 @@ func (ec *executionContext) _LoginUserResponse_user(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.User)
+	res := resTmp.(*models.UserResponse)
 	fc.Result = res
-	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
+	return ec.marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_LoginUserResponse_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -13980,73 +13981,37 @@ func (ec *executionContext) fieldContext_LoginUserResponse_user(_ context.Contex
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_User_id(ctx, field)
+				return ec.fieldContext_UserResponse_id(ctx, field)
 			case "name":
-				return ec.fieldContext_User_name(ctx, field)
+				return ec.fieldContext_UserResponse_name(ctx, field)
 			case "slug":
-				return ec.fieldContext_User_slug(ctx, field)
-			case "avatarID":
-				return ec.fieldContext_User_avatarID(ctx, field)
-			case "bannerID":
-				return ec.fieldContext_User_bannerID(ctx, field)
-			case "description":
-				return ec.fieldContext_User_description(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
-			case "isVerified":
-				return ec.fieldContext_User_isVerified(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
+				return ec.fieldContext_UserResponse_slug(ctx, field)
 			case "avatar":
-				return ec.fieldContext_User_avatar(ctx, field)
-			case "banner":
-				return ec.fieldContext_User_banner(ctx, field)
+				return ec.fieldContext_UserResponse_avatar(ctx, field)
+			case "email":
+				return ec.fieldContext_UserResponse_email(ctx, field)
+			case "description":
+				return ec.fieldContext_UserResponse_description(ctx, field)
 			case "userInfo":
-				return ec.fieldContext_User_userInfo(ctx, field)
+				return ec.fieldContext_UserResponse_userInfo(ctx, field)
 			case "hostRoles":
-				return ec.fieldContext_User_hostRoles(ctx, field)
+				return ec.fieldContext_UserResponse_hostRoles(ctx, field)
 			case "communitiesRoles":
-				return ec.fieldContext_User_communitiesRoles(ctx, field)
-			case "communitiesBans":
-				return ec.fieldContext_User_communitiesBans(ctx, field)
-			case "communitiesMutes":
-				return ec.fieldContext_User_communitiesMutes(ctx, field)
-			case "posts":
-				return ec.fieldContext_User_posts(ctx, field)
-			case "comments":
-				return ec.fieldContext_User_comments(ctx, field)
-			case "following":
-				return ec.fieldContext_User_following(ctx, field)
-			case "followers":
-				return ec.fieldContext_User_followers(ctx, field)
-			case "communitiesFollow":
-				return ec.fieldContext_User_communitiesFollow(ctx, field)
-			case "communitiesOwner":
-				return ec.fieldContext_User_communitiesOwner(ctx, field)
-			case "communitiesModerator":
-				return ec.fieldContext_User_communitiesModerator(ctx, field)
-			case "postsLikes":
-				return ec.fieldContext_User_postsLikes(ctx, field)
-			case "commentsLikes":
-				return ec.fieldContext_User_commentsLikes(ctx, field)
-			case "bookmarks":
-				return ec.fieldContext_User_bookmarks(ctx, field)
-			case "emailVerifications":
-				return ec.fieldContext_User_emailVerifications(ctx, field)
+				return ec.fieldContext_UserResponse_communitiesRoles(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_UserResponse_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_UserResponse_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_UserResponse_updatedAt(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type UserResponse", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _LogoutUserResponse_message(ctx context.Context, field graphql.CollectedField, obj *LogoutUserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _LogoutUserResponse_message(ctx context.Context, field graphql.CollectedField, obj *models.LogoutUserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LogoutUserResponse_message(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -14400,7 +14365,7 @@ func (ec *executionContext) _Mutation_host(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().Host(rctx, fc.Args["input"].(UpdateHostInput))
+		return ec.resolvers.Mutation().Host(rctx, fc.Args["input"].(models.UpdateHostInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14491,7 +14456,7 @@ func (ec *executionContext) _Mutation_post(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().Post(rctx, fc.Args["input"].(UpdatePostInput))
+		return ec.resolvers.Mutation().Post(rctx, fc.Args["input"].(models.UpdatePostInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14586,7 +14551,7 @@ func (ec *executionContext) _Mutation_createPost(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreatePost(rctx, fc.Args["input"].(CreatePostInput))
+		return ec.resolvers.Mutation().CreatePost(rctx, fc.Args["input"].(models.CreatePostInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14681,7 +14646,7 @@ func (ec *executionContext) _Mutation_createCommunity(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateCommunity(rctx, fc.Args["input"].(CreateCommunityInput))
+		return ec.resolvers.Mutation().CreateCommunity(rctx, fc.Args["input"].(models.CreateCommunityInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14784,7 +14749,7 @@ func (ec *executionContext) _Mutation_loginUser(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().LoginUser(rctx, fc.Args["input"].(LoginUserInput))
+		return ec.resolvers.Mutation().LoginUser(rctx, fc.Args["input"].(models.LoginUserInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14796,9 +14761,9 @@ func (ec *executionContext) _Mutation_loginUser(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*LoginUserResponse)
+	res := resTmp.(*models.LoginUserResponse)
 	fc.Result = res
-	return ec.marshalNLoginUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐLoginUserResponse(ctx, field.Selections, res)
+	return ec.marshalNLoginUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_loginUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -14859,9 +14824,9 @@ func (ec *executionContext) _Mutation_logoutUser(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*LogoutUserResponse)
+	res := resTmp.(*models.LogoutUserResponse)
 	fc.Result = res
-	return ec.marshalNLogoutUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐLogoutUserResponse(ctx, field.Selections, res)
+	return ec.marshalNLogoutUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐLogoutUserResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_logoutUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -14895,7 +14860,7 @@ func (ec *executionContext) _Mutation_registerUser(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RegisterUser(rctx, fc.Args["input"].(RegisterUserInput))
+		return ec.resolvers.Mutation().RegisterUser(rctx, fc.Args["input"].(models.RegisterUserInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14907,9 +14872,9 @@ func (ec *executionContext) _Mutation_registerUser(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*RegisterUserResponse)
+	res := resTmp.(*models.RegisterUserResponse)
 	fc.Result = res
-	return ec.marshalNRegisterUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐRegisterUserResponse(ctx, field.Selections, res)
+	return ec.marshalNRegisterUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_registerUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -14920,8 +14885,8 @@ func (ec *executionContext) fieldContext_Mutation_registerUser(ctx context.Conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "user":
-				return ec.fieldContext_RegisterUserResponse_user(ctx, field)
+			case "message":
+				return ec.fieldContext_RegisterUserResponse_message(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RegisterUserResponse", field.Name)
 		},
@@ -14954,7 +14919,7 @@ func (ec *executionContext) _Mutation_userVerifyEmail(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UserVerifyEmail(rctx, fc.Args["input"].(VerifyEmailInput))
+		return ec.resolvers.Mutation().UserVerifyEmail(rctx, fc.Args["input"].(models.VerifyEmailInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14966,9 +14931,9 @@ func (ec *executionContext) _Mutation_userVerifyEmail(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*VerifyEmailResponse)
+	res := resTmp.(*models.VerifyEmailResponse)
 	fc.Result = res
-	return ec.marshalNVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚐVerifyEmailResponse(ctx, field.Selections, res)
+	return ec.marshalNVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_userVerifyEmail(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15013,7 +14978,7 @@ func (ec *executionContext) _Mutation_resendUserVerifyEmail(ctx context.Context,
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ResendUserVerifyEmail(rctx, fc.Args["input"].(ResendVerifyEmailInput))
+		return ec.resolvers.Mutation().ResendUserVerifyEmail(rctx, fc.Args["input"].(models.ResendVerifyEmailInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -15025,9 +14990,9 @@ func (ec *executionContext) _Mutation_resendUserVerifyEmail(ctx context.Context,
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ResendVerifyEmailResponse)
+	res := resTmp.(*models.ResendVerifyEmailResponse)
 	fc.Result = res
-	return ec.marshalNResendVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚐResendVerifyEmailResponse(ctx, field.Selections, res)
+	return ec.marshalNResendVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_resendUserVerifyEmail(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15084,9 +15049,9 @@ func (ec *executionContext) _Mutation_userRefreshToken(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*RefreshTokenResponse)
+	res := resTmp.(*models.RefreshTokenResponse)
 	fc.Result = res
-	return ec.marshalNRefreshTokenResponse2ᚖstormlinkᚋserverᚋgraphqlᚐRefreshTokenResponse(ctx, field.Selections, res)
+	return ec.marshalNRefreshTokenResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRefreshTokenResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_userRefreshToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15179,7 +15144,7 @@ func (ec *executionContext) fieldContext_Mutation_uploadMedia(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15223,7 +15188,7 @@ func (ec *executionContext) fieldContext_PageInfo_hasNextPage(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15267,7 +15232,7 @@ func (ec *executionContext) fieldContext_PageInfo_hasPreviousPage(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_startCursor(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15308,7 +15273,7 @@ func (ec *executionContext) fieldContext_PageInfo_startCursor(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_endCursor(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -15907,9 +15872,9 @@ func (ec *executionContext) _Post_comments(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Comment)
+	res := resTmp.([]*models.Comment)
 	fc.Result = res
-	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentᚄ(ctx, field.Selections, res)
+	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16265,9 +16230,9 @@ func (ec *executionContext) _Post_likes(ctx context.Context, field graphql.Colle
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*PostLike)
+	res := resTmp.([]*models.PostLike)
 	fc.Result = res
-	return ec.marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeᚄ(ctx, field.Selections, res)
+	return ec.marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_likes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16322,9 +16287,9 @@ func (ec *executionContext) _Post_bookmarks(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Bookmark)
+	res := resTmp.([]*models.Bookmark)
 	fc.Result = res
-	return ec.marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkᚄ(ctx, field.Selections, res)
+	return ec.marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Post_bookmarks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -16422,7 +16387,7 @@ func (ec *executionContext) fieldContext_Post_viewerPermissions(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_id(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_id(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16466,7 +16431,7 @@ func (ec *executionContext) fieldContext_PostLike_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_userID(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_userID(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_userID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16510,7 +16475,7 @@ func (ec *executionContext) fieldContext_PostLike_userID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_postID(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_postID(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_postID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16554,7 +16519,7 @@ func (ec *executionContext) fieldContext_PostLike_postID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_createdAt(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16598,7 +16563,7 @@ func (ec *executionContext) fieldContext_PostLike_createdAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_updatedAt(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16642,7 +16607,7 @@ func (ec *executionContext) fieldContext_PostLike_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_user(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_user(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_user(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -16748,7 +16713,7 @@ func (ec *executionContext) fieldContext_PostLike_user(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _PostLike_post(ctx context.Context, field graphql.CollectedField, obj *PostLike) (ret graphql.Marshaler) {
+func (ec *executionContext) _PostLike_post(ctx context.Context, field graphql.CollectedField, obj *models.PostLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PostLike_post(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -17910,9 +17875,9 @@ func (ec *executionContext) _Query_getMe(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*UserResponse)
+	res := resTmp.(*models.UserResponse)
 	fc.Result = res
-	return ec.marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserResponse(ctx, field.Selections, res)
+	return ec.marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_getMe(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -19339,7 +19304,7 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _RefreshTokenResponse_accessToken(ctx context.Context, field graphql.CollectedField, obj *RefreshTokenResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _RefreshTokenResponse_accessToken(ctx context.Context, field graphql.CollectedField, obj *models.RefreshTokenResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RefreshTokenResponse_accessToken(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -19383,7 +19348,7 @@ func (ec *executionContext) fieldContext_RefreshTokenResponse_accessToken(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _RefreshTokenResponse_refreshToken(ctx context.Context, field graphql.CollectedField, obj *RefreshTokenResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _RefreshTokenResponse_refreshToken(ctx context.Context, field graphql.CollectedField, obj *models.RefreshTokenResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RefreshTokenResponse_refreshToken(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -19427,8 +19392,8 @@ func (ec *executionContext) fieldContext_RefreshTokenResponse_refreshToken(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _RegisterUserResponse_user(ctx context.Context, field graphql.CollectedField, obj *RegisterUserResponse) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RegisterUserResponse_user(ctx, field)
+func (ec *executionContext) _RegisterUserResponse_message(ctx context.Context, field graphql.CollectedField, obj *models.RegisterUserResponse) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegisterUserResponse_message(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -19441,7 +19406,7 @@ func (ec *executionContext) _RegisterUserResponse_user(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.User, nil
+		return obj.Message, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -19453,87 +19418,25 @@ func (ec *executionContext) _RegisterUserResponse_user(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.User)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RegisterUserResponse_user(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RegisterUserResponse_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RegisterUserResponse",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "name":
-				return ec.fieldContext_User_name(ctx, field)
-			case "slug":
-				return ec.fieldContext_User_slug(ctx, field)
-			case "avatarID":
-				return ec.fieldContext_User_avatarID(ctx, field)
-			case "bannerID":
-				return ec.fieldContext_User_bannerID(ctx, field)
-			case "description":
-				return ec.fieldContext_User_description(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
-			case "isVerified":
-				return ec.fieldContext_User_isVerified(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
-			case "avatar":
-				return ec.fieldContext_User_avatar(ctx, field)
-			case "banner":
-				return ec.fieldContext_User_banner(ctx, field)
-			case "userInfo":
-				return ec.fieldContext_User_userInfo(ctx, field)
-			case "hostRoles":
-				return ec.fieldContext_User_hostRoles(ctx, field)
-			case "communitiesRoles":
-				return ec.fieldContext_User_communitiesRoles(ctx, field)
-			case "communitiesBans":
-				return ec.fieldContext_User_communitiesBans(ctx, field)
-			case "communitiesMutes":
-				return ec.fieldContext_User_communitiesMutes(ctx, field)
-			case "posts":
-				return ec.fieldContext_User_posts(ctx, field)
-			case "comments":
-				return ec.fieldContext_User_comments(ctx, field)
-			case "following":
-				return ec.fieldContext_User_following(ctx, field)
-			case "followers":
-				return ec.fieldContext_User_followers(ctx, field)
-			case "communitiesFollow":
-				return ec.fieldContext_User_communitiesFollow(ctx, field)
-			case "communitiesOwner":
-				return ec.fieldContext_User_communitiesOwner(ctx, field)
-			case "communitiesModerator":
-				return ec.fieldContext_User_communitiesModerator(ctx, field)
-			case "postsLikes":
-				return ec.fieldContext_User_postsLikes(ctx, field)
-			case "commentsLikes":
-				return ec.fieldContext_User_commentsLikes(ctx, field)
-			case "bookmarks":
-				return ec.fieldContext_User_bookmarks(ctx, field)
-			case "emailVerifications":
-				return ec.fieldContext_User_emailVerifications(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _ResendVerifyEmailResponse_message(ctx context.Context, field graphql.CollectedField, obj *ResendVerifyEmailResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _ResendVerifyEmailResponse_message(ctx context.Context, field graphql.CollectedField, obj *models.ResendVerifyEmailResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ResendVerifyEmailResponse_message(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -21455,9 +21358,9 @@ func (ec *executionContext) _User_comments(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Comment)
+	res := resTmp.([]*models.Comment)
 	fc.Result = res
-	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentᚄ(ctx, field.Selections, res)
+	return ec.marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_comments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21534,9 +21437,9 @@ func (ec *executionContext) _User_following(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*UserFollow)
+	res := resTmp.([]*models.UserFollow)
 	fc.Result = res
-	return ec.marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowᚄ(ctx, field.Selections, res)
+	return ec.marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_following(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21591,9 +21494,9 @@ func (ec *executionContext) _User_followers(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*UserFollow)
+	res := resTmp.([]*models.UserFollow)
 	fc.Result = res
-	return ec.marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowᚄ(ctx, field.Selections, res)
+	return ec.marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_followers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21648,9 +21551,9 @@ func (ec *executionContext) _User_communitiesFollow(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityFollow)
+	res := resTmp.([]*models.CommunityFollow)
 	fc.Result = res
-	return ec.marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesFollow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21794,9 +21697,9 @@ func (ec *executionContext) _User_communitiesModerator(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommunityModerator)
+	res := resTmp.([]*models.CommunityModerator)
 	fc.Result = res
-	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_communitiesModerator(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21851,9 +21754,9 @@ func (ec *executionContext) _User_postsLikes(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*PostLike)
+	res := resTmp.([]*models.PostLike)
 	fc.Result = res
-	return ec.marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeᚄ(ctx, field.Selections, res)
+	return ec.marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_postsLikes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21908,9 +21811,9 @@ func (ec *executionContext) _User_commentsLikes(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*CommentLike)
+	res := resTmp.([]*models.CommentLike)
 	fc.Result = res
-	return ec.marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeᚄ(ctx, field.Selections, res)
+	return ec.marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_commentsLikes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -21965,9 +21868,9 @@ func (ec *executionContext) _User_bookmarks(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*Bookmark)
+	res := resTmp.([]*models.Bookmark)
 	fc.Result = res
-	return ec.marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkᚄ(ctx, field.Selections, res)
+	return ec.marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_bookmarks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22022,9 +21925,9 @@ func (ec *executionContext) _User_emailVerifications(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*EmailVerification)
+	res := resTmp.([]*models.EmailVerification)
 	fc.Result = res
-	return ec.marshalOEmailVerification2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationᚄ(ctx, field.Selections, res)
+	return ec.marshalOEmailVerification2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_emailVerifications(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22052,7 +21955,7 @@ func (ec *executionContext) fieldContext_User_emailVerifications(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserAvatarResponse_id(ctx context.Context, field graphql.CollectedField, obj *UserAvatarResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserAvatarResponse_id(ctx context.Context, field graphql.CollectedField, obj *models.UserAvatarResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserAvatarResponse_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22096,7 +21999,7 @@ func (ec *executionContext) fieldContext_UserAvatarResponse_id(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserAvatarResponse_url(ctx context.Context, field graphql.CollectedField, obj *UserAvatarResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserAvatarResponse_url(ctx context.Context, field graphql.CollectedField, obj *models.UserAvatarResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserAvatarResponse_url(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22140,7 +22043,7 @@ func (ec *executionContext) fieldContext_UserAvatarResponse_url(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_id(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_id(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22184,7 +22087,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_id(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_title(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_title(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_title(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22228,7 +22131,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_title(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_color(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_color(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_color(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22272,7 +22175,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_color(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityRolesManagement(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22316,7 +22219,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityRole
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityUserBan(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityUserBan(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityUserBan(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22360,7 +22263,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityUser
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityUserMute(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityUserMute(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityUserMute(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22404,7 +22307,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityUser
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityDeletePost(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityDeletePost(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityDeletePost(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22448,7 +22351,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityDele
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityDeleteComments(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22492,7 +22395,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityDele
 	return fc, nil
 }
 
-func (ec *executionContext) _UserCommunityRoleResponse_communityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *UserCommunityRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserCommunityRoleResponse_communityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *models.UserCommunityRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserCommunityRoleResponse_communityRemovePostFromPublication(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22536,7 +22439,7 @@ func (ec *executionContext) fieldContext_UserCommunityRoleResponse_communityRemo
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_id(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_id(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22580,7 +22483,7 @@ func (ec *executionContext) fieldContext_UserFollow_id(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_followerID(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_followerID(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_followerID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22624,7 +22527,7 @@ func (ec *executionContext) fieldContext_UserFollow_followerID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_followeeID(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_followeeID(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_followeeID(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22668,7 +22571,7 @@ func (ec *executionContext) fieldContext_UserFollow_followeeID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_createdAt(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22712,7 +22615,7 @@ func (ec *executionContext) fieldContext_UserFollow_createdAt(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_updatedAt(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22756,7 +22659,7 @@ func (ec *executionContext) fieldContext_UserFollow_updatedAt(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_follower(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_follower(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_follower(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22862,7 +22765,7 @@ func (ec *executionContext) fieldContext_UserFollow_follower(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _UserFollow_followee(ctx context.Context, field graphql.CollectedField, obj *UserFollow) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserFollow_followee(ctx context.Context, field graphql.CollectedField, obj *models.UserFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFollow_followee(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -22968,7 +22871,7 @@ func (ec *executionContext) fieldContext_UserFollow_followee(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_id(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_id(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23012,7 +22915,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_id(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_title(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_title(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_title(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23056,7 +22959,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_title(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_color(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_color(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_color(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23100,7 +23003,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_color(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_communityRolesManagement(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_communityRolesManagement(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23144,7 +23047,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_communityRolesMana
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_hostUserBan(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_hostUserBan(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_hostUserBan(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23188,7 +23091,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_hostUserBan(_ cont
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_hostUserMute(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_hostUserMute(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_hostUserMute(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23232,7 +23135,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_hostUserMute(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_hostCommunityDeletePost(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_hostCommunityDeletePost(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_hostCommunityDeletePost(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23276,7 +23179,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_hostCommunityDelet
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_hostCommunityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_hostCommunityDeleteComments(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_hostCommunityDeleteComments(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23320,7 +23223,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_hostCommunityDelet
 	return fc, nil
 }
 
-func (ec *executionContext) _UserHostRoleResponse_hostCommunityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *UserHostRoleResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserHostRoleResponse_hostCommunityRemovePostFromPublication(ctx context.Context, field graphql.CollectedField, obj *models.UserHostRoleResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserHostRoleResponse_hostCommunityRemovePostFromPublication(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23364,7 +23267,7 @@ func (ec *executionContext) fieldContext_UserHostRoleResponse_hostCommunityRemov
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfoResponse_id(ctx context.Context, field graphql.CollectedField, obj *UserInfoResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfoResponse_id(ctx context.Context, field graphql.CollectedField, obj *models.UserInfoResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfoResponse_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23408,7 +23311,7 @@ func (ec *executionContext) fieldContext_UserInfoResponse_id(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfoResponse_key(ctx context.Context, field graphql.CollectedField, obj *UserInfoResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfoResponse_key(ctx context.Context, field graphql.CollectedField, obj *models.UserInfoResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfoResponse_key(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23452,7 +23355,7 @@ func (ec *executionContext) fieldContext_UserInfoResponse_key(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _UserInfoResponse_value(ctx context.Context, field graphql.CollectedField, obj *UserInfoResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserInfoResponse_value(ctx context.Context, field graphql.CollectedField, obj *models.UserInfoResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserInfoResponse_value(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23496,7 +23399,7 @@ func (ec *executionContext) fieldContext_UserInfoResponse_value(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_id(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_id(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23540,7 +23443,7 @@ func (ec *executionContext) fieldContext_UserResponse_id(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_name(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_name(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23584,7 +23487,7 @@ func (ec *executionContext) fieldContext_UserResponse_name(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_slug(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_slug(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_slug(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23628,7 +23531,7 @@ func (ec *executionContext) fieldContext_UserResponse_slug(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_avatar(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_avatar(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_avatar(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23651,9 +23554,9 @@ func (ec *executionContext) _UserResponse_avatar(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*UserAvatarResponse)
+	res := resTmp.(*models.UserAvatarResponse)
 	fc.Result = res
-	return ec.marshalOUserAvatarResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserAvatarResponse(ctx, field.Selections, res)
+	return ec.marshalOUserAvatarResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserAvatarResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponse_avatar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -23675,7 +23578,7 @@ func (ec *executionContext) fieldContext_UserResponse_avatar(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_email(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_email(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_email(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23719,7 +23622,7 @@ func (ec *executionContext) fieldContext_UserResponse_email(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_description(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_description(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_description(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23763,7 +23666,7 @@ func (ec *executionContext) fieldContext_UserResponse_description(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_userInfo(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_userInfo(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_userInfo(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23789,9 +23692,9 @@ func (ec *executionContext) _UserResponse_userInfo(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*UserInfoResponse)
+	res := resTmp.([]*models.UserInfoResponse)
 	fc.Result = res
-	return ec.marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserInfoResponseᚄ(ctx, field.Selections, res)
+	return ec.marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoResponseᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponse_userInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -23815,7 +23718,7 @@ func (ec *executionContext) fieldContext_UserResponse_userInfo(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_hostRoles(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_hostRoles(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_hostRoles(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23841,9 +23744,9 @@ func (ec *executionContext) _UserResponse_hostRoles(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*UserHostRoleResponse)
+	res := resTmp.([]*models.UserHostRoleResponse)
 	fc.Result = res
-	return ec.marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserHostRoleResponseᚄ(ctx, field.Selections, res)
+	return ec.marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserHostRoleResponseᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponse_hostRoles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -23879,7 +23782,7 @@ func (ec *executionContext) fieldContext_UserResponse_hostRoles(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_communitiesRoles(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_communitiesRoles(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_communitiesRoles(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23905,9 +23808,9 @@ func (ec *executionContext) _UserResponse_communitiesRoles(ctx context.Context, 
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*UserCommunityRoleResponse)
+	res := resTmp.([]*models.UserCommunityRoleResponse)
 	fc.Result = res
-	return ec.marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserCommunityRoleResponseᚄ(ctx, field.Selections, res)
+	return ec.marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserCommunityRoleResponseᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponse_communitiesRoles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -23943,7 +23846,7 @@ func (ec *executionContext) fieldContext_UserResponse_communitiesRoles(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_isVerified(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_isVerified(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_isVerified(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -23987,7 +23890,7 @@ func (ec *executionContext) fieldContext_UserResponse_isVerified(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_createdAt(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_createdAt(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_createdAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -24031,7 +23934,7 @@ func (ec *executionContext) fieldContext_UserResponse_createdAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _UserResponse_updatedAt(ctx context.Context, field graphql.CollectedField, obj *UserResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserResponse_updatedAt(ctx context.Context, field graphql.CollectedField, obj *models.UserResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserResponse_updatedAt(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -24075,7 +23978,7 @@ func (ec *executionContext) fieldContext_UserResponse_updatedAt(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _VerifyEmailResponse_message(ctx context.Context, field graphql.CollectedField, obj *VerifyEmailResponse) (ret graphql.Marshaler) {
+func (ec *executionContext) _VerifyEmailResponse_message(ctx context.Context, field graphql.CollectedField, obj *models.VerifyEmailResponse) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_VerifyEmailResponse_message(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -26070,8 +25973,8 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context, obj any) (BookmarkWhereInput, error) {
-	var it BookmarkWhereInput
+func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context, obj any) (models.BookmarkWhereInput, error) {
+	var it models.BookmarkWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -26086,21 +25989,21 @@ func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInput(ctx, v)
+			data, err := ec.unmarshalOBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26338,7 +26241,7 @@ func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26352,7 +26255,7 @@ func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context
 			it.HasPost = data
 		case "hasPostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26363,8 +26266,8 @@ func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Context, obj any) (CommentLikeWhereInput, error) {
-	var it CommentLikeWhereInput
+func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Context, obj any) (models.CommentLikeWhereInput, error) {
+	var it models.CommentLikeWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -26379,21 +26282,21 @@ func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Cont
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26631,7 +26534,7 @@ func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Cont
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26645,7 +26548,7 @@ func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Cont
 			it.HasComment = data
 		case "hasCommentWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommentWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -26656,8 +26559,8 @@ func (ec *executionContext) unmarshalInputCommentLikeWhereInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context, obj any) (CommentWhereInput, error) {
-	var it CommentWhereInput
+func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context, obj any) (models.CommentWhereInput, error) {
+	var it models.CommentWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -26672,21 +26575,21 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27155,7 +27058,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasAuthor = data
 		case "hasAuthorWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAuthorWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27169,7 +27072,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasPost = data
 		case "hasPostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27183,7 +27086,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27197,7 +27100,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasMedia = data
 		case "hasMediaWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasMediaWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27211,7 +27114,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasParentComment = data
 		case "hasParentCommentWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasParentCommentWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27225,7 +27128,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasChildrenComment = data
 		case "hasChildrenCommentWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChildrenCommentWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27239,7 +27142,7 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 			it.HasLikes = data
 		case "hasLikesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLikesWith"))
-			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27250,8 +27153,8 @@ func (ec *executionContext) unmarshalInputCommentWhereInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.Context, obj any) (CommunityFollowWhereInput, error) {
-	var it CommunityFollowWhereInput
+func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.Context, obj any) (models.CommunityFollowWhereInput, error) {
+	var it models.CommunityFollowWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -27266,21 +27169,21 @@ func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27518,7 +27421,7 @@ func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27532,7 +27435,7 @@ func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27543,8 +27446,8 @@ func (ec *executionContext) unmarshalInputCommunityFollowWhereInput(ctx context.
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx context.Context, obj any) (CommunityModeratorWhereInput, error) {
-	var it CommunityModeratorWhereInput
+func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx context.Context, obj any) (models.CommunityModeratorWhereInput, error) {
+	var it models.CommunityModeratorWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -27559,21 +27462,21 @@ func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx conte
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27811,7 +27714,7 @@ func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx conte
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27825,7 +27728,7 @@ func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx conte
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -27836,8 +27739,8 @@ func (ec *executionContext) unmarshalInputCommunityModeratorWhereInput(ctx conte
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Context, obj any) (CommunityRuleWhereInput, error) {
-	var it CommunityRuleWhereInput
+func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Context, obj any) (models.CommunityRuleWhereInput, error) {
+	var it models.CommunityRuleWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -27852,21 +27755,21 @@ func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Co
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28300,7 +28203,7 @@ func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Co
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28311,8 +28214,8 @@ func (ec *executionContext) unmarshalInputCommunityRuleWhereInput(ctx context.Co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context.Context, obj any) (CommunityUserBanWhereInput, error) {
-	var it CommunityUserBanWhereInput
+func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context.Context, obj any) (models.CommunityUserBanWhereInput, error) {
+	var it models.CommunityUserBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -28327,21 +28230,21 @@ func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28579,7 +28482,7 @@ func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28593,7 +28496,7 @@ func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28604,8 +28507,8 @@ func (ec *executionContext) unmarshalInputCommunityUserBanWhereInput(ctx context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx context.Context, obj any) (CommunityUserMuteWhereInput, error) {
-	var it CommunityUserMuteWhereInput
+func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx context.Context, obj any) (models.CommunityUserMuteWhereInput, error) {
+	var it models.CommunityUserMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -28620,21 +28523,21 @@ func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx contex
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28872,7 +28775,7 @@ func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx contex
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28886,7 +28789,7 @@ func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx contex
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -28897,8 +28800,8 @@ func (ec *executionContext) unmarshalInputCommunityUserMuteWhereInput(ctx contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Context, obj any) (CommunityWhereInput, error) {
-	var it CommunityWhereInput
+func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Context, obj any) (models.CommunityWhereInput, error) {
+	var it models.CommunityWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -28913,21 +28816,21 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInput(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29627,7 +29530,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasLogo = data
 		case "hasLogoWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLogoWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29641,7 +29544,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasBanner = data
 		case "hasBannerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBannerWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29655,7 +29558,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasOwner = data
 		case "hasOwnerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOwnerWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29669,7 +29572,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasCommunityInfo = data
 		case "hasCommunityInfoWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityInfoWith"))
-			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29683,7 +29586,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasModerators = data
 		case "hasModeratorsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasModeratorsWith"))
-			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29697,7 +29600,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasRoles = data
 		case "hasRolesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRolesWith"))
-			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29711,7 +29614,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasRules = data
 		case "hasRulesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRulesWith"))
-			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29725,7 +29628,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasFollowers = data
 		case "hasFollowersWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFollowersWith"))
-			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29739,7 +29642,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasBans = data
 		case "hasBansWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBansWith"))
-			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29753,7 +29656,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasMutes = data
 		case "hasMutesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasMutesWith"))
-			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29767,7 +29670,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasPosts = data
 		case "hasPostsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostsWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29781,7 +29684,7 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 			it.HasComments = data
 		case "hasCommentsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommentsWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -29792,8 +29695,8 @@ func (ec *executionContext) unmarshalInputCommunityWhereInput(ctx context.Contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCreateCommunityInput(ctx context.Context, obj any) (CreateCommunityInput, error) {
-	var it CreateCommunityInput
+func (ec *executionContext) unmarshalInputCreateCommunityInput(ctx context.Context, obj any) (models.CreateCommunityInput, error) {
+	var it models.CreateCommunityInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -29840,8 +29743,8 @@ func (ec *executionContext) unmarshalInputCreateCommunityInput(ctx context.Conte
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, obj any) (CreatePostInput, error) {
-	var it CreatePostInput
+func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, obj any) (models.CreatePostInput, error) {
+	var it models.CreatePostInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -29913,8 +29816,8 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx context.Context, obj any) (EmailVerificationWhereInput, error) {
-	var it EmailVerificationWhereInput
+func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx context.Context, obj any) (models.EmailVerificationWhereInput, error) {
+	var it models.EmailVerificationWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -29929,21 +29832,21 @@ func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx contex
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInput(ctx, v)
+			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30216,7 +30119,7 @@ func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx contex
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30227,8 +30130,8 @@ func (ec *executionContext) unmarshalInputEmailVerificationWhereInput(ctx contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context.Context, obj any) (HostCommunityBanWhereInput, error) {
-	var it HostCommunityBanWhereInput
+func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context.Context, obj any) (models.HostCommunityBanWhereInput, error) {
+	var it models.HostCommunityBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -30243,21 +30146,21 @@ func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30467,7 +30370,7 @@ func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30478,8 +30381,8 @@ func (ec *executionContext) unmarshalInputHostCommunityBanWhereInput(ctx context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx context.Context, obj any) (HostCommunityMuteWhereInput, error) {
-	var it HostCommunityMuteWhereInput
+func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx context.Context, obj any) (models.HostCommunityMuteWhereInput, error) {
+	var it models.HostCommunityMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -30494,21 +30397,21 @@ func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx contex
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30718,7 +30621,7 @@ func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx contex
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -30729,8 +30632,8 @@ func (ec *executionContext) unmarshalInputHostCommunityMuteWhereInput(ctx contex
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context, obj any) (HostRoleWhereInput, error) {
-	var it HostRoleWhereInput
+func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context, obj any) (models.HostRoleWhereInput, error) {
+	var it models.HostRoleWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -30745,21 +30648,21 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31263,7 +31166,7 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 			it.HasBadge = data
 		case "hasBadgeWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBadgeWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31277,7 +31180,7 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 			it.HasUsers = data
 		case "hasUsersWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsersWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31288,8 +31191,8 @@ func (ec *executionContext) unmarshalInputHostRoleWhereInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context, obj any) (HostRuleWhereInput, error) {
-	var it HostRuleWhereInput
+func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context, obj any) (models.HostRuleWhereInput, error) {
+	var it models.HostRuleWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -31304,21 +31207,21 @@ func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31752,7 +31655,7 @@ func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context
 			it.HasHost = data
 		case "hasHostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasHostWith"))
-			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -31763,8 +31666,8 @@ func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ctx context.Context, obj any) (HostSidebarNavigationItemWhereInput, error) {
-	var it HostSidebarNavigationItemWhereInput
+func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ctx context.Context, obj any) (models.HostSidebarNavigationItemWhereInput, error) {
+	var it models.HostSidebarNavigationItemWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -31779,21 +31682,21 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ct
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32031,7 +31934,7 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ct
 			it.HasSidebarNavigation = data
 		case "hasSidebarNavigationWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasSidebarNavigationWith"))
-			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32045,7 +31948,7 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ct
 			it.HasPost = data
 		case "hasPostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32056,8 +31959,8 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationItemWhereInput(ct
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostSidebarNavigationWhereInput(ctx context.Context, obj any) (HostSidebarNavigationWhereInput, error) {
-	var it HostSidebarNavigationWhereInput
+func (ec *executionContext) unmarshalInputHostSidebarNavigationWhereInput(ctx context.Context, obj any) (models.HostSidebarNavigationWhereInput, error) {
+	var it models.HostSidebarNavigationWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -32072,21 +31975,21 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationWhereInput(ctx co
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32268,7 +32171,7 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationWhereInput(ctx co
 			it.HasItems = data
 		case "hasItemsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasItemsWith"))
-			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -32279,8 +32182,8 @@ func (ec *executionContext) unmarshalInputHostSidebarNavigationWhereInput(ctx co
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostSocialNavigationWhereInput(ctx context.Context, obj any) (HostSocialNavigationWhereInput, error) {
-	var it HostSocialNavigationWhereInput
+func (ec *executionContext) unmarshalInputHostSocialNavigationWhereInput(ctx context.Context, obj any) (models.HostSocialNavigationWhereInput, error) {
+	var it models.HostSocialNavigationWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -32295,21 +32198,21 @@ func (ec *executionContext) unmarshalInputHostSocialNavigationWhereInput(ctx con
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33118,8 +33021,8 @@ func (ec *executionContext) unmarshalInputHostSocialNavigationWhereInput(ctx con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Context, obj any) (HostUserBanWhereInput, error) {
-	var it HostUserBanWhereInput
+func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Context, obj any) (models.HostUserBanWhereInput, error) {
+	var it models.HostUserBanWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -33134,21 +33037,21 @@ func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Cont
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33330,7 +33233,7 @@ func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Cont
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33341,8 +33244,8 @@ func (ec *executionContext) unmarshalInputHostUserBanWhereInput(ctx context.Cont
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Context, obj any) (HostUserMuteWhereInput, error) {
-	var it HostUserMuteWhereInput
+func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Context, obj any) (models.HostUserMuteWhereInput, error) {
+	var it models.HostUserMuteWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -33357,21 +33260,21 @@ func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Con
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33553,7 +33456,7 @@ func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Con
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -33564,8 +33467,8 @@ func (ec *executionContext) unmarshalInputHostUserMuteWhereInput(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, obj any) (HostWhereInput, error) {
-	var it HostWhereInput
+func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, obj any) (models.HostWhereInput, error) {
+	var it models.HostWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -33580,21 +33483,21 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInput(ctx, v)
+			data, err := ec.unmarshalOHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34378,7 +34281,7 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 			it.HasLogo = data
 		case "hasLogoWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLogoWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34392,7 +34295,7 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 			it.HasBanner = data
 		case "hasBannerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBannerWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34406,7 +34309,7 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 			it.HasAuthBanner = data
 		case "hasAuthBannerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAuthBannerWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34420,7 +34323,7 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 			it.HasOwner = data
 		case "hasOwnerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOwnerWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34434,7 +34337,7 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 			it.HasRules = data
 		case "hasRulesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRulesWith"))
-			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -34445,8 +34348,8 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputLoginUserInput(ctx context.Context, obj any) (LoginUserInput, error) {
-	var it LoginUserInput
+func (ec *executionContext) unmarshalInputLoginUserInput(ctx context.Context, obj any) (models.LoginUserInput, error) {
+	var it models.LoginUserInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -34479,8 +34382,8 @@ func (ec *executionContext) unmarshalInputLoginUserInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, obj any) (MediaWhereInput, error) {
-	var it MediaWhereInput
+func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, obj any) (models.MediaWhereInput, error) {
+	var it models.MediaWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -34495,21 +34398,21 @@ func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, o
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInput(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35108,8 +35011,8 @@ func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context, obj any) (PostLikeWhereInput, error) {
-	var it PostLikeWhereInput
+func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context, obj any) (models.PostLikeWhereInput, error) {
+	var it models.PostLikeWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -35124,21 +35027,21 @@ func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInput(ctx, v)
+			data, err := ec.unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35376,7 +35279,7 @@ func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35390,7 +35293,7 @@ func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context
 			it.HasPost = data
 		case "hasPostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35401,8 +35304,8 @@ func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, obj any) (PostWhereInput, error) {
-	var it PostWhereInput
+func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, obj any) (models.PostWhereInput, error) {
+	var it models.PostWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -35417,21 +35320,21 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -35991,7 +35894,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasHeroImage = data
 		case "hasHeroImageWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasHeroImageWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36005,7 +35908,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasComments = data
 		case "hasCommentsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommentsWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36019,7 +35922,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasRelatedPost = data
 		case "hasRelatedPostWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRelatedPostWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36033,7 +35936,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36047,7 +35950,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasAuthor = data
 		case "hasAuthorWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAuthorWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36061,7 +35964,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasLikes = data
 		case "hasLikesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLikesWith"))
-			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36075,7 +35978,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 			it.HasBookmarks = data
 		case "hasBookmarksWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBookmarksWith"))
-			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36086,8 +35989,8 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx context.Context, obj any) (ProfileTableInfoItemWhereInput, error) {
-	var it ProfileTableInfoItemWhereInput
+func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx context.Context, obj any) (models.ProfileTableInfoItemWhereInput, error) {
+	var it models.ProfileTableInfoItemWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -36102,21 +36005,21 @@ func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx con
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInput(ctx, v)
+			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36592,7 +36495,7 @@ func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx con
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36606,7 +36509,7 @@ func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx con
 			it.HasUser = data
 		case "hasUserWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -36617,8 +36520,8 @@ func (ec *executionContext) unmarshalInputProfileTableInfoItemWhereInput(ctx con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRegisterUserInput(ctx context.Context, obj any) (RegisterUserInput, error) {
-	var it RegisterUserInput
+func (ec *executionContext) unmarshalInputRegisterUserInput(ctx context.Context, obj any) (models.RegisterUserInput, error) {
+	var it models.RegisterUserInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -36658,8 +36561,8 @@ func (ec *executionContext) unmarshalInputRegisterUserInput(ctx context.Context,
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputResendVerifyEmailInput(ctx context.Context, obj any) (ResendVerifyEmailInput, error) {
-	var it ResendVerifyEmailInput
+func (ec *executionContext) unmarshalInputResendVerifyEmailInput(ctx context.Context, obj any) (models.ResendVerifyEmailInput, error) {
+	var it models.ResendVerifyEmailInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -36685,8 +36588,8 @@ func (ec *executionContext) unmarshalInputResendVerifyEmailInput(ctx context.Con
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, obj any) (RoleWhereInput, error) {
-	var it RoleWhereInput
+func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, obj any) (models.RoleWhereInput, error) {
+	var it models.RoleWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -36701,21 +36604,21 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalORoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInput(ctx, v)
+			data, err := ec.unmarshalORoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37247,7 +37150,7 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 			it.HasBadge = data
 		case "hasBadgeWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBadgeWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37261,7 +37164,7 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 			it.HasCommunity = data
 		case "hasCommunityWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunityWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37275,7 +37178,7 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 			it.HasUsers = data
 		case "hasUsersWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsersWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37286,8 +37189,8 @@ func (ec *executionContext) unmarshalInputRoleWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, obj any) (UpdateHostInput, error) {
-	var it UpdateHostInput
+func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, obj any) (models.UpdateHostInput, error) {
+	var it models.UpdateHostInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -37362,8 +37265,8 @@ func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, obj any) (UpdatePostInput, error) {
-	var it UpdatePostInput
+func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, obj any) (models.UpdatePostInput, error) {
+	var it models.UpdatePostInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -37445,8 +37348,8 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Context, obj any) (UserFollowWhereInput, error) {
-	var it UserFollowWhereInput
+func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Context, obj any) (models.UserFollowWhereInput, error) {
+	var it models.UserFollowWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -37461,21 +37364,21 @@ func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Conte
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInput(ctx, v)
+			data, err := ec.unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37713,7 +37616,7 @@ func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Conte
 			it.HasFollower = data
 		case "hasFollowerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFollowerWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37727,7 +37630,7 @@ func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Conte
 			it.HasFollowee = data
 		case "hasFolloweeWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFolloweeWith"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -37738,8 +37641,8 @@ func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Conte
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, obj any) (UserWhereInput, error) {
-	var it UserWhereInput
+func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, obj any) (models.UserWhereInput, error) {
+	var it models.UserWhereInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -37754,21 +37657,21 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 		switch k {
 		case "not":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("not"))
-			data, err := ec.unmarshalOUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInput(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInput(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Not = data
 		case "and":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("and"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.And = data
 		case "or":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
-			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38608,7 +38511,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasAvatar = data
 		case "hasAvatarWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasAvatarWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38622,7 +38525,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasBanner = data
 		case "hasBannerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBannerWith"))
-			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38636,7 +38539,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasUserInfo = data
 		case "hasUserInfoWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUserInfoWith"))
-			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38650,7 +38553,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasHostRoles = data
 		case "hasHostRolesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasHostRolesWith"))
-			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38664,7 +38567,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesRoles = data
 		case "hasCommunitiesRolesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesRolesWith"))
-			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38678,7 +38581,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesBans = data
 		case "hasCommunitiesBansWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesBansWith"))
-			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38692,7 +38595,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesMutes = data
 		case "hasCommunitiesMutesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesMutesWith"))
-			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38706,7 +38609,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasPosts = data
 		case "hasPostsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostsWith"))
-			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38720,7 +38623,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasComments = data
 		case "hasCommentsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommentsWith"))
-			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38734,7 +38637,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasFollowing = data
 		case "hasFollowingWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFollowingWith"))
-			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38748,7 +38651,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasFollowers = data
 		case "hasFollowersWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasFollowersWith"))
-			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38762,7 +38665,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesFollow = data
 		case "hasCommunitiesFollowWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesFollowWith"))
-			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38776,7 +38679,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesOwner = data
 		case "hasCommunitiesOwnerWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesOwnerWith"))
-			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38790,7 +38693,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommunitiesModerator = data
 		case "hasCommunitiesModeratorWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommunitiesModeratorWith"))
-			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38804,7 +38707,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasPostsLikes = data
 		case "hasPostsLikesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPostsLikesWith"))
-			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38818,7 +38721,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasCommentsLikes = data
 		case "hasCommentsLikesWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasCommentsLikesWith"))
-			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38832,7 +38735,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasBookmarks = data
 		case "hasBookmarksWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBookmarksWith"))
-			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38846,7 +38749,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 			it.HasEmailVerifications = data
 		case "hasEmailVerificationsWith":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasEmailVerificationsWith"))
-			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInputᚄ(ctx, v)
+			data, err := ec.unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInputᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -38857,8 +38760,8 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputVerifyEmailInput(ctx context.Context, obj any) (VerifyEmailInput, error) {
-	var it VerifyEmailInput
+func (ec *executionContext) unmarshalInputVerifyEmailInput(ctx context.Context, obj any) (models.VerifyEmailInput, error) {
+	var it models.VerifyEmailInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -38892,9 +38795,9 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 	switch obj := (obj).(type) {
 	case nil:
 		return graphql.Null
-	case UserFollow:
+	case models.UserFollow:
 		return ec._UserFollow(ctx, sel, &obj)
-	case *UserFollow:
+	case *models.UserFollow:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -38914,9 +38817,9 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._ProfileTableInfoItem(ctx, sel, obj)
-	case PostLike:
+	case models.PostLike:
 		return ec._PostLike(ctx, sel, &obj)
-	case *PostLike:
+	case *models.PostLike:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -38931,9 +38834,9 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Media(ctx, sel, obj)
-	case HostUserMute:
+	case models.HostUserMute:
 		return ec._HostUserMute(ctx, sel, &obj)
-	case *HostUserMute:
+	case *models.HostUserMute:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -38958,9 +38861,9 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostSidebarNavigation(ctx, sel, obj)
-	case HostRule:
+	case models.HostRule:
 		return ec._HostRule(ctx, sel, &obj)
-	case *HostRule:
+	case *models.HostRule:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -38970,16 +38873,16 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._HostRole(ctx, sel, obj)
-	case HostCommunityMute:
+	case models.HostCommunityMute:
 		return ec._HostCommunityMute(ctx, sel, &obj)
-	case *HostCommunityMute:
+	case *models.HostCommunityMute:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._HostCommunityMute(ctx, sel, obj)
-	case HostCommunityBan:
+	case models.HostCommunityBan:
 		return ec._HostCommunityBan(ctx, sel, &obj)
-	case *HostCommunityBan:
+	case *models.HostCommunityBan:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -38989,9 +38892,9 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Host(ctx, sel, obj)
-	case EmailVerification:
+	case models.EmailVerification:
 		return ec._EmailVerification(ctx, sel, &obj)
-	case *EmailVerification:
+	case *models.EmailVerification:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -39006,23 +38909,23 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._CommunityUserBan(ctx, sel, obj)
-	case CommunityRule:
+	case models.CommunityRule:
 		return ec._CommunityRule(ctx, sel, &obj)
-	case *CommunityRule:
+	case *models.CommunityRule:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._CommunityRule(ctx, sel, obj)
-	case CommunityModerator:
+	case models.CommunityModerator:
 		return ec._CommunityModerator(ctx, sel, &obj)
-	case *CommunityModerator:
+	case *models.CommunityModerator:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._CommunityModerator(ctx, sel, obj)
-	case CommunityFollow:
+	case models.CommunityFollow:
 		return ec._CommunityFollow(ctx, sel, &obj)
-	case *CommunityFollow:
+	case *models.CommunityFollow:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -39032,23 +38935,23 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Community(ctx, sel, obj)
-	case CommentLike:
+	case models.CommentLike:
 		return ec._CommentLike(ctx, sel, &obj)
-	case *CommentLike:
+	case *models.CommentLike:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._CommentLike(ctx, sel, obj)
-	case Comment:
+	case models.Comment:
 		return ec._Comment(ctx, sel, &obj)
-	case *Comment:
+	case *models.Comment:
 		if obj == nil {
 			return graphql.Null
 		}
 		return ec._Comment(ctx, sel, obj)
-	case Bookmark:
+	case models.Bookmark:
 		return ec._Bookmark(ctx, sel, &obj)
-	case *Bookmark:
+	case *models.Bookmark:
 		if obj == nil {
 			return graphql.Null
 		}
@@ -39064,7 +38967,7 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 
 var bookmarkImplementors = []string{"Bookmark", "Node"}
 
-func (ec *executionContext) _Bookmark(ctx context.Context, sel ast.SelectionSet, obj *Bookmark) graphql.Marshaler {
+func (ec *executionContext) _Bookmark(ctx context.Context, sel ast.SelectionSet, obj *models.Bookmark) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, bookmarkImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -39133,7 +39036,7 @@ func (ec *executionContext) _Bookmark(ctx context.Context, sel ast.SelectionSet,
 
 var commentImplementors = []string{"Comment", "Node"}
 
-func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, obj *Comment) graphql.Marshaler {
+func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, obj *models.Comment) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, commentImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -39239,7 +39142,7 @@ func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, 
 
 var commentLikeImplementors = []string{"CommentLike", "Node"}
 
-func (ec *executionContext) _CommentLike(ctx context.Context, sel ast.SelectionSet, obj *CommentLike) graphql.Marshaler {
+func (ec *executionContext) _CommentLike(ctx context.Context, sel ast.SelectionSet, obj *models.CommentLike) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, commentLikeImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -39784,7 +39687,7 @@ func (ec *executionContext) _Community(ctx context.Context, sel ast.SelectionSet
 
 var communityFollowImplementors = []string{"CommunityFollow", "Node"}
 
-func (ec *executionContext) _CommunityFollow(ctx context.Context, sel ast.SelectionSet, obj *CommunityFollow) graphql.Marshaler {
+func (ec *executionContext) _CommunityFollow(ctx context.Context, sel ast.SelectionSet, obj *models.CommunityFollow) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, communityFollowImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -39853,7 +39756,7 @@ func (ec *executionContext) _CommunityFollow(ctx context.Context, sel ast.Select
 
 var communityModeratorImplementors = []string{"CommunityModerator", "Node"}
 
-func (ec *executionContext) _CommunityModerator(ctx context.Context, sel ast.SelectionSet, obj *CommunityModerator) graphql.Marshaler {
+func (ec *executionContext) _CommunityModerator(ctx context.Context, sel ast.SelectionSet, obj *models.CommunityModerator) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, communityModeratorImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40006,7 +39909,7 @@ func (ec *executionContext) _CommunityPermissions(ctx context.Context, sel ast.S
 
 var communityRuleImplementors = []string{"CommunityRule", "Node"}
 
-func (ec *executionContext) _CommunityRule(ctx context.Context, sel ast.SelectionSet, obj *CommunityRule) graphql.Marshaler {
+func (ec *executionContext) _CommunityRule(ctx context.Context, sel ast.SelectionSet, obj *models.CommunityRule) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, communityRuleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40325,7 +40228,7 @@ func (ec *executionContext) _CommunityUserMute(ctx context.Context, sel ast.Sele
 
 var emailVerificationImplementors = []string{"EmailVerification", "Node"}
 
-func (ec *executionContext) _EmailVerification(ctx context.Context, sel ast.SelectionSet, obj *EmailVerification) graphql.Marshaler {
+func (ec *executionContext) _EmailVerification(ctx context.Context, sel ast.SelectionSet, obj *models.EmailVerification) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, emailVerificationImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40616,7 +40519,7 @@ func (ec *executionContext) _Host(ctx context.Context, sel ast.SelectionSet, obj
 
 var hostCommunityBanImplementors = []string{"HostCommunityBan", "Node"}
 
-func (ec *executionContext) _HostCommunityBan(ctx context.Context, sel ast.SelectionSet, obj *HostCommunityBan) graphql.Marshaler {
+func (ec *executionContext) _HostCommunityBan(ctx context.Context, sel ast.SelectionSet, obj *models.HostCommunityBan) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunityBanImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40675,7 +40578,7 @@ func (ec *executionContext) _HostCommunityBan(ctx context.Context, sel ast.Selec
 
 var hostCommunityMuteImplementors = []string{"HostCommunityMute", "Node"}
 
-func (ec *executionContext) _HostCommunityMute(ctx context.Context, sel ast.SelectionSet, obj *HostCommunityMute) graphql.Marshaler {
+func (ec *executionContext) _HostCommunityMute(ctx context.Context, sel ast.SelectionSet, obj *models.HostCommunityMute) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostCommunityMuteImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -40888,7 +40791,7 @@ func (ec *executionContext) _HostRole(ctx context.Context, sel ast.SelectionSet,
 
 var hostRuleImplementors = []string{"HostRule", "Node"}
 
-func (ec *executionContext) _HostRule(ctx context.Context, sel ast.SelectionSet, obj *HostRule) graphql.Marshaler {
+func (ec *executionContext) _HostRule(ctx context.Context, sel ast.SelectionSet, obj *models.HostRule) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostRuleImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -41304,7 +41207,7 @@ func (ec *executionContext) _HostUserBan(ctx context.Context, sel ast.SelectionS
 
 var hostUserMuteImplementors = []string{"HostUserMute", "Node"}
 
-func (ec *executionContext) _HostUserMute(ctx context.Context, sel ast.SelectionSet, obj *HostUserMute) graphql.Marshaler {
+func (ec *executionContext) _HostUserMute(ctx context.Context, sel ast.SelectionSet, obj *models.HostUserMute) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, hostUserMuteImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -41358,7 +41261,7 @@ func (ec *executionContext) _HostUserMute(ctx context.Context, sel ast.Selection
 
 var loginUserResponseImplementors = []string{"LoginUserResponse"}
 
-func (ec *executionContext) _LoginUserResponse(ctx context.Context, sel ast.SelectionSet, obj *LoginUserResponse) graphql.Marshaler {
+func (ec *executionContext) _LoginUserResponse(ctx context.Context, sel ast.SelectionSet, obj *models.LoginUserResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, loginUserResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -41407,7 +41310,7 @@ func (ec *executionContext) _LoginUserResponse(ctx context.Context, sel ast.Sele
 
 var logoutUserResponseImplementors = []string{"LogoutUserResponse"}
 
-func (ec *executionContext) _LogoutUserResponse(ctx context.Context, sel ast.SelectionSet, obj *LogoutUserResponse) graphql.Marshaler {
+func (ec *executionContext) _LogoutUserResponse(ctx context.Context, sel ast.SelectionSet, obj *models.LogoutUserResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, logoutUserResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -41622,7 +41525,7 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 var pageInfoImplementors = []string{"PageInfo"}
 
-func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *PageInfo) graphql.Marshaler {
+func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *models.PageInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, pageInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -42026,7 +41929,7 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 
 var postLikeImplementors = []string{"PostLike", "Node"}
 
-func (ec *executionContext) _PostLike(ctx context.Context, sel ast.SelectionSet, obj *PostLike) graphql.Marshaler {
+func (ec *executionContext) _PostLike(ctx context.Context, sel ast.SelectionSet, obj *models.PostLike) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, postLikeImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -42765,7 +42668,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var refreshTokenResponseImplementors = []string{"RefreshTokenResponse"}
 
-func (ec *executionContext) _RefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, obj *RefreshTokenResponse) graphql.Marshaler {
+func (ec *executionContext) _RefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, obj *models.RefreshTokenResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, refreshTokenResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -42809,7 +42712,7 @@ func (ec *executionContext) _RefreshTokenResponse(ctx context.Context, sel ast.S
 
 var registerUserResponseImplementors = []string{"RegisterUserResponse"}
 
-func (ec *executionContext) _RegisterUserResponse(ctx context.Context, sel ast.SelectionSet, obj *RegisterUserResponse) graphql.Marshaler {
+func (ec *executionContext) _RegisterUserResponse(ctx context.Context, sel ast.SelectionSet, obj *models.RegisterUserResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, registerUserResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -42818,8 +42721,8 @@ func (ec *executionContext) _RegisterUserResponse(ctx context.Context, sel ast.S
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RegisterUserResponse")
-		case "user":
-			out.Values[i] = ec._RegisterUserResponse_user(ctx, field, obj)
+		case "message":
+			out.Values[i] = ec._RegisterUserResponse_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -42848,7 +42751,7 @@ func (ec *executionContext) _RegisterUserResponse(ctx context.Context, sel ast.S
 
 var resendVerifyEmailResponseImplementors = []string{"ResendVerifyEmailResponse"}
 
-func (ec *executionContext) _ResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, obj *ResendVerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) _ResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, obj *models.ResendVerifyEmailResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, resendVerifyEmailResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -43761,7 +43664,7 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 
 var userAvatarResponseImplementors = []string{"UserAvatarResponse"}
 
-func (ec *executionContext) _UserAvatarResponse(ctx context.Context, sel ast.SelectionSet, obj *UserAvatarResponse) graphql.Marshaler {
+func (ec *executionContext) _UserAvatarResponse(ctx context.Context, sel ast.SelectionSet, obj *models.UserAvatarResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userAvatarResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -43805,7 +43708,7 @@ func (ec *executionContext) _UserAvatarResponse(ctx context.Context, sel ast.Sel
 
 var userCommunityRoleResponseImplementors = []string{"UserCommunityRoleResponse"}
 
-func (ec *executionContext) _UserCommunityRoleResponse(ctx context.Context, sel ast.SelectionSet, obj *UserCommunityRoleResponse) graphql.Marshaler {
+func (ec *executionContext) _UserCommunityRoleResponse(ctx context.Context, sel ast.SelectionSet, obj *models.UserCommunityRoleResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userCommunityRoleResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -43884,7 +43787,7 @@ func (ec *executionContext) _UserCommunityRoleResponse(ctx context.Context, sel 
 
 var userFollowImplementors = []string{"UserFollow", "Node"}
 
-func (ec *executionContext) _UserFollow(ctx context.Context, sel ast.SelectionSet, obj *UserFollow) graphql.Marshaler {
+func (ec *executionContext) _UserFollow(ctx context.Context, sel ast.SelectionSet, obj *models.UserFollow) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userFollowImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -43953,7 +43856,7 @@ func (ec *executionContext) _UserFollow(ctx context.Context, sel ast.SelectionSe
 
 var userHostRoleResponseImplementors = []string{"UserHostRoleResponse"}
 
-func (ec *executionContext) _UserHostRoleResponse(ctx context.Context, sel ast.SelectionSet, obj *UserHostRoleResponse) graphql.Marshaler {
+func (ec *executionContext) _UserHostRoleResponse(ctx context.Context, sel ast.SelectionSet, obj *models.UserHostRoleResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userHostRoleResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -44032,7 +43935,7 @@ func (ec *executionContext) _UserHostRoleResponse(ctx context.Context, sel ast.S
 
 var userInfoResponseImplementors = []string{"UserInfoResponse"}
 
-func (ec *executionContext) _UserInfoResponse(ctx context.Context, sel ast.SelectionSet, obj *UserInfoResponse) graphql.Marshaler {
+func (ec *executionContext) _UserInfoResponse(ctx context.Context, sel ast.SelectionSet, obj *models.UserInfoResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userInfoResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -44081,7 +43984,7 @@ func (ec *executionContext) _UserInfoResponse(ctx context.Context, sel ast.Selec
 
 var userResponseImplementors = []string{"UserResponse"}
 
-func (ec *executionContext) _UserResponse(ctx context.Context, sel ast.SelectionSet, obj *UserResponse) graphql.Marshaler {
+func (ec *executionContext) _UserResponse(ctx context.Context, sel ast.SelectionSet, obj *models.UserResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -44172,7 +44075,7 @@ func (ec *executionContext) _UserResponse(ctx context.Context, sel ast.Selection
 
 var verifyEmailResponseImplementors = []string{"VerifyEmailResponse"}
 
-func (ec *executionContext) _VerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, obj *VerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) _VerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, obj *models.VerifyEmailResponse) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, verifyEmailResponseImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -44544,7 +44447,7 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚐBookmark(ctx context.Context, sel ast.SelectionSet, v *Bookmark) graphql.Marshaler {
+func (ec *executionContext) marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmark(ctx context.Context, sel ast.SelectionSet, v *models.Bookmark) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44554,7 +44457,7 @@ func (ec *executionContext) marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚐB
 	return ec._Bookmark(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInput(ctx context.Context, v any) (*BookmarkWhereInput, error) {
+func (ec *executionContext) unmarshalNBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInput(ctx context.Context, v any) (*models.BookmarkWhereInput, error) {
 	res, err := ec.unmarshalInputBookmarkWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44575,7 +44478,7 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚐComment(ctx context.Context, sel ast.SelectionSet, v *Comment) graphql.Marshaler {
+func (ec *executionContext) marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐComment(ctx context.Context, sel ast.SelectionSet, v *models.Comment) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44585,7 +44488,7 @@ func (ec *executionContext) marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚐCo
 	return ec._Comment(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLike(ctx context.Context, sel ast.SelectionSet, v *CommentLike) graphql.Marshaler {
+func (ec *executionContext) marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLike(ctx context.Context, sel ast.SelectionSet, v *models.CommentLike) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44595,12 +44498,12 @@ func (ec *executionContext) marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphql�
 	return ec._CommentLike(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInput(ctx context.Context, v any) (*CommentLikeWhereInput, error) {
+func (ec *executionContext) unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx context.Context, v any) (*models.CommentLikeWhereInput, error) {
 	res, err := ec.unmarshalInputCommentLikeWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInput(ctx context.Context, v any) (*CommentWhereInput, error) {
+func (ec *executionContext) unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInput(ctx context.Context, v any) (*models.CommentWhereInput, error) {
 	res, err := ec.unmarshalInputCommentWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44663,7 +44566,7 @@ func (ec *executionContext) marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐComm
 	return ec._Community(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCommunityFollow2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollow(ctx context.Context, sel ast.SelectionSet, v *CommunityFollow) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityFollow2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollow(ctx context.Context, sel ast.SelectionSet, v *models.CommunityFollow) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44673,12 +44576,12 @@ func (ec *executionContext) marshalNCommunityFollow2ᚖstormlinkᚋserverᚋgrap
 	return ec._CommunityFollow(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInput(ctx context.Context, v any) (*CommunityFollowWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInput(ctx context.Context, v any) (*models.CommunityFollowWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityFollowWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerator(ctx context.Context, sel ast.SelectionSet, v *CommunityModerator) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModerator(ctx context.Context, sel ast.SelectionSet, v *models.CommunityModerator) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44688,7 +44591,7 @@ func (ec *executionContext) marshalNCommunityModerator2ᚖstormlinkᚋserverᚋg
 	return ec._CommunityModerator(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*CommunityModeratorWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*models.CommunityModeratorWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityModeratorWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44707,7 +44610,7 @@ func (ec *executionContext) marshalNCommunityPermissions2ᚖstormlinkᚋserver�
 	return ec._CommunityPermissions(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRule(ctx context.Context, sel ast.SelectionSet, v *CommunityRule) graphql.Marshaler {
+func (ec *executionContext) marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRule(ctx context.Context, sel ast.SelectionSet, v *models.CommunityRule) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44717,7 +44620,7 @@ func (ec *executionContext) marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphq
 	return ec._CommunityRule(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInput(ctx context.Context, v any) (*CommunityRuleWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInput(ctx context.Context, v any) (*models.CommunityRuleWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityRuleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44732,7 +44635,7 @@ func (ec *executionContext) marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋent
 	return ec._CommunityUserBan(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*CommunityUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*models.CommunityUserBanWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44747,27 +44650,27 @@ func (ec *executionContext) marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋen
 	return ec._CommunityUserMute(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*CommunityUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*models.CommunityUserMuteWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInput(ctx context.Context, v any) (*CommunityWhereInput, error) {
+func (ec *executionContext) unmarshalNCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInput(ctx context.Context, v any) (*models.CommunityWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚐCreateCommunityInput(ctx context.Context, v any) (CreateCommunityInput, error) {
+func (ec *executionContext) unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput(ctx context.Context, v any) (models.CreateCommunityInput, error) {
 	res, err := ec.unmarshalInputCreateCommunityInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚐCreatePostInput(ctx context.Context, v any) (CreatePostInput, error) {
+func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput(ctx context.Context, v any) (models.CreatePostInput, error) {
 	res, err := ec.unmarshalInputCreatePostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNEmailVerification2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerification(ctx context.Context, sel ast.SelectionSet, v *EmailVerification) graphql.Marshaler {
+func (ec *executionContext) marshalNEmailVerification2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerification(ctx context.Context, sel ast.SelectionSet, v *models.EmailVerification) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44777,7 +44680,7 @@ func (ec *executionContext) marshalNEmailVerification2ᚖstormlinkᚋserverᚋgr
 	return ec._EmailVerification(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInput(ctx context.Context, v any) (*EmailVerificationWhereInput, error) {
+func (ec *executionContext) unmarshalNEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInput(ctx context.Context, v any) (*models.EmailVerificationWhereInput, error) {
 	res, err := ec.unmarshalInputEmailVerificationWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44796,12 +44699,12 @@ func (ec *executionContext) marshalNHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 	return ec._Host(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*HostCommunityBanWhereInput, error) {
+func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*models.HostCommunityBanWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunityBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*HostCommunityMuteWhereInput, error) {
+func (ec *executionContext) unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*models.HostCommunityMuteWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunityMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44860,12 +44763,12 @@ func (ec *executionContext) marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostR
 	return ec._HostRole(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInput(ctx context.Context, v any) (*HostRoleWhereInput, error) {
+func (ec *executionContext) unmarshalNHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInput(ctx context.Context, v any) (*models.HostRoleWhereInput, error) {
 	res, err := ec.unmarshalInputHostRoleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚐHostRule(ctx context.Context, sel ast.SelectionSet, v *HostRule) graphql.Marshaler {
+func (ec *executionContext) marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx context.Context, sel ast.SelectionSet, v *models.HostRule) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -44875,7 +44778,7 @@ func (ec *executionContext) marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚐH
 	return ec._HostRule(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInput(ctx context.Context, v any) (*HostRuleWhereInput, error) {
+func (ec *executionContext) unmarshalNHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInput(ctx context.Context, v any) (*models.HostRuleWhereInput, error) {
 	res, err := ec.unmarshalInputHostRuleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -44944,17 +44847,17 @@ func (ec *executionContext) marshalNHostSidebarNavigationItem2ᚖstormlinkᚋser
 	return ec._HostSidebarNavigationItem(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInput(ctx context.Context, v any) (*HostSidebarNavigationItemWhereInput, error) {
+func (ec *executionContext) unmarshalNHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInput(ctx context.Context, v any) (*models.HostSidebarNavigationItemWhereInput, error) {
 	res, err := ec.unmarshalInputHostSidebarNavigationItemWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInput(ctx context.Context, v any) (*HostSidebarNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalNHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInput(ctx context.Context, v any) (*models.HostSidebarNavigationWhereInput, error) {
 	res, err := ec.unmarshalInputHostSidebarNavigationWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInput(ctx context.Context, v any) (*HostSocialNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalNHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInput(ctx context.Context, v any) (*models.HostSocialNavigationWhereInput, error) {
 	res, err := ec.unmarshalInputHostSocialNavigationWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45013,17 +44916,17 @@ func (ec *executionContext) marshalNHostUserBan2ᚖstormlinkᚋserverᚋentᚐHo
 	return ec._HostUserBan(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx context.Context, v any) (*HostUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInput(ctx context.Context, v any) (*models.HostUserBanWhereInput, error) {
 	res, err := ec.unmarshalInputHostUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx context.Context, v any) (*HostUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInput(ctx context.Context, v any) (*models.HostUserMuteWhereInput, error) {
 	res, err := ec.unmarshalInputHostUserMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInput(ctx context.Context, v any) (*HostWhereInput, error) {
+func (ec *executionContext) unmarshalNHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInput(ctx context.Context, v any) (*models.HostWhereInput, error) {
 	res, err := ec.unmarshalInputHostWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45112,16 +45015,16 @@ func (ec *executionContext) marshalNJSON2map(ctx context.Context, sel ast.Select
 	return res
 }
 
-func (ec *executionContext) unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚐLoginUserInput(ctx context.Context, v any) (LoginUserInput, error) {
+func (ec *executionContext) unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserInput(ctx context.Context, v any) (models.LoginUserInput, error) {
 	res, err := ec.unmarshalInputLoginUserInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNLoginUserResponse2stormlinkᚋserverᚋgraphqlᚐLoginUserResponse(ctx context.Context, sel ast.SelectionSet, v LoginUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNLoginUserResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserResponse(ctx context.Context, sel ast.SelectionSet, v models.LoginUserResponse) graphql.Marshaler {
 	return ec._LoginUserResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNLoginUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐLoginUserResponse(ctx context.Context, sel ast.SelectionSet, v *LoginUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNLoginUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserResponse(ctx context.Context, sel ast.SelectionSet, v *models.LoginUserResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45131,11 +45034,11 @@ func (ec *executionContext) marshalNLoginUserResponse2ᚖstormlinkᚋserverᚋgr
 	return ec._LoginUserResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNLogoutUserResponse2stormlinkᚋserverᚋgraphqlᚐLogoutUserResponse(ctx context.Context, sel ast.SelectionSet, v LogoutUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNLogoutUserResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLogoutUserResponse(ctx context.Context, sel ast.SelectionSet, v models.LogoutUserResponse) graphql.Marshaler {
 	return ec._LogoutUserResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNLogoutUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐLogoutUserResponse(ctx context.Context, sel ast.SelectionSet, v *LogoutUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNLogoutUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐLogoutUserResponse(ctx context.Context, sel ast.SelectionSet, v *models.LogoutUserResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45159,7 +45062,7 @@ func (ec *executionContext) marshalNMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ct
 	return ec._Media(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInput(ctx context.Context, v any) (*MediaWhereInput, error) {
+func (ec *executionContext) unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInput(ctx context.Context, v any) (*models.MediaWhereInput, error) {
 	res, err := ec.unmarshalInputMediaWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45260,7 +45163,7 @@ func (ec *executionContext) marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx 
 	return ec._Post(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNPostLike2ᚖstormlinkᚋserverᚋgraphqlᚐPostLike(ctx context.Context, sel ast.SelectionSet, v *PostLike) graphql.Marshaler {
+func (ec *executionContext) marshalNPostLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLike(ctx context.Context, sel ast.SelectionSet, v *models.PostLike) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45270,7 +45173,7 @@ func (ec *executionContext) marshalNPostLike2ᚖstormlinkᚋserverᚋgraphqlᚐP
 	return ec._PostLike(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInput(ctx context.Context, v any) (*PostLikeWhereInput, error) {
+func (ec *executionContext) unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInput(ctx context.Context, v any) (*models.PostLikeWhereInput, error) {
 	res, err := ec.unmarshalInputPostLikeWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45285,7 +45188,7 @@ func (ec *executionContext) marshalNPostStatus2stormlinkᚋserverᚋentᚋpost�
 	return v
 }
 
-func (ec *executionContext) unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx context.Context, v any) (*PostWhereInput, error) {
+func (ec *executionContext) unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInput(ctx context.Context, v any) (*models.PostWhereInput, error) {
 	res, err := ec.unmarshalInputPostWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45354,16 +45257,16 @@ func (ec *executionContext) marshalNProfileTableInfoItemType2stormlinkᚋserver�
 	return v
 }
 
-func (ec *executionContext) unmarshalNProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInput(ctx context.Context, v any) (*ProfileTableInfoItemWhereInput, error) {
+func (ec *executionContext) unmarshalNProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInput(ctx context.Context, v any) (*models.ProfileTableInfoItemWhereInput, error) {
 	res, err := ec.unmarshalInputProfileTableInfoItemWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRefreshTokenResponse2stormlinkᚋserverᚋgraphqlᚐRefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, v RefreshTokenResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNRefreshTokenResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, v models.RefreshTokenResponse) graphql.Marshaler {
 	return ec._RefreshTokenResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRefreshTokenResponse2ᚖstormlinkᚋserverᚋgraphqlᚐRefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, v *RefreshTokenResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNRefreshTokenResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRefreshTokenResponse(ctx context.Context, sel ast.SelectionSet, v *models.RefreshTokenResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45373,16 +45276,16 @@ func (ec *executionContext) marshalNRefreshTokenResponse2ᚖstormlinkᚋserver�
 	return ec._RefreshTokenResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚐRegisterUserInput(ctx context.Context, v any) (RegisterUserInput, error) {
+func (ec *executionContext) unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserInput(ctx context.Context, v any) (models.RegisterUserInput, error) {
 	res, err := ec.unmarshalInputRegisterUserInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNRegisterUserResponse2stormlinkᚋserverᚋgraphqlᚐRegisterUserResponse(ctx context.Context, sel ast.SelectionSet, v RegisterUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterUserResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserResponse(ctx context.Context, sel ast.SelectionSet, v models.RegisterUserResponse) graphql.Marshaler {
 	return ec._RegisterUserResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRegisterUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐRegisterUserResponse(ctx context.Context, sel ast.SelectionSet, v *RegisterUserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNRegisterUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserResponse(ctx context.Context, sel ast.SelectionSet, v *models.RegisterUserResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45392,16 +45295,16 @@ func (ec *executionContext) marshalNRegisterUserResponse2ᚖstormlinkᚋserver�
 	return ec._RegisterUserResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚐResendVerifyEmailInput(ctx context.Context, v any) (ResendVerifyEmailInput, error) {
+func (ec *executionContext) unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailInput(ctx context.Context, v any) (models.ResendVerifyEmailInput, error) {
 	res, err := ec.unmarshalInputResendVerifyEmailInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNResendVerifyEmailResponse2stormlinkᚋserverᚋgraphqlᚐResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v ResendVerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNResendVerifyEmailResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v models.ResendVerifyEmailResponse) graphql.Marshaler {
 	return ec._ResendVerifyEmailResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResendVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚐResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v *ResendVerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNResendVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v *models.ResendVerifyEmailResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45465,7 +45368,7 @@ func (ec *executionContext) marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx 
 	return ec._Role(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInput(ctx context.Context, v any) (*RoleWhereInput, error) {
+func (ec *executionContext) unmarshalNRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInput(ctx context.Context, v any) (*models.RoleWhereInput, error) {
 	res, err := ec.unmarshalInputRoleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45524,12 +45427,12 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 	return res
 }
 
-func (ec *executionContext) unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚐUpdateHostInput(ctx context.Context, v any) (UpdateHostInput, error) {
+func (ec *executionContext) unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostInput(ctx context.Context, v any) (models.UpdateHostInput, error) {
 	res, err := ec.unmarshalInputUpdateHostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚐUpdatePostInput(ctx context.Context, v any) (UpdatePostInput, error) {
+func (ec *executionContext) unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput(ctx context.Context, v any) (models.UpdatePostInput, error) {
 	res, err := ec.unmarshalInputUpdatePostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -45604,7 +45507,7 @@ func (ec *executionContext) marshalNUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx 
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserCommunityRoleResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*UserCommunityRoleResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserCommunityRoleResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.UserCommunityRoleResponse) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -45628,7 +45531,7 @@ func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserCommunityRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserCommunityRoleResponse(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserCommunityRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserCommunityRoleResponse(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -45648,7 +45551,7 @@ func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚕᚖstormlinkᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserCommunityRoleResponse(ctx context.Context, sel ast.SelectionSet, v *UserCommunityRoleResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserCommunityRoleResponse(ctx context.Context, sel ast.SelectionSet, v *models.UserCommunityRoleResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45658,7 +45561,7 @@ func (ec *executionContext) marshalNUserCommunityRoleResponse2ᚖstormlinkᚋser
 	return ec._UserCommunityRoleResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserFollow2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollow(ctx context.Context, sel ast.SelectionSet, v *UserFollow) graphql.Marshaler {
+func (ec *executionContext) marshalNUserFollow2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollow(ctx context.Context, sel ast.SelectionSet, v *models.UserFollow) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45668,12 +45571,12 @@ func (ec *executionContext) marshalNUserFollow2ᚖstormlinkᚋserverᚋgraphql�
 	return ec._UserFollow(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInput(ctx context.Context, v any) (*UserFollowWhereInput, error) {
+func (ec *executionContext) unmarshalNUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInput(ctx context.Context, v any) (*models.UserFollowWhereInput, error) {
 	res, err := ec.unmarshalInputUserFollowWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserHostRoleResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*UserHostRoleResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserHostRoleResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.UserHostRoleResponse) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -45697,7 +45600,7 @@ func (ec *executionContext) marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserve
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserHostRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserHostRoleResponse(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserHostRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserHostRoleResponse(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -45717,7 +45620,7 @@ func (ec *executionContext) marshalNUserHostRoleResponse2ᚕᚖstormlinkᚋserve
 	return ret
 }
 
-func (ec *executionContext) marshalNUserHostRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserHostRoleResponse(ctx context.Context, sel ast.SelectionSet, v *UserHostRoleResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserHostRoleResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserHostRoleResponse(ctx context.Context, sel ast.SelectionSet, v *models.UserHostRoleResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45727,7 +45630,7 @@ func (ec *executionContext) marshalNUserHostRoleResponse2ᚖstormlinkᚋserver�
 	return ec._UserHostRoleResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserInfoResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*UserInfoResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.UserInfoResponse) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -45751,7 +45654,7 @@ func (ec *executionContext) marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserInfoResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserInfoResponse(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserInfoResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoResponse(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -45771,7 +45674,7 @@ func (ec *executionContext) marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNUserInfoResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserInfoResponse(ctx context.Context, sel ast.SelectionSet, v *UserInfoResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserInfoResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoResponse(ctx context.Context, sel ast.SelectionSet, v *models.UserInfoResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45781,11 +45684,11 @@ func (ec *executionContext) marshalNUserInfoResponse2ᚖstormlinkᚋserverᚋgra
 	return ec._UserInfoResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserResponse2stormlinkᚋserverᚋgraphqlᚐUserResponse(ctx context.Context, sel ast.SelectionSet, v UserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUserResponse(ctx context.Context, sel ast.SelectionSet, v models.UserResponse) graphql.Marshaler {
 	return ec._UserResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserResponse(ctx context.Context, sel ast.SelectionSet, v *UserResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserResponse(ctx context.Context, sel ast.SelectionSet, v *models.UserResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -45795,21 +45698,21 @@ func (ec *executionContext) marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphql
 	return ec._UserResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInput(ctx context.Context, v any) (*UserWhereInput, error) {
+func (ec *executionContext) unmarshalNUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInput(ctx context.Context, v any) (*models.UserWhereInput, error) {
 	res, err := ec.unmarshalInputUserWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚐVerifyEmailInput(ctx context.Context, v any) (VerifyEmailInput, error) {
+func (ec *executionContext) unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailInput(ctx context.Context, v any) (models.VerifyEmailInput, error) {
 	res, err := ec.unmarshalInputVerifyEmailInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNVerifyEmailResponse2stormlinkᚋserverᚋgraphqlᚐVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v VerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNVerifyEmailResponse2stormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v models.VerifyEmailResponse) graphql.Marshaler {
 	return ec._VerifyEmailResponse(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚐVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v *VerifyEmailResponse) graphql.Marshaler {
+func (ec *executionContext) marshalNVerifyEmailResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailResponse(ctx context.Context, sel ast.SelectionSet, v *models.VerifyEmailResponse) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -46072,7 +45975,7 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkᚄ(ctx context.Context, sel ast.SelectionSet, v []*Bookmark) graphql.Marshaler {
+func (ec *executionContext) marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Bookmark) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46099,7 +46002,7 @@ func (ec *executionContext) marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphql�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚐBookmark(ctx, sel, v[i])
+			ret[i] = ec.marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmark(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46119,17 +46022,17 @@ func (ec *executionContext) marshalOBookmark2ᚕᚖstormlinkᚋserverᚋgraphql�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInputᚄ(ctx context.Context, v any) ([]*BookmarkWhereInput, error) {
+func (ec *executionContext) unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInputᚄ(ctx context.Context, v any) ([]*models.BookmarkWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*BookmarkWhereInput, len(vSlice))
+	res := make([]*models.BookmarkWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46137,7 +46040,7 @@ func (ec *executionContext) unmarshalOBookmarkWhereInput2ᚕᚖstormlinkᚋserve
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐBookmarkWhereInput(ctx context.Context, v any) (*BookmarkWhereInput, error) {
+func (ec *executionContext) unmarshalOBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInput(ctx context.Context, v any) (*models.BookmarkWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46175,7 +46078,7 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*Comment) graphql.Marshaler {
+func (ec *executionContext) marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Comment) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46202,7 +46105,7 @@ func (ec *executionContext) marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphql�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚐComment(ctx, sel, v[i])
+			ret[i] = ec.marshalNComment2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐComment(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46222,14 +46125,14 @@ func (ec *executionContext) marshalOComment2ᚕᚖstormlinkᚋserverᚋgraphql�
 	return ret
 }
 
-func (ec *executionContext) marshalOComment2ᚖstormlinkᚋserverᚋgraphqlᚐComment(ctx context.Context, sel ast.SelectionSet, v *Comment) graphql.Marshaler {
+func (ec *executionContext) marshalOComment2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐComment(ctx context.Context, sel ast.SelectionSet, v *models.Comment) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Comment(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommentLike) graphql.Marshaler {
+func (ec *executionContext) marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommentLike) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46256,7 +46159,7 @@ func (ec *executionContext) marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraph
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLike(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLike(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46276,17 +46179,17 @@ func (ec *executionContext) marshalOCommentLike2ᚕᚖstormlinkᚋserverᚋgraph
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInputᚄ(ctx context.Context, v any) ([]*CommentLikeWhereInput, error) {
+func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInputᚄ(ctx context.Context, v any) ([]*models.CommentLikeWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommentLikeWhereInput, len(vSlice))
+	res := make([]*models.CommentLikeWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46294,7 +46197,7 @@ func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚕᚖstormlinkᚋse
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentLikeWhereInput(ctx context.Context, v any) (*CommentLikeWhereInput, error) {
+func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx context.Context, v any) (*models.CommentLikeWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46302,17 +46205,17 @@ func (ec *executionContext) unmarshalOCommentLikeWhereInput2ᚖstormlinkᚋserve
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInputᚄ(ctx context.Context, v any) ([]*CommentWhereInput, error) {
+func (ec *executionContext) unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInputᚄ(ctx context.Context, v any) ([]*models.CommentWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommentWhereInput, len(vSlice))
+	res := make([]*models.CommentWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46320,7 +46223,7 @@ func (ec *executionContext) unmarshalOCommentWhereInput2ᚕᚖstormlinkᚋserver
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommentWhereInput(ctx context.Context, v any) (*CommentWhereInput, error) {
+func (ec *executionContext) unmarshalOCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInput(ctx context.Context, v any) (*models.CommentWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46382,7 +46285,7 @@ func (ec *executionContext) marshalOCommunity2ᚖstormlinkᚋserverᚋentᚐComm
 	return ec._Community(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityFollow) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommunityFollow) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46409,7 +46312,7 @@ func (ec *executionContext) marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋg
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityFollow2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollow(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityFollow2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollow(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46429,17 +46332,17 @@ func (ec *executionContext) marshalOCommunityFollow2ᚕᚖstormlinkᚋserverᚋg
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInputᚄ(ctx context.Context, v any) ([]*CommunityFollowWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityFollowWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityFollowWhereInput, len(vSlice))
+	res := make([]*models.CommunityFollowWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46447,7 +46350,7 @@ func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚕᚖstormlink�
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityFollowWhereInput(ctx context.Context, v any) (*CommunityFollowWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowWhereInput(ctx context.Context, v any) (*models.CommunityFollowWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46455,7 +46358,7 @@ func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋs
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityModerator) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommunityModerator) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46482,7 +46385,7 @@ func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserver�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModerator(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityModerator2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModerator(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46502,17 +46405,17 @@ func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserver�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInputᚄ(ctx context.Context, v any) ([]*CommunityModeratorWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityModeratorWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityModeratorWhereInput, len(vSlice))
+	res := make([]*models.CommunityModeratorWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46520,7 +46423,7 @@ func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚕᚖstormli
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*CommunityModeratorWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityModeratorWhereInput(ctx context.Context, v any) (*models.CommunityModeratorWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46528,7 +46431,7 @@ func (ec *executionContext) unmarshalOCommunityModeratorWhereInput2ᚖstormlink�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []*CommunityRule) graphql.Marshaler {
+func (ec *executionContext) marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommunityRule) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46555,7 +46458,7 @@ func (ec *executionContext) marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgra
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRule(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRule(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46575,17 +46478,17 @@ func (ec *executionContext) marshalOCommunityRule2ᚕᚖstormlinkᚋserverᚋgra
 	return ret
 }
 
-func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInputᚄ(ctx context.Context, v any) ([]*CommunityRuleWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityRuleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityRuleWhereInput, len(vSlice))
+	res := make([]*models.CommunityRuleWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46593,7 +46496,7 @@ func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚕᚖstormlinkᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityRuleWhereInput(ctx context.Context, v any) (*CommunityRuleWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInput(ctx context.Context, v any) (*models.CommunityRuleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46655,17 +46558,17 @@ func (ec *executionContext) marshalOCommunityUserBan2ᚖstormlinkᚋserverᚋent
 	return ec._CommunityUserBan(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityUserBanWhereInput, len(vSlice))
+	res := make([]*models.CommunityUserBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46673,7 +46576,7 @@ func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚕᚖstormlink
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*CommunityUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*models.CommunityUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46735,17 +46638,17 @@ func (ec *executionContext) marshalOCommunityUserMute2ᚖstormlinkᚋserverᚋen
 	return ec._CommunityUserMute(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*CommunityUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityUserMuteWhereInput, len(vSlice))
+	res := make([]*models.CommunityUserMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46753,7 +46656,7 @@ func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚕᚖstormlin
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*CommunityUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserMuteWhereInput(ctx context.Context, v any) (*models.CommunityUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46761,17 +46664,17 @@ func (ec *executionContext) unmarshalOCommunityUserMuteWhereInput2ᚖstormlink�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInputᚄ(ctx context.Context, v any) ([]*CommunityWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInputᚄ(ctx context.Context, v any) ([]*models.CommunityWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*CommunityWhereInput, len(vSlice))
+	res := make([]*models.CommunityWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46779,7 +46682,7 @@ func (ec *executionContext) unmarshalOCommunityWhereInput2ᚕᚖstormlinkᚋserv
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐCommunityWhereInput(ctx context.Context, v any) (*CommunityWhereInput, error) {
+func (ec *executionContext) unmarshalOCommunityWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityWhereInput(ctx context.Context, v any) (*models.CommunityWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46805,7 +46708,7 @@ func (ec *executionContext) marshalOCursor2ᚖstring(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalOEmailVerification2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationᚄ(ctx context.Context, sel ast.SelectionSet, v []*EmailVerification) graphql.Marshaler {
+func (ec *executionContext) marshalOEmailVerification2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.EmailVerification) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -46832,7 +46735,7 @@ func (ec *executionContext) marshalOEmailVerification2ᚕᚖstormlinkᚋserver�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNEmailVerification2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerification(ctx, sel, v[i])
+			ret[i] = ec.marshalNEmailVerification2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerification(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -46852,17 +46755,17 @@ func (ec *executionContext) marshalOEmailVerification2ᚕᚖstormlinkᚋserver�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInputᚄ(ctx context.Context, v any) ([]*EmailVerificationWhereInput, error) {
+func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInputᚄ(ctx context.Context, v any) ([]*models.EmailVerificationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*EmailVerificationWhereInput, len(vSlice))
+	res := make([]*models.EmailVerificationWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46870,7 +46773,7 @@ func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚕᚖstormlin
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐEmailVerificationWhereInput(ctx context.Context, v any) (*EmailVerificationWhereInput, error) {
+func (ec *executionContext) unmarshalOEmailVerificationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐEmailVerificationWhereInput(ctx context.Context, v any) (*models.EmailVerificationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46885,17 +46788,17 @@ func (ec *executionContext) marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 	return ec._Host(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunityBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInputᚄ(ctx context.Context, v any) ([]*models.HostCommunityBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostCommunityBanWhereInput, len(vSlice))
+	res := make([]*models.HostCommunityBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46903,7 +46806,7 @@ func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlink
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*HostCommunityBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*models.HostCommunityBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46911,17 +46814,17 @@ func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostCommunityMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInputᚄ(ctx context.Context, v any) ([]*models.HostCommunityMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostCommunityMuteWhereInput, len(vSlice))
+	res := make([]*models.HostCommunityMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -46929,7 +46832,7 @@ func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlin
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*HostCommunityMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*models.HostCommunityMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -46991,17 +46894,17 @@ func (ec *executionContext) marshalOHostRole2ᚖstormlinkᚋserverᚋentᚐHostR
 	return ec._HostRole(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInputᚄ(ctx context.Context, v any) ([]*HostRoleWhereInput, error) {
+func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInputᚄ(ctx context.Context, v any) ([]*models.HostRoleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostRoleWhereInput, len(vSlice))
+	res := make([]*models.HostRoleWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47009,7 +46912,7 @@ func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚕᚖstormlinkᚋserve
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRoleWhereInput(ctx context.Context, v any) (*HostRoleWhereInput, error) {
+func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInput(ctx context.Context, v any) (*models.HostRoleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47017,7 +46920,7 @@ func (ec *executionContext) unmarshalOHostRoleWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []*HostRule) graphql.Marshaler {
+func (ec *executionContext) marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.HostRule) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -47044,7 +46947,7 @@ func (ec *executionContext) marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphql�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚐHostRule(ctx, sel, v[i])
+			ret[i] = ec.marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -47064,17 +46967,17 @@ func (ec *executionContext) marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphql�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInputᚄ(ctx context.Context, v any) ([]*HostRuleWhereInput, error) {
+func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInputᚄ(ctx context.Context, v any) ([]*models.HostRuleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostRuleWhereInput, len(vSlice))
+	res := make([]*models.HostRuleWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47082,7 +46985,7 @@ func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserve
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostRuleWhereInput(ctx context.Context, v any) (*HostRuleWhereInput, error) {
+func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInput(ctx context.Context, v any) (*models.HostRuleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47144,17 +47047,17 @@ func (ec *executionContext) marshalOHostSidebarNavigationItem2ᚕᚖstormlinkᚋ
 	return ret
 }
 
-func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInputᚄ(ctx context.Context, v any) ([]*HostSidebarNavigationItemWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInputᚄ(ctx context.Context, v any) ([]*models.HostSidebarNavigationItemWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostSidebarNavigationItemWhereInput, len(vSlice))
+	res := make([]*models.HostSidebarNavigationItemWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47162,7 +47065,7 @@ func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚕᚖ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationItemWhereInput(ctx context.Context, v any) (*HostSidebarNavigationItemWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationItemWhereInput(ctx context.Context, v any) (*models.HostSidebarNavigationItemWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47170,17 +47073,17 @@ func (ec *executionContext) unmarshalOHostSidebarNavigationItemWhereInput2ᚖsto
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInputᚄ(ctx context.Context, v any) ([]*HostSidebarNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInputᚄ(ctx context.Context, v any) ([]*models.HostSidebarNavigationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostSidebarNavigationWhereInput, len(vSlice))
+	res := make([]*models.HostSidebarNavigationWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47188,7 +47091,7 @@ func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚕᚖstor
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSidebarNavigationWhereInput(ctx context.Context, v any) (*HostSidebarNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSidebarNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSidebarNavigationWhereInput(ctx context.Context, v any) (*models.HostSidebarNavigationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47203,17 +47106,17 @@ func (ec *executionContext) marshalOHostSocialNavigation2ᚖstormlinkᚋserver�
 	return ec._HostSocialNavigation(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInputᚄ(ctx context.Context, v any) ([]*HostSocialNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInputᚄ(ctx context.Context, v any) ([]*models.HostSocialNavigationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostSocialNavigationWhereInput, len(vSlice))
+	res := make([]*models.HostSocialNavigationWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47221,7 +47124,7 @@ func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚕᚖstorm
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostSocialNavigationWhereInput(ctx context.Context, v any) (*HostSocialNavigationWhereInput, error) {
+func (ec *executionContext) unmarshalOHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInput(ctx context.Context, v any) (*models.HostSocialNavigationWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47236,17 +47139,17 @@ func (ec *executionContext) marshalOHostUserBan2ᚖstormlinkᚋserverᚋentᚐHo
 	return ec._HostUserBan(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInputᚄ(ctx context.Context, v any) ([]*HostUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInputᚄ(ctx context.Context, v any) ([]*models.HostUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostUserBanWhereInput, len(vSlice))
+	res := make([]*models.HostUserBanWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47254,7 +47157,7 @@ func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚕᚖstormlinkᚋse
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserBanWhereInput(ctx context.Context, v any) (*HostUserBanWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInput(ctx context.Context, v any) (*models.HostUserBanWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47262,17 +47165,17 @@ func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserve
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*HostUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*models.HostUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostUserMuteWhereInput, len(vSlice))
+	res := make([]*models.HostUserMuteWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47280,7 +47183,7 @@ func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋs
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostUserMuteWhereInput(ctx context.Context, v any) (*HostUserMuteWhereInput, error) {
+func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInput(ctx context.Context, v any) (*models.HostUserMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47288,17 +47191,17 @@ func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚖstormlinkᚋserv
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInputᚄ(ctx context.Context, v any) ([]*HostWhereInput, error) {
+func (ec *executionContext) unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInputᚄ(ctx context.Context, v any) ([]*models.HostWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*HostWhereInput, len(vSlice))
+	res := make([]*models.HostWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47306,7 +47209,7 @@ func (ec *executionContext) unmarshalOHostWhereInput2ᚕᚖstormlinkᚋserverᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐHostWhereInput(ctx context.Context, v any) (*HostWhereInput, error) {
+func (ec *executionContext) unmarshalOHostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostWhereInput(ctx context.Context, v any) (*models.HostWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47441,17 +47344,17 @@ func (ec *executionContext) marshalOMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ct
 	return ec._Media(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInputᚄ(ctx context.Context, v any) ([]*MediaWhereInput, error) {
+func (ec *executionContext) unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInputᚄ(ctx context.Context, v any) ([]*models.MediaWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*MediaWhereInput, len(vSlice))
+	res := make([]*models.MediaWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47459,7 +47362,7 @@ func (ec *executionContext) unmarshalOMediaWhereInput2ᚕᚖstormlinkᚋserver�
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐMediaWhereInput(ctx context.Context, v any) (*MediaWhereInput, error) {
+func (ec *executionContext) unmarshalOMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInput(ctx context.Context, v any) (*models.MediaWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47528,7 +47431,7 @@ func (ec *executionContext) marshalOPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx 
 	return ec._Post(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*PostLike) graphql.Marshaler {
+func (ec *executionContext) marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.PostLike) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -47555,7 +47458,7 @@ func (ec *executionContext) marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphql�
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNPostLike2ᚖstormlinkᚋserverᚋgraphqlᚐPostLike(ctx, sel, v[i])
+			ret[i] = ec.marshalNPostLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLike(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -47575,17 +47478,17 @@ func (ec *executionContext) marshalOPostLike2ᚕᚖstormlinkᚋserverᚋgraphql�
 	return ret
 }
 
-func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInputᚄ(ctx context.Context, v any) ([]*PostLikeWhereInput, error) {
+func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInputᚄ(ctx context.Context, v any) ([]*models.PostLikeWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*PostLikeWhereInput, len(vSlice))
+	res := make([]*models.PostLikeWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47593,7 +47496,7 @@ func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚕᚖstormlinkᚋserve
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostLikeWhereInput(ctx context.Context, v any) (*PostLikeWhereInput, error) {
+func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostLikeWhereInput(ctx context.Context, v any) (*models.PostLikeWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47682,17 +47585,17 @@ func (ec *executionContext) marshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpos
 	return v
 }
 
-func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*PostWhereInput, error) {
+func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*models.PostWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*PostWhereInput, len(vSlice))
+	res := make([]*models.PostWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47700,7 +47603,7 @@ func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐPostWhereInput(ctx context.Context, v any) (*PostWhereInput, error) {
+func (ec *executionContext) unmarshalOPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInput(ctx context.Context, v any) (*models.PostWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47843,17 +47746,17 @@ func (ec *executionContext) marshalOProfileTableInfoItemType2ᚖstormlinkᚋserv
 	return v
 }
 
-func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInputᚄ(ctx context.Context, v any) ([]*ProfileTableInfoItemWhereInput, error) {
+func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx context.Context, v any) ([]*models.ProfileTableInfoItemWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*ProfileTableInfoItemWhereInput, len(vSlice))
+	res := make([]*models.ProfileTableInfoItemWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47861,7 +47764,7 @@ func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstorm
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐProfileTableInfoItemWhereInput(ctx context.Context, v any) (*ProfileTableInfoItemWhereInput, error) {
+func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInput(ctx context.Context, v any) (*models.ProfileTableInfoItemWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -47923,17 +47826,17 @@ func (ec *executionContext) marshalORole2ᚖstormlinkᚋserverᚋentᚐRole(ctx 
 	return ec._Role(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInputᚄ(ctx context.Context, v any) ([]*RoleWhereInput, error) {
+func (ec *executionContext) unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInputᚄ(ctx context.Context, v any) ([]*models.RoleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*RoleWhereInput, len(vSlice))
+	res := make([]*models.RoleWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -47941,7 +47844,7 @@ func (ec *executionContext) unmarshalORoleWhereInput2ᚕᚖstormlinkᚋserverᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalORoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐRoleWhereInput(ctx context.Context, v any) (*RoleWhereInput, error) {
+func (ec *executionContext) unmarshalORoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐRoleWhereInput(ctx context.Context, v any) (*models.RoleWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -48123,14 +48026,14 @@ func (ec *executionContext) marshalOUser2ᚖstormlinkᚋserverᚋentᚐUser(ctx 
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOUserAvatarResponse2ᚖstormlinkᚋserverᚋgraphqlᚐUserAvatarResponse(ctx context.Context, sel ast.SelectionSet, v *UserAvatarResponse) graphql.Marshaler {
+func (ec *executionContext) marshalOUserAvatarResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserAvatarResponse(ctx context.Context, sel ast.SelectionSet, v *models.UserAvatarResponse) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._UserAvatarResponse(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowᚄ(ctx context.Context, sel ast.SelectionSet, v []*UserFollow) graphql.Marshaler {
+func (ec *executionContext) marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.UserFollow) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -48157,7 +48060,7 @@ func (ec *executionContext) marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphq
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUserFollow2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollow(ctx, sel, v[i])
+			ret[i] = ec.marshalNUserFollow2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollow(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -48177,17 +48080,17 @@ func (ec *executionContext) marshalOUserFollow2ᚕᚖstormlinkᚋserverᚋgraphq
 	return ret
 }
 
-func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInputᚄ(ctx context.Context, v any) ([]*UserFollowWhereInput, error) {
+func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInputᚄ(ctx context.Context, v any) ([]*models.UserFollowWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*UserFollowWhereInput, len(vSlice))
+	res := make([]*models.UserFollowWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -48195,7 +48098,7 @@ func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚕᚖstormlinkᚋser
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserFollowWhereInput(ctx context.Context, v any) (*UserFollowWhereInput, error) {
+func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserFollowWhereInput(ctx context.Context, v any) (*models.UserFollowWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -48203,17 +48106,17 @@ func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserver
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInputᚄ(ctx context.Context, v any) ([]*UserWhereInput, error) {
+func (ec *executionContext) unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx context.Context, v any) ([]*models.UserWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}
 	var vSlice []any
 	vSlice = graphql.CoerceList(v)
 	var err error
-	res := make([]*UserWhereInput, len(vSlice))
+	res := make([]*models.UserWhereInput, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInput(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInput(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -48221,7 +48124,7 @@ func (ec *executionContext) unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋ
 	return res, nil
 }
 
-func (ec *executionContext) unmarshalOUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚐUserWhereInput(ctx context.Context, v any) (*UserWhereInput, error) {
+func (ec *executionContext) unmarshalOUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInput(ctx context.Context, v any) (*models.UserWhereInput, error) {
 	if v == nil {
 		return nil, nil
 	}

@@ -104,7 +104,7 @@ func RegisterMailServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.MailService/VerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/user-verify-email"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/mail.MailService/VerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/user-verify-email"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -124,7 +124,7 @@ func RegisterMailServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/auth.MailService/ResendVerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/resend-user-verify-email"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/mail.MailService/ResendVerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/resend-user-verify-email"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -182,7 +182,7 @@ func RegisterMailServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/auth.MailService/VerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/user-verify-email"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/mail.MailService/VerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/user-verify-email"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -199,7 +199,7 @@ func RegisterMailServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/auth.MailService/ResendVerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/resend-user-verify-email"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/mail.MailService/ResendVerifyEmail", runtime.WithHTTPPathPattern("/v1/mail/resend-user-verify-email"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

@@ -23,7 +23,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authResendVerifyEmailResponse"
+              "$ref": "#/definitions/mailResendVerifyEmailResponse"
             }
           },
           "default": {
@@ -39,7 +39,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/authResendVerifyEmailRequest"
+              "$ref": "#/definitions/mailResendVerifyEmailRequest"
             }
           }
         ],
@@ -55,7 +55,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authVerifyEmailResponse"
+              "$ref": "#/definitions/mailVerifyEmailResponse"
             }
           },
           "default": {
@@ -80,7 +80,7 @@
     }
   },
   "definitions": {
-    "authResendVerifyEmailRequest": {
+    "mailResendVerifyEmailRequest": {
       "type": "object",
       "properties": {
         "email": {
@@ -88,7 +88,7 @@
         }
       }
     },
-    "authResendVerifyEmailResponse": {
+    "mailResendVerifyEmailResponse": {
       "type": "object",
       "properties": {
         "message": {
@@ -96,7 +96,7 @@
         }
       }
     },
-    "authVerifyEmailResponse": {
+    "mailVerifyEmailResponse": {
       "type": "object",
       "properties": {
         "message": {

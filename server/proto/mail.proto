@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package auth;
+package mail;
 
 option go_package = "stormlink/server/grpc/mail/protobuf;protobuf";
 

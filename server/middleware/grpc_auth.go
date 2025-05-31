@@ -23,11 +23,11 @@ func GRPCAuthMiddleware(
 
 	// Публичные методы
 	publicMethods := map[string]bool{
-		"/auth.AuthService/Login":                   true,
-		"/UserService/RegisterUser":                 true,
-		"/auth.AuthService/VerifyEmail":             true,
-		"/auth.AuthService/ResendVerificationEmail": true,
-		"/auth.AuthService/ValidateToken":           true,
+		"/auth.AuthService/Login":             true,
+		"/auth.AuthService/ValidateToken":     true,
+		"/user.UserService/RegisterUser":      true,
+		"/mail.MailService/VerifyEmail":       true,
+		"/mail.MailService/ResendVerifyEmail": true,
 	}
 
 	if publicMethods[info.FullMethod] {

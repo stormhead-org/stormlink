@@ -8,45 +8,46 @@ import (
 	"context"
 	"fmt"
 	"stormlink/server/ent"
+	"stormlink/server/graphql/models"
 )
 
 // Moderators is the resolver for the moderators field.
-func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*CommunityModerator, error) {
+func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*models.CommunityModerator, error) {
 	panic(fmt.Errorf("not implemented: Moderators - moderators"))
 }
 
 // Rules is the resolver for the rules field.
-func (r *communityResolver) Rules(ctx context.Context, obj *ent.Community) ([]*CommunityRule, error) {
+func (r *communityResolver) Rules(ctx context.Context, obj *ent.Community) ([]*models.CommunityRule, error) {
 	panic(fmt.Errorf("not implemented: Rules - rules"))
 }
 
 // Followers is the resolver for the followers field.
-func (r *communityResolver) Followers(ctx context.Context, obj *ent.Community) ([]*CommunityFollow, error) {
+func (r *communityResolver) Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error) {
 	panic(fmt.Errorf("not implemented: Followers - followers"))
 }
 
 // Comments is the resolver for the comments field.
-func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([]*Comment, error) {
+func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error) {
 	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
 // Rules is the resolver for the rules field.
-func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*HostRule, error) {
+func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*models.HostRule, error) {
 	panic(fmt.Errorf("not implemented: Rules - rules"))
 }
 
 // Comments is the resolver for the comments field.
-func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*Comment, error) {
+func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*models.Comment, error) {
 	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
 // Likes is the resolver for the likes field.
-func (r *postResolver) Likes(ctx context.Context, obj *ent.Post) ([]*PostLike, error) {
+func (r *postResolver) Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error) {
 	panic(fmt.Errorf("not implemented: Likes - likes"))
 }
 
 // Bookmarks is the resolver for the bookmarks field.
-func (r *postResolver) Bookmarks(ctx context.Context, obj *ent.Post) ([]*Bookmark, error) {
+func (r *postResolver) Bookmarks(ctx context.Context, obj *ent.Post) ([]*models.Bookmark, error) {
 	panic(fmt.Errorf("not implemented: Bookmarks - bookmarks"))
 }
 
@@ -61,47 +62,47 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, e
 }
 
 // Comments is the resolver for the comments field.
-func (r *userResolver) Comments(ctx context.Context, obj *ent.User) ([]*Comment, error) {
+func (r *userResolver) Comments(ctx context.Context, obj *ent.User) ([]*models.Comment, error) {
 	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
 // Following is the resolver for the following field.
-func (r *userResolver) Following(ctx context.Context, obj *ent.User) ([]*UserFollow, error) {
+func (r *userResolver) Following(ctx context.Context, obj *ent.User) ([]*models.UserFollow, error) {
 	panic(fmt.Errorf("not implemented: Following - following"))
 }
 
 // Followers is the resolver for the followers field.
-func (r *userResolver) Followers(ctx context.Context, obj *ent.User) ([]*UserFollow, error) {
+func (r *userResolver) Followers(ctx context.Context, obj *ent.User) ([]*models.UserFollow, error) {
 	panic(fmt.Errorf("not implemented: Followers - followers"))
 }
 
 // CommunitiesFollow is the resolver for the communitiesFollow field.
-func (r *userResolver) CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*CommunityFollow, error) {
+func (r *userResolver) CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*models.CommunityFollow, error) {
 	panic(fmt.Errorf("not implemented: CommunitiesFollow - communitiesFollow"))
 }
 
 // CommunitiesModerator is the resolver for the communitiesModerator field.
-func (r *userResolver) CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*CommunityModerator, error) {
+func (r *userResolver) CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*models.CommunityModerator, error) {
 	panic(fmt.Errorf("not implemented: CommunitiesModerator - communitiesModerator"))
 }
 
 // PostsLikes is the resolver for the postsLikes field.
-func (r *userResolver) PostsLikes(ctx context.Context, obj *ent.User) ([]*PostLike, error) {
+func (r *userResolver) PostsLikes(ctx context.Context, obj *ent.User) ([]*models.PostLike, error) {
 	panic(fmt.Errorf("not implemented: PostsLikes - postsLikes"))
 }
 
 // CommentsLikes is the resolver for the commentsLikes field.
-func (r *userResolver) CommentsLikes(ctx context.Context, obj *ent.User) ([]*CommentLike, error) {
+func (r *userResolver) CommentsLikes(ctx context.Context, obj *ent.User) ([]*models.CommentLike, error) {
 	panic(fmt.Errorf("not implemented: CommentsLikes - commentsLikes"))
 }
 
 // Bookmarks is the resolver for the bookmarks field.
-func (r *userResolver) Bookmarks(ctx context.Context, obj *ent.User) ([]*Bookmark, error) {
+func (r *userResolver) Bookmarks(ctx context.Context, obj *ent.User) ([]*models.Bookmark, error) {
 	panic(fmt.Errorf("not implemented: Bookmarks - bookmarks"))
 }
 
 // EmailVerifications is the resolver for the emailVerifications field.
-func (r *userResolver) EmailVerifications(ctx context.Context, obj *ent.User) ([]*EmailVerification, error) {
+func (r *userResolver) EmailVerifications(ctx context.Context, obj *ent.User) ([]*models.EmailVerification, error) {
 	panic(fmt.Errorf("not implemented: EmailVerifications - emailVerifications"))
 }
 

@@ -8,6 +8,8 @@ import (
 	"stormlink/server/ent"
 	"stormlink/server/grpc/auth"
 	authpb "stormlink/server/grpc/auth/protobuf"
+	"stormlink/server/grpc/mail"
+	mailpb "stormlink/server/grpc/mail/protobuf"
 	"stormlink/server/grpc/media"
 	mediapb "stormlink/server/grpc/media/protobuf"
 	"stormlink/server/grpc/user"
@@ -60,6 +62,9 @@ func SetupGRPCServer(client *ent.Client) *grpc.Server {
 
 	authService := auth.NewAuthService(client, userUsecase)
 	authpb.RegisterAuthServiceServer(grpcServer, authService)
+
+	mailService := mail.NewMailService(client)
+	mailpb.RegisterMailServiceServer(grpcServer, mailService)
 
 	s3Client, err := s3.NewS3Client()
 	if err != nil {

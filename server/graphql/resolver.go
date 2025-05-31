@@ -5,6 +5,8 @@ import (
 	"stormlink/server/usecase/user"
 
 	authpb "stormlink/server/grpc/auth/protobuf"
+	mailpb "stormlink/server/grpc/mail/protobuf"
+	mediapb "stormlink/server/grpc/media/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
 )
 
@@ -13,4 +15,6 @@ type Resolver struct {
 	UC     user.UserUsecase
 	AuthClient authpb.AuthServiceClient
   UserClient userpb.UserServiceClient
+	MailClient mailpb.MailServiceClient
+	MediaClient mediapb.MediaServiceClient
 }

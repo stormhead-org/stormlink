@@ -19,7 +19,7 @@ type CommunityPermissions {
 type LoginUserResponse {
 	accessToken: String!
 	refreshToken: String!
-	user: User!
+	user: UserResponse!
 }
 
 type LogoutUserResponse {
@@ -27,7 +27,7 @@ type LogoutUserResponse {
 }
 
 type RegisterUserResponse {
-	user: User!
+	message: String!
 }
 
 type VerifyEmailResponse {

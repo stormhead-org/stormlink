@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package user;
+
 option go_package = "stormlink/server/grpc/user/protobuf;protobuf";
 
 import "google/api/annotations.proto";
