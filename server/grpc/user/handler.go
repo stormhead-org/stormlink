@@ -16,7 +16,7 @@ import (
 	"stormlink/server/ent/user"
 	"stormlink/server/grpc/user/protobuf"
 	"stormlink/server/pkg/jwt"
-	"stormlink/server/pkg/mail"
+	"stormlink/server/pkg/rabbitmq"
 )
 
 func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUserRequest) (*protobuf.RegisterUserResponse, error) {
@@ -129,10 +129,13 @@ func (s *UserService) RegisterUser(ctx context.Context, req *protobuf.RegisterUs
 		return nil, status.Errorf(codes.Internal, "failed to create email verification record: %v", err)
 	}
 
-	// Отправляем письмо с верификацией
-	err = mail.SendVerifyEmail(newUser.Email, token)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Ошибка при отправке письма с подтверждение почты пользователя: %v", err)
+	// Публикуем задачу в RabbitMQ
+	job := rabbitmq.EmailJob{
+		To:    newUser.Email,
+		Token: token,
+	}
+	if err := rabbitmq.PublishEmailJob(job); err != nil {
+		return nil, status.Errorf(codes.Internal, "Не удалось поставить задачу на отправку письма: %v", err)
 	}
 
 	// Возвращаем успешный ответ

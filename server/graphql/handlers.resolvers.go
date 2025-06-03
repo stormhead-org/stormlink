@@ -24,6 +24,7 @@ import (
 	"stormlink/server/model"
 	"stormlink/server/model/converter"
 	"stormlink/server/pkg/auth"
+	httpWithCookies "stormlink/server/pkg/http"
 	"stormlink/server/pkg/mapper"
 	"strconv"
 	"time"
@@ -168,7 +169,7 @@ func (r *mutationResolver) CreateCommunity(ctx context.Context, input models.Cre
 	return newComm, nil
 }
 
-// Мутация авторизации юзера
+// Мутация LoginUser вызывает gRPC методы авторизации юзера
 func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error) {
 	// Вызываем gRPC-метод Login
 	resp, err := r.AuthClient.Login(ctx, &authpb.LoginRequest{
@@ -187,6 +188,14 @@ func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUser
 		return nil, status.Errorf(codes.Internal, "failed to map user: %v", err)
 	}
 
+   // Ставим куки в HTTP-ответе
+   if w := httpWithCookies.GetHTTPResponseWriter(ctx); w != nil {
+       httpWithCookies.SetAuthCookies(w, resp.AccessToken, resp.RefreshToken)
+       log.Println("✅ [LoginUser] Cookies set successfully")
+   } else {
+       log.Println("⚠️ [LoginUser] HTTP response writer not found, cookies not set")
+   }
+
 	return &models.LoginUserResponse{
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
@@ -196,12 +205,26 @@ func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUser
 
 // Мутация LogoutUser удаляет куки и сессию у авторизованного пользователя.
 func (r *mutationResolver) LogoutUser(ctx context.Context) (*models.LogoutUserResponse, error) {
+   // Извлекаем заголовок Authorization
+   authHeader, _ := ctx.Value("authorization").(string)
+   if authHeader != "" {
+       ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authHeader)
+   }
+
 	// Вызываем gRPC-метод Logout
 	resp, err := r.AuthClient.Logout(ctx, &emptypb.Empty{})
 	if err != nil {
 		log.Printf("❌ [LogoutUser] gRPC Logout error: %v", err)
 		return nil, err
 	}
+
+   // Очищаем HTTP-куки
+   if w := httpWithCookies.GetHTTPResponseWriter(ctx); w != nil {
+       httpWithCookies.ClearAuthCookies(w)
+       log.Println("✅ [LogoutUser] Cookies cleared successfully")
+   } else {
+       log.Println("⚠️ [LogoutUser] HTTP response writer not found, cookies not cleared")
+   }
 
 	return &models.LogoutUserResponse{
 		Message: resp.Message,
@@ -262,11 +285,43 @@ func (r *mutationResolver) ResendUserVerifyEmail(ctx context.Context, input mode
 
 // Мутация UserRefreshToken обновляет сессию пользователя.
 func (r *mutationResolver) UserRefreshToken(ctx context.Context) (*models.RefreshTokenResponse, error) {
-	// Вызываем gRPC-метод RefreshToken
-	resp, err := r.AuthClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{})
+	// 1. Извлекаем HTTP-запрос из контекста, чтобы достать cookie
+	httpReq := httpWithCookies.GetHTTPRequest(ctx)
+	var refreshToken string
+	if httpReq != nil {
+			if cookie, err := httpReq.Cookie("refresh_token"); err == nil {
+					refreshToken = cookie.Value
+			}
+	}
+
+	// Если в куке нет refresh_token, попробуем взять его из входящих аргументов (если вы где-то передаёте)
+	// Но раз у вас прототип не принимает аргументы, достаточно из cookie.
+
+	if refreshToken == "" {
+			return nil, fmt.Errorf("refresh token is missing")
+	}
+
+	// 2. Приклеиваем Authorization (опционально, только если он нужен внутри gRPC-RefreshToken)
+	authHeader, _ := ctx.Value("authorization").(string)
+	if authHeader != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authHeader)
+	}
+
+	// 3. Вызываем gRPC-метод с заполненным refreshToken
+	resp, err := r.AuthClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
+			RefreshToken: refreshToken,
+	})
 	if err != nil {
 			log.Printf("❌ [UserRefreshToken] gRPC RefreshToken error: %v", err)
 			return nil, err
+	}
+
+	// 4. Ставим новые куки
+	if w := httpWithCookies.GetHTTPResponseWriter(ctx); w != nil {
+			httpWithCookies.SetAuthCookies(w, resp.AccessToken, resp.RefreshToken)
+			log.Println("✅ [UserRefreshToken] Cookies set successfully")
+	} else {
+			log.Println("⚠️ [UserRefreshToken] HTTP response writer not found, cookies not set")
 	}
 
 	return &models.RefreshTokenResponse{
