@@ -70,7 +70,7 @@ func SetupGRPCServer(client *ent.Client) *grpc.Server {
 	if err != nil {
 		log.Fatalf("failed to init S3 client: %v", err)
 	}
-	mediaService := media.NewMediaServiceWithClient(s3Client)
+	mediaService := media.NewMediaServiceWithClient(s3Client, client)
 	mediapb.RegisterMediaServiceServer(grpcServer, mediaService)
 
 	return grpcServer

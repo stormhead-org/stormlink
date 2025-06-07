@@ -104,6 +104,7 @@ type ComplexityRoot struct {
 		Comments           func(childComplexity int) int
 		CommunityHasBanned func(childComplexity int) int
 		CommunityInfo      func(childComplexity int) int
+		CommunityStatus    func(childComplexity int) int
 		Contacts           func(childComplexity int) int
 		CreatedAt          func(childComplexity int) int
 		Description        func(childComplexity int) int
@@ -164,6 +165,12 @@ type ComplexityRoot struct {
 		ID                       func(childComplexity int) int
 		RuleID                   func(childComplexity int) int
 		UpdatedAt                func(childComplexity int) int
+	}
+
+	CommunityStatus struct {
+		FollowersCount func(childComplexity int) int
+		IsFollowing    func(childComplexity int) int
+		PostsCount     func(childComplexity int) int
 	}
 
 	CommunityUserBan struct {
@@ -476,6 +483,7 @@ type ComplexityRoot struct {
 		Slug                 func(childComplexity int) int
 		UpdatedAt            func(childComplexity int) int
 		UserInfo             func(childComplexity int) int
+		UserStatus           func(childComplexity int) int
 	}
 
 	UserAvatarResponse struct {
@@ -538,6 +546,12 @@ type ComplexityRoot struct {
 		UserInfo         func(childComplexity int) int
 	}
 
+	UserStatus struct {
+		FollowersCount func(childComplexity int) int
+		FollowingCount func(childComplexity int) int
+		IsFollowing    func(childComplexity int) int
+	}
+
 	VerifyEmailResponse struct {
 		Message func(childComplexity int) int
 	}
@@ -550,6 +564,7 @@ type CommunityResolver interface {
 	Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error)
 
 	Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error)
+	CommunityStatus(ctx context.Context, obj *ent.Community) (*models.CommunityStatus, error)
 }
 type HostResolver interface {
 	Rules(ctx context.Context, obj *ent.Host) ([]*models.HostRule, error)
@@ -611,6 +626,7 @@ type UserResolver interface {
 	CommentsLikes(ctx context.Context, obj *ent.User) ([]*models.CommentLike, error)
 	Bookmarks(ctx context.Context, obj *ent.User) ([]*models.Bookmark, error)
 	EmailVerifications(ctx context.Context, obj *ent.User) ([]*models.EmailVerification, error)
+	UserStatus(ctx context.Context, obj *ent.User) (*models.UserStatus, error)
 }
 
 type executableSchema struct {
@@ -897,6 +913,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Community.CommunityInfo(childComplexity), true
+
+	case "Community.communityStatus":
+		if e.complexity.Community.CommunityStatus == nil {
+			break
+		}
+
+		return e.complexity.Community.CommunityStatus(childComplexity), true
 
 	case "Community.contacts":
 		if e.complexity.Community.Contacts == nil {
@@ -1233,6 +1256,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CommunityRule.UpdatedAt(childComplexity), true
+
+	case "CommunityStatus.followersCount":
+		if e.complexity.CommunityStatus.FollowersCount == nil {
+			break
+		}
+
+		return e.complexity.CommunityStatus.FollowersCount(childComplexity), true
+
+	case "CommunityStatus.isFollowing":
+		if e.complexity.CommunityStatus.IsFollowing == nil {
+			break
+		}
+
+		return e.complexity.CommunityStatus.IsFollowing(childComplexity), true
+
+	case "CommunityStatus.postsCount":
+		if e.complexity.CommunityStatus.PostsCount == nil {
+			break
+		}
+
+		return e.complexity.CommunityStatus.PostsCount(childComplexity), true
 
 	case "CommunityUserBan.community":
 		if e.complexity.CommunityUserBan.Community == nil {
@@ -2976,6 +3020,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.UserInfo(childComplexity), true
 
+	case "User.userStatus":
+		if e.complexity.User.UserStatus == nil {
+			break
+		}
+
+		return e.complexity.User.UserStatus(childComplexity), true
+
 	case "UserAvatarResponse.id":
 		if e.complexity.UserAvatarResponse.ID == nil {
 			break
@@ -3269,6 +3320,27 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserResponse.UserInfo(childComplexity), true
+
+	case "UserStatus.followersCount":
+		if e.complexity.UserStatus.FollowersCount == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.FollowersCount(childComplexity), true
+
+	case "UserStatus.followingCount":
+		if e.complexity.UserStatus.FollowingCount == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.FollowingCount(childComplexity), true
+
+	case "UserStatus.isFollowing":
+		if e.complexity.UserStatus.IsFollowing == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.IsFollowing(childComplexity), true
 
 	case "VerifyEmailResponse.message":
 		if e.complexity.VerifyEmailResponse.Message == nil {
@@ -4526,6 +4598,8 @@ func (ec *executionContext) fieldContext_Bookmark_user(_ context.Context, field 
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -5194,6 +5268,8 @@ func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -5370,6 +5446,8 @@ func (ec *executionContext) fieldContext_Comment_community(_ context.Context, fi
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -5968,6 +6046,8 @@ func (ec *executionContext) fieldContext_CommentLike_user(_ context.Context, fie
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -6742,6 +6822,8 @@ func (ec *executionContext) fieldContext_Community_owner(_ context.Context, fiel
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -7332,6 +7414,58 @@ func (ec *executionContext) fieldContext_Community_comments(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Community_communityStatus(ctx context.Context, field graphql.CollectedField, obj *ent.Community) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Community_communityStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Community().CommunityStatus(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.CommunityStatus)
+	fc.Result = res
+	return ec.marshalNCommunityStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Community_communityStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Community",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "followersCount":
+				return ec.fieldContext_CommunityStatus_followersCount(ctx, field)
+			case "postsCount":
+				return ec.fieldContext_CommunityStatus_postsCount(ctx, field)
+			case "isFollowing":
+				return ec.fieldContext_CommunityStatus_isFollowing(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CommunityFollow_id(ctx context.Context, field graphql.CollectedField, obj *models.CommunityFollow) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityFollow_id(ctx, field)
 	if err != nil {
@@ -7651,6 +7785,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_user(_ context.Context,
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -7743,6 +7879,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_community(_ context.Con
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -8069,6 +8207,8 @@ func (ec *executionContext) fieldContext_CommunityModerator_user(_ context.Conte
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -8161,6 +8301,8 @@ func (ec *executionContext) fieldContext_CommunityModerator_community(_ context.
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -8945,8 +9087,142 @@ func (ec *executionContext) fieldContext_CommunityRule_community(_ context.Conte
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommunityStatus_followersCount(ctx context.Context, field graphql.CollectedField, obj *models.CommunityStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityStatus_followersCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FollowersCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommunityStatus_followersCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommunityStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommunityStatus_postsCount(ctx context.Context, field graphql.CollectedField, obj *models.CommunityStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityStatus_postsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PostsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommunityStatus_postsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommunityStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommunityStatus_isFollowing(ctx context.Context, field graphql.CollectedField, obj *models.CommunityStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityStatus_isFollowing(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsFollowing, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommunityStatus_isFollowing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommunityStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9271,6 +9547,8 @@ func (ec *executionContext) fieldContext_CommunityUserBan_user(_ context.Context
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -9363,6 +9641,8 @@ func (ec *executionContext) fieldContext_CommunityUserBan_community(_ context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -9689,6 +9969,8 @@ func (ec *executionContext) fieldContext_CommunityUserMute_user(_ context.Contex
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -9781,6 +10063,8 @@ func (ec *executionContext) fieldContext_CommunityUserMute_community(_ context.C
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -10060,6 +10344,8 @@ func (ec *executionContext) fieldContext_EmailVerification_user(_ context.Contex
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -10838,6 +11124,8 @@ func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field gra
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -11163,6 +11451,8 @@ func (ec *executionContext) fieldContext_HostCommunityBan_community(_ context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -11431,6 +11721,8 @@ func (ec *executionContext) fieldContext_HostCommunityMute_community(_ context.C
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -12113,6 +12405,8 @@ func (ec *executionContext) fieldContext_HostRole_users(_ context.Context, field
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -13608,6 +13902,8 @@ func (ec *executionContext) fieldContext_HostUserBan_user(_ context.Context, fie
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -13846,6 +14142,8 @@ func (ec *executionContext) fieldContext_HostUserMute_user(_ context.Context, fi
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -14717,6 +15015,8 @@ func (ec *executionContext) fieldContext_Mutation_createCommunity(ctx context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -16094,6 +16394,8 @@ func (ec *executionContext) fieldContext_Post_community(_ context.Context, field
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -16200,6 +16502,8 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -16706,6 +17010,8 @@ func (ec *executionContext) fieldContext_PostLike_user(_ context.Context, field 
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -17225,6 +17531,8 @@ func (ec *executionContext) fieldContext_ProfileTableInfoItem_community(_ contex
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -17328,6 +17636,8 @@ func (ec *executionContext) fieldContext_ProfileTableInfoItem_user(_ context.Con
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -17592,6 +17902,8 @@ func (ec *executionContext) fieldContext_Query_community(ctx context.Context, fi
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -17695,6 +18007,8 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -18015,6 +18329,8 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -18132,6 +18448,8 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -20188,6 +20506,8 @@ func (ec *executionContext) fieldContext_Role_community(_ context.Context, field
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -20291,6 +20611,8 @@ func (ec *executionContext) fieldContext_Role_users(_ context.Context, field gra
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -21667,6 +21989,8 @@ func (ec *executionContext) fieldContext_User_communitiesOwner(_ context.Context
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
 		},
@@ -21950,6 +22274,58 @@ func (ec *executionContext) fieldContext_User_emailVerifications(_ context.Conte
 				return ec.fieldContext_EmailVerification_user(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type EmailVerification", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_userStatus(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_userStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().UserStatus(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.UserStatus)
+	fc.Result = res
+	return ec.marshalNUserStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_userStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "followersCount":
+				return ec.fieldContext_UserStatus_followersCount(ctx, field)
+			case "followingCount":
+				return ec.fieldContext_UserStatus_followingCount(ctx, field)
+			case "isFollowing":
+				return ec.fieldContext_UserStatus_isFollowing(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserStatus", field.Name)
 		},
 	}
 	return fc, nil
@@ -22758,6 +23134,8 @@ func (ec *executionContext) fieldContext_UserFollow_follower(_ context.Context, 
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -22864,6 +23242,8 @@ func (ec *executionContext) fieldContext_UserFollow_followee(_ context.Context, 
 				return ec.fieldContext_User_bookmarks(ctx, field)
 			case "emailVerifications":
 				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -23973,6 +24353,138 @@ func (ec *executionContext) fieldContext_UserResponse_updatedAt(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_followersCount(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_followersCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FollowersCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_followersCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_followingCount(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_followingCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FollowingCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_followingCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_isFollowing(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_isFollowing(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsFollowing, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_isFollowing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -39662,6 +40174,42 @@ func (ec *executionContext) _Community(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "communityStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Community_communityStatus(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -39941,6 +40489,55 @@ func (ec *executionContext) _CommunityRule(ctx context.Context, sel ast.Selectio
 			}
 		case "community":
 			out.Values[i] = ec._CommunityRule_community(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var communityStatusImplementors = []string{"CommunityStatus"}
+
+func (ec *executionContext) _CommunityStatus(ctx context.Context, sel ast.SelectionSet, obj *models.CommunityStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, communityStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CommunityStatus")
+		case "followersCount":
+			out.Values[i] = ec._CommunityStatus_followersCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postsCount":
+			out.Values[i] = ec._CommunityStatus_postsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isFollowing":
+			out.Values[i] = ec._CommunityStatus_isFollowing(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -43639,6 +44236,42 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "userStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_userStatus(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44047,6 +44680,55 @@ func (ec *executionContext) _UserResponse(ctx context.Context, sel ast.Selection
 			}
 		case "updatedAt":
 			out.Values[i] = ec._UserResponse_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userStatusImplementors = []string{"UserStatus"}
+
+func (ec *executionContext) _UserStatus(ctx context.Context, sel ast.SelectionSet, obj *models.UserStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserStatus")
+		case "followersCount":
+			out.Values[i] = ec._UserStatus_followersCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "followingCount":
+			out.Values[i] = ec._UserStatus_followingCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isFollowing":
+			out.Values[i] = ec._UserStatus_isFollowing(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -44623,6 +45305,20 @@ func (ec *executionContext) marshalNCommunityRule2ᚖstormlinkᚋserverᚋgraphq
 func (ec *executionContext) unmarshalNCommunityRuleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityRuleWhereInput(ctx context.Context, v any) (*models.CommunityRuleWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityRuleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCommunityStatus2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityStatus(ctx context.Context, sel ast.SelectionSet, v models.CommunityStatus) graphql.Marshaler {
+	return ec._CommunityStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCommunityStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityStatus(ctx context.Context, sel ast.SelectionSet, v *models.CommunityStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CommunityStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserBan) graphql.Marshaler {
@@ -45696,6 +46392,20 @@ func (ec *executionContext) marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphql
 		return graphql.Null
 	}
 	return ec._UserResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNUserStatus2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUserStatus(ctx context.Context, sel ast.SelectionSet, v models.UserStatus) graphql.Marshaler {
+	return ec._UserStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUserStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserStatus(ctx context.Context, sel ast.SelectionSet, v *models.UserStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UserStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUserWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInput(ctx context.Context, v any) (*models.UserWhereInput, error) {

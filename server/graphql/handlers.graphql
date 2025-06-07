@@ -11,8 +11,20 @@ type CommunityPermissions {
 	communityRemovePostFromPublication: Boolean!
 	communityOwner: Boolean!
 	hostOwner: Boolean!
-	communityUserHasBanned: Boolean!
-	communityUserHasMuted: Boolean!
+}
+
+type CommunityStatus {
+	followersCount: String!
+	postsCount: String!
+	isBanned: Boolean!
+	isMuted: Boolean!
+	isFollowing: Boolean!
+}
+
+type UserStatus {
+	followersCount: String!
+	followingCount: String!
+	isFollowing: Boolean!
 }
 
 # Запросы авторизации и аутентификации
@@ -91,9 +103,19 @@ type UserResponse {
 }
 #------------------------
 
-# Расширение модели Posts
+# Расширение модели Post
 extend type Post {
 	viewerPermissions: CommunityPermissions!
+}
+
+# Расширение модели Community
+extend type Community {
+	communityStatus: CommunityStatus!
+}
+
+# Расширение модели User
+extend type User {
+	userStatus: UserStatus!
 }
 
 extend type Query {

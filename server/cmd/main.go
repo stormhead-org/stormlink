@@ -46,7 +46,7 @@ func main() {
 
 	// Настройка HTTP-мультиплексора
 	mux := http.NewServeMux()
-
+	mux.HandleFunc("/storage/", modules.StorageHandler)
 	// Регистрация HTTP-хендлеров из modules/handlers.go
 	// mux.HandleFunc("/v1/users/login", func(w http.ResponseWriter, r *http.Request) {
 	// 	modules.LoginHandler(w, r, grpcConn)
@@ -57,10 +57,9 @@ func main() {
 	// mux.HandleFunc("/v1/users/refresh-token", func(w http.ResponseWriter, r *http.Request) {
 	// 	modules.RefreshTokenHandler(w, r, grpcConn)
 	// })
-	mux.HandleFunc("/v1/media/upload", func(w http.ResponseWriter, r *http.Request) {
-		modules.MediaUploadHandler(w, r, grpcConn, client)
-	})
-	mux.HandleFunc("/storage/", modules.StorageHandler)
+	// mux.HandleFunc("/v1/media/upload", func(w http.ResponseWriter, r *http.Request) {
+	// 	modules.MediaUploadHandler(w, r, grpcConn, client)
+	// })
 
 	// Настройка и запуск HTTP-сервера
 	httpServer := modules.SetupHTTPServer(grpcConn, mux)
