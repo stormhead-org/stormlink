@@ -24,6 +24,7 @@ type CommunityStatus {
 type UserStatus {
 	followersCount: String!
 	followingCount: String!
+	postsCount: String!
 	isHostBanned: Boolean!
 	isHostMuted: Boolean!
 	isFollowing: Boolean!
@@ -112,6 +113,7 @@ extend type Post {
 
 # Расширение модели Community
 extend type Community {
+	viewerPermissions: CommunityPermissions!
 	communityStatus: CommunityStatus!
 }
 
@@ -124,6 +126,7 @@ extend type Query {
 	media(id: ID!): Media
 
 	community(id: ID!): Community
+	communityBySlug(slug: String!): Community
 	communities(onlyNotBanned: Boolean = true): [Community!]!
 
 	communityUserBan(communityId: ID!, userId: ID!): CommunityUserBan
@@ -141,7 +144,7 @@ extend type Query {
 	): [ProfileTableInfoItem!]!
 
 	post(id: ID!): Post
-	posts(status: PostStatus = PUBLISHED): [Post!]!
+	posts(status: PostStatus = PUBLISHED, communityID: ID, authorID: ID): [Post!]!
 
 	role(id: ID!): Role
 	roles(id: ID!): [Role!]!

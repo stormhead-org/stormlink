@@ -4,12 +4,14 @@ import (
 	"context"
 	"stormlink/server/ent"
 	"stormlink/server/ent/user"
+	"stormlink/server/graphql/models"
 	"stormlink/server/model"
 )
 
 type UserUsecase interface {
 	GetUserByID(ctx context.Context, id int) (*ent.User, error)
 	GetPermissionsByCommunities(ctx context.Context, userID int, communityIDs []int) (map[int]*model.CommunityPermissions, error)
+	GetUserStatus(ctx context.Context, currentUserID int, userID int) (*models.UserStatus, error)
 }
 
 type userUsecase struct {

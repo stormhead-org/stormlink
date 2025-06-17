@@ -41,25 +41,69 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+// ViewerPermissions для запроса сообществ.
+func (r *communityResolver) ViewerPermissions(ctx context.Context, obj *ent.Community) (*model.CommunityPermissions, error) {
+	// 1) Пытаемся достать userID из контекста
+	userID, err := auth.UserIDFromContext(ctx)
+	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
+	if err != nil {
+		// аноним — никаких прав
+		return &model.CommunityPermissions{}, nil
+	}
+
+	communityID := obj.ID
+
+	// 2) Спрашиваем именно по одному сообществу
+	permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, userID, []int{communityID})
+	if err != nil {
+		return nil, fmt.Errorf("failed loading perms: %w", err)
+	}
+	base := permsMap[communityID]
+	if base == nil {
+		base = &model.CommunityPermissions{}
+	}
+	cm := converter.ConvertPermissionsToCommunityPermissions(base)
+
+	// 3) Если юзер — владелец сообщества, даём ему полный набор community-прав
+	communityEntity, err := r.Client.Community.Get(ctx, communityID)
+	if err == nil && communityEntity.OwnerID == userID {
+		cm.CommunityOwner = true
+		cm.CommunityRolesManagement = true
+		cm.CommunityUserBan = true
+		cm.CommunityUserMute = true
+		cm.CommunityDeletePost = true
+		cm.CommunityDeleteComments = true
+		cm.CommunityRemovePostFromPublication = true
+	}
+
+	// 4) Если юзер — владелец платформы
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err == nil && hostEntity.OwnerID != nil && *hostEntity.OwnerID == userID {
+		cm.HostOwner = true
+	}
+
+	return cm, nil
+}
+
 // CommunityStatus возвращает статус сообщества для текущего пользователя.
 func (r *communityResolver) CommunityStatus(ctx context.Context, obj *ent.Community) (*models.CommunityStatus, error) {
 	// 1) Получаем userID из контекста (анонимы получат пустой статус)
 	userID, err := auth.UserIDFromContext(ctx)
 	if err != nil {
-			// аноним — просто вернём нулевой объект
-			return &models.CommunityStatus{
-					FollowersCount: "0",
-					PostsCount:     "0",
-					IsFollowing:    false,
-					IsBanned:       false,
-					IsMuted:        false,
-			}, nil
+		// аноним — просто вернём нулевой объект
+		return &models.CommunityStatus{
+			FollowersCount: "0",
+			PostsCount:     "0",
+			IsFollowing:    false,
+			IsBanned:       false,
+			IsMuted:        false,
+		}, nil
 	}
 
 	// 2) Вызываем usecase для одного сообщества
 	status, err := r.CommunityUC.GetCommunityStatus(ctx, userID, obj.ID)
 	if err != nil {
-			return nil, fmt.Errorf("CommunityStatus usecase: %w", err)
+		return nil, fmt.Errorf("CommunityStatus usecase: %w", err)
 	}
 
 	return status, nil
@@ -398,7 +442,7 @@ func (r *mutationResolver) UploadMedia(ctx context.Context, file graphql.Upload,
 	}, nil
 }
 
-// ViewerPermissions отдает каждому юзеру права в зависимости от того, какие у него есть роли в сообществах.
+// ViewerPermissions для запрос постов.
 func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
 	// 1) Пытаемся достать userID из контекста
 	userID, err := auth.UserIDFromContext(ctx)
@@ -458,6 +502,19 @@ func (r *queryResolver) Community(ctx context.Context, id string) (*ent.Communit
 		return nil, err
 	}
 	return r.Client.Community.Get(ctx, communityId)
+}
+
+// CommunityBySlug отдает одно сообщество по slug.
+func (r *queryResolver) CommunityBySlug(ctx context.Context, slug string) (*ent.Community, error) {
+	return r.Client.Community.
+		Query().
+		Where(community.SlugEQ(slug)).
+		WithLogo().
+		WithBanner().
+		WithOwner().
+		WithCommunityInfo().
+		WithRoles().
+		Only(ctx)
 }
 
 // Communities возвращает все или только не забаненные сообщества.
@@ -611,20 +668,43 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*ent.Post, error) 
 }
 
 // Posts возвращает посты в зависимости от их статуса.
-func (r *queryResolver) Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error) {
+func (r *queryResolver) Posts(ctx context.Context, status *post.Status, communityID *string, authorID *string) ([]*ent.Post, error) {
+	// 1) статус
 	st := post.StatusPublished
 	if status != nil {
-		st = *status
+			st = *status
 	}
 
-	posts, err := r.Client.Post.
-		Query().
-		Where(post.StatusEQ(st)).
-		WithCommunity().
-		WithAuthor().
-		All(ctx)
+	// 2) базовый запрос
+	q := r.Client.Post.
+			Query().
+			Where(post.StatusEQ(st))
+
+	// 3) фильтр по сообществу, если передан
+	if communityID != nil {
+		cid, err := strconv.Atoi(*communityID)
+		if err != nil {
+				return nil, fmt.Errorf("invalid communityID %q: %w", *communityID, err)
+		}
+		q = q.Where(post.CommunityIDEQ(cid))
+}
+
+	// 4) фильтр по автору, если передан
+	if authorID != nil {
+		aid, err := strconv.Atoi(*authorID)
+		if err != nil {
+				return nil, fmt.Errorf("invalid authorID %q: %w", *authorID, err)
+		}
+		q = q.Where(post.AuthorIDEQ(aid))
+}
+
+	// 5) подгружаем связи и отдаем результат
+	posts, err := q.
+			WithCommunity().
+			WithAuthor().
+			All(ctx)
 	if err != nil {
-		return nil, err
+			return nil, err
 	}
 	return posts, nil
 }
@@ -706,9 +786,29 @@ func (r *queryResolver) Host(ctx context.Context) (*ent.Host, error) {
 	return r.Client.Host.Get(ctx, 1)
 }
 
-// UserStatus is the resolver for the userStatus field.
+// UserStatus возвращает статус пользователя.
 func (r *userResolver) UserStatus(ctx context.Context, obj *ent.User) (*models.UserStatus, error) {
-	panic(fmt.Errorf("not implemented: UserStatus - userStatus"))
+	// 1) Получаем currentUserID из контекста (анонимы получат пустой статус)
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		// аноним — просто вернём нулевой объект
+		return &models.UserStatus{
+			FollowersCount: "0",
+			FollowingCount: "0",
+			PostsCount:     "0",
+			IsHostBanned:   false,
+			IsHostMuted:    false,
+			IsFollowing:    false,
+		}, nil
+	}
+
+	// 2) Вызываем usecase для юзера
+	status, err := r.UserUC.GetUserStatus(ctx, currentUserID, obj.ID)
+	if err != nil {
+		return nil, fmt.Errorf("UserStatus usecase: %w", err)
+	}
+
+	return status, nil
 }
 
 // Mutation returns MutationResolver implementation.

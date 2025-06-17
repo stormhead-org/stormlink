@@ -4,6 +4,7 @@
 		"верификационного",
 		"горутине",
 		"забанен",
+		"забаненные",
 		"забаненных",
 		"итем",
 		"итема",
@@ -39,6 +40,8 @@
 		"gwruntime",
 		"hostrole",
 		"hostsidebarnavigation",
+		"hostuserban",
+		"hostusermute",
 		"IDEQ",
 		"logtostderr",
 		"mailpb",
@@ -53,6 +56,7 @@
 		"sess",
 		"stormlink",
 		"usecase",
+		"userfollow",
 		"userpb",
 		"vektah"
 	]

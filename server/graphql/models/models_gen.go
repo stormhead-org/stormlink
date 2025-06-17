@@ -2232,6 +2232,7 @@ type UserResponse struct {
 type UserStatus struct {
 	FollowersCount string `json:"followersCount"`
 	FollowingCount string `json:"followingCount"`
+	PostsCount     string `json:"postsCount"`
 	IsHostBanned   bool   `json:"isHostBanned"`
 	IsHostMuted    bool   `json:"isHostMuted"`
 	IsFollowing    bool   `json:"isFollowing"`

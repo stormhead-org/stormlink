@@ -122,6 +122,7 @@ type ComplexityRoot struct {
 		Slug               func(childComplexity int) int
 		Title              func(childComplexity int) int
 		UpdatedAt          func(childComplexity int) int
+		ViewerPermissions  func(childComplexity int) int
 	}
 
 	CommunityFollow struct {
@@ -396,6 +397,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Communities                func(childComplexity int, onlyNotBanned *bool) int
 		Community                  func(childComplexity int, id string) int
+		CommunityBySlug            func(childComplexity int, slug string) int
 		CommunityUserBan           func(childComplexity int, communityID string, userID string) int
 		CommunityUserMute          func(childComplexity int, communityID string, userID string) int
 		GetMe                      func(childComplexity int) int
@@ -411,7 +413,7 @@ type ComplexityRoot struct {
 		Node                       func(childComplexity int, id string) int
 		Nodes                      func(childComplexity int, ids []string) int
 		Post                       func(childComplexity int, id string) int
-		Posts                      func(childComplexity int, status *post.Status) int
+		Posts                      func(childComplexity int, status *post.Status, communityID *string, authorID *string) int
 		ProfileTableInfoItem       func(childComplexity int, id string) int
 		ProfileTableInfoItems      func(childComplexity int, id string, typeArg profiletableinfoitem.Type) int
 		Role                       func(childComplexity int, id string) int
@@ -552,6 +554,7 @@ type ComplexityRoot struct {
 		IsFollowing    func(childComplexity int) int
 		IsHostBanned   func(childComplexity int) int
 		IsHostMuted    func(childComplexity int) int
+		PostsCount     func(childComplexity int) int
 	}
 
 	VerifyEmailResponse struct {
@@ -566,6 +569,7 @@ type CommunityResolver interface {
 	Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error)
 
 	Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error)
+	ViewerPermissions(ctx context.Context, obj *ent.Community) (*model.CommunityPermissions, error)
 	CommunityStatus(ctx context.Context, obj *ent.Community) (*models.CommunityStatus, error)
 }
 type HostResolver interface {
@@ -596,6 +600,7 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, ids []string) ([]ent.Noder, error)
 	Media(ctx context.Context, id string) (*ent.Media, error)
 	Community(ctx context.Context, id string) (*ent.Community, error)
+	CommunityBySlug(ctx context.Context, slug string) (*ent.Community, error)
 	Communities(ctx context.Context, onlyNotBanned *bool) ([]*ent.Community, error)
 	CommunityUserBan(ctx context.Context, communityID string, userID string) (*ent.CommunityUserBan, error)
 	CommunityUserMute(ctx context.Context, communityID string, userID string) (*ent.CommunityUserMute, error)
@@ -605,7 +610,7 @@ type QueryResolver interface {
 	ProfileTableInfoItem(ctx context.Context, id string) (*ent.ProfileTableInfoItem, error)
 	ProfileTableInfoItems(ctx context.Context, id string, typeArg profiletableinfoitem.Type) ([]*ent.ProfileTableInfoItem, error)
 	Post(ctx context.Context, id string) (*ent.Post, error)
-	Posts(ctx context.Context, status *post.Status) ([]*ent.Post, error)
+	Posts(ctx context.Context, status *post.Status, communityID *string, authorID *string) ([]*ent.Post, error)
 	Role(ctx context.Context, id string) (*ent.Role, error)
 	Roles(ctx context.Context, id string) ([]*ent.Role, error)
 	HostRole(ctx context.Context, id string) (*ent.HostRole, error)
@@ -1041,6 +1046,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Community.UpdatedAt(childComplexity), true
+
+	case "Community.viewerPermissions":
+		if e.complexity.Community.ViewerPermissions == nil {
+			break
+		}
+
+		return e.complexity.Community.ViewerPermissions(childComplexity), true
 
 	case "CommunityFollow.community":
 		if e.complexity.CommunityFollow.Community == nil {
@@ -2448,6 +2460,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Community(childComplexity, args["id"].(string)), true
 
+	case "Query.communityBySlug":
+		if e.complexity.Query.CommunityBySlug == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityBySlug_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityBySlug(childComplexity, args["slug"].(string)), true
+
 	case "Query.communityUserBan":
 		if e.complexity.Query.CommunityUserBan == nil {
 			break
@@ -2603,7 +2627,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Posts(childComplexity, args["status"].(*post.Status)), true
+		return e.complexity.Query.Posts(childComplexity, args["status"].(*post.Status), args["communityID"].(*string), args["authorID"].(*string)), true
 
 	case "Query.profileTableInfoItem":
 		if e.complexity.Query.ProfileTableInfoItem == nil {
@@ -3358,6 +3382,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserStatus.IsHostMuted(childComplexity), true
 
+	case "UserStatus.postsCount":
+		if e.complexity.UserStatus.PostsCount == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.PostsCount(childComplexity), true
+
 	case "VerifyEmailResponse.message":
 		if e.complexity.VerifyEmailResponse.Message == nil {
 			break
@@ -3796,6 +3827,29 @@ func (ec *executionContext) field_Query_communities_argsOnlyNotBanned(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_communityBySlug_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_communityBySlug_argsSlug(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["slug"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_communityBySlug_argsSlug(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+	if tmp, ok := rawArgs["slug"]; ok {
+		return ec.unmarshalNString2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_communityUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4047,6 +4101,16 @@ func (ec *executionContext) field_Query_posts_args(ctx context.Context, rawArgs 
 		return nil, err
 	}
 	args["status"] = arg0
+	arg1, err := ec.field_Query_posts_argsCommunityID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg1
+	arg2, err := ec.field_Query_posts_argsAuthorID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["authorID"] = arg2
 	return args, nil
 }
 func (ec *executionContext) field_Query_posts_argsStatus(
@@ -4059,6 +4123,32 @@ func (ec *executionContext) field_Query_posts_argsStatus(
 	}
 
 	var zeroVal *post.Status
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_posts_argsCommunityID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+	if tmp, ok := rawArgs["communityID"]; ok {
+		return ec.unmarshalOID2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_posts_argsAuthorID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("authorID"))
+	if tmp, ok := rawArgs["authorID"]; ok {
+		return ec.unmarshalOID2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -5462,6 +5552,8 @@ func (ec *executionContext) fieldContext_Comment_community(_ context.Context, fi
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -7430,6 +7522,68 @@ func (ec *executionContext) fieldContext_Community_comments(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Community_viewerPermissions(ctx context.Context, field graphql.CollectedField, obj *ent.Community) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Community_viewerPermissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Community().ViewerPermissions(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.CommunityPermissions)
+	fc.Result = res
+	return ec.marshalNCommunityPermissions2ᚖstormlinkᚋserverᚋmodelᚐCommunityPermissions(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Community_viewerPermissions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Community",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "communityRolesManagement":
+				return ec.fieldContext_CommunityPermissions_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_CommunityPermissions_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_CommunityPermissions_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_CommunityPermissions_communityDeletePost(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_CommunityPermissions_communityDeleteComments(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_CommunityPermissions_communityRemovePostFromPublication(ctx, field)
+			case "communityOwner":
+				return ec.fieldContext_CommunityPermissions_communityOwner(ctx, field)
+			case "hostOwner":
+				return ec.fieldContext_CommunityPermissions_hostOwner(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityPermissions", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Community_communityStatus(ctx context.Context, field graphql.CollectedField, obj *ent.Community) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Community_communityStatus(ctx, field)
 	if err != nil {
@@ -7899,6 +8053,8 @@ func (ec *executionContext) fieldContext_CommunityFollow_community(_ context.Con
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -8321,6 +8477,8 @@ func (ec *executionContext) fieldContext_CommunityModerator_community(_ context.
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -9019,6 +9177,8 @@ func (ec *executionContext) fieldContext_CommunityRule_community(_ context.Conte
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -9661,6 +9821,8 @@ func (ec *executionContext) fieldContext_CommunityUserBan_community(_ context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -10083,6 +10245,8 @@ func (ec *executionContext) fieldContext_CommunityUserMute_community(_ context.C
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -11471,6 +11635,8 @@ func (ec *executionContext) fieldContext_HostCommunityBan_community(_ context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -11741,6 +11907,8 @@ func (ec *executionContext) fieldContext_HostCommunityMute_community(_ context.C
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -15035,6 +15203,8 @@ func (ec *executionContext) fieldContext_Mutation_createCommunity(ctx context.Co
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -16414,6 +16584,8 @@ func (ec *executionContext) fieldContext_Post_community(_ context.Context, field
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -17547,6 +17719,8 @@ func (ec *executionContext) fieldContext_ProfileTableInfoItem_community(_ contex
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -17918,6 +18092,8 @@ func (ec *executionContext) fieldContext_Query_community(ctx context.Context, fi
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -17932,6 +18108,110 @@ func (ec *executionContext) fieldContext_Query_community(ctx context.Context, fi
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_community_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityBySlug(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityBySlug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityBySlug(rctx, fc.Args["slug"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Community)
+	fc.Result = res
+	return ec.marshalOCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityBySlug(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Community_id(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Community_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Community_bannerID(ctx, field)
+			case "ownerID":
+				return ec.fieldContext_Community_ownerID(ctx, field)
+			case "title":
+				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Community_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Community_description(ctx, field)
+			case "communityHasBanned":
+				return ec.fieldContext_Community_communityHasBanned(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Community_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Community_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Community_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Community_banner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Community_owner(ctx, field)
+			case "communityInfo":
+				return ec.fieldContext_Community_communityInfo(ctx, field)
+			case "moderators":
+				return ec.fieldContext_Community_moderators(ctx, field)
+			case "roles":
+				return ec.fieldContext_Community_roles(ctx, field)
+			case "rules":
+				return ec.fieldContext_Community_rules(ctx, field)
+			case "followers":
+				return ec.fieldContext_Community_followers(ctx, field)
+			case "bans":
+				return ec.fieldContext_Community_bans(ctx, field)
+			case "mutes":
+				return ec.fieldContext_Community_mutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_Community_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityBySlug_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18023,6 +18303,8 @@ func (ec *executionContext) fieldContext_Query_communities(ctx context.Context, 
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -18730,7 +19012,7 @@ func (ec *executionContext) _Query_posts(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Posts(rctx, fc.Args["status"].(*post.Status))
+		return ec.resolvers.Query().Posts(rctx, fc.Args["status"].(*post.Status), fc.Args["communityID"].(*string), fc.Args["authorID"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20522,6 +20804,8 @@ func (ec *executionContext) fieldContext_Role_community(_ context.Context, field
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -22005,6 +22289,8 @@ func (ec *executionContext) fieldContext_User_communitiesOwner(_ context.Context
 				return ec.fieldContext_Community_posts(ctx, field)
 			case "comments":
 				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
 			case "communityStatus":
 				return ec.fieldContext_Community_communityStatus(ctx, field)
 			}
@@ -22338,6 +22624,8 @@ func (ec *executionContext) fieldContext_User_userStatus(_ context.Context, fiel
 				return ec.fieldContext_UserStatus_followersCount(ctx, field)
 			case "followingCount":
 				return ec.fieldContext_UserStatus_followingCount(ctx, field)
+			case "postsCount":
+				return ec.fieldContext_UserStatus_postsCount(ctx, field)
 			case "isHostBanned":
 				return ec.fieldContext_UserStatus_isHostBanned(ctx, field)
 			case "isHostMuted":
@@ -24454,6 +24742,50 @@ func (ec *executionContext) _UserStatus_followingCount(ctx context.Context, fiel
 }
 
 func (ec *executionContext) fieldContext_UserStatus_followingCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_postsCount(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_postsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PostsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_postsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserStatus",
 		Field:      field,
@@ -40282,6 +40614,42 @@ func (ec *executionContext) _Community(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "viewerPermissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Community_viewerPermissions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "communityStatus":
 			field := field
 
@@ -42933,6 +43301,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityBySlug":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityBySlug(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "communities":
 			field := field
 
@@ -44832,6 +45219,11 @@ func (ec *executionContext) _UserStatus(ctx context.Context, sel ast.SelectionSe
 			}
 		case "followingCount":
 			out.Values[i] = ec._UserStatus_followingCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postsCount":
+			out.Values[i] = ec._UserStatus_postsCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
