@@ -2,105 +2,78 @@ package community
 
 import (
 	"context"
-	"stormlink/server/ent/community"
+	"fmt"
+	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
 	"stormlink/server/ent/communityusermute"
-	"stormlink/server/ent/hostrole"
-	"stormlink/server/ent/role"
-	"stormlink/server/ent/user"
-
-	"stormlink/server/model"
+	"stormlink/server/ent/post"
+	"stormlink/server/graphql/models"
 )
 
 func (uc *communityUsecase) GetCommunityStatus(
-  ctx context.Context,
-  userID int,
-  communityID int,
-) (map[int]*model.CommunityStatus, error) {
-  // 1) Получаем роли пользователя во всех нужных сообществах
-  roles, _ := uc.client.Role.
-    Query().
-    Where(
-      role.CommunityIDIn(communityIDs...),
-      role.HasUsersWith(user.IDEQ(userID)),
-    ).
-    All(ctx)
-
-  // 2) Проверяем баны/мюты
-  bans, _ := uc.client.CommunityUserBan.
-    Query().
-    Where(
-      communityuserban.UserIDEQ(userID),
-      communityuserban.CommunityIDIn(communityIDs...),
-    ).
-    All(ctx)
-  mutes, _ := uc.client.CommunityUserMute.
-    Query().
-    Where(
-      communityusermute.UserIDEQ(userID),
-      communityusermute.CommunityIDIn(communityIDs...),
-    ).
-    All(ctx)
-
-  // 3) Проверяем host-роли
-  hostOwner := false
-  hr, _ := uc.client.User.
-    Query().
-    Where(user.IDEQ(userID)).
-    QueryHostRoles().
-    Where(hostrole.TitleEQ("owner")).
-    Exist(ctx)
-  hostOwner = hr
-
-  // 4) Собираем результат по каждому communityID
-  res := make(map[int]*model.CommunityPermissions, len(communityIDs))
-  for _, cid := range communityIDs {
-    perms := &model.CommunityPermissions{}
-    // communityOwner?
-    owner, _ := uc.client.Community.
-      Query().
-      Where(community.IDEQ(cid), community.OwnerIDEQ(userID)).
-      Exist(ctx)
-    perms.CommunityOwner = owner
-
-    // hostOwner
-    perms.HostOwner = hostOwner
-
-    // роли
-    for _, r := range roles {
-      if r.CommunityID == cid {
-        if r.CommunityRolesManagement {
-					perms.CommunityRolesManagement = true
-				}
-				if r.CommunityUserBan {
-					perms.CommunityUserBan = true
-				}
-				if r.CommunityUserMute {
-					perms.CommunityUserMute = true
-				}
-        if r.CommunityDeletePost {
-					perms.CommunityDeletePost = true
-				}
-        if r.CommunityDeleteComments {
-					perms.CommunityDeleteComments = true
-				}
-				if r.CommunityRemovePostFromPublication {
-					perms.CommunityRemovePostFromPublication = true
-				}
-      }
+    ctx context.Context,
+    userID int,
+    communityID int,
+) (*models.CommunityStatus, error) {
+    // 1) Считаем общее число подписчиков
+    followersCount, err := uc.client.CommunityFollow.
+        Query().
+        Where(communityfollow.CommunityIDEQ(communityID)).
+        Count(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("count followers: %w", err)
     }
-    // ban/mute
-    for _, b := range bans {
-      if b.CommunityID == cid {
-        perms.CommunityUserHasBanned = true
-      }
+
+    // 2) Считаем общее число постов
+    postsCount, err := uc.client.Post.
+        Query().
+        Where(post.CommunityIDEQ(communityID)).
+        Count(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("count posts: %w", err)
     }
-    for _, m := range mutes {
-      if m.CommunityID == cid {
-        perms.CommunityUserHasMuted = true
-      }
+
+    // 3) Проверяем, подписан ли текущий юзер
+    isFollowing, err := uc.client.CommunityFollow.
+        Query().
+        Where(
+            communityfollow.CommunityIDEQ(communityID),
+            communityfollow.UserIDEQ(userID),
+        ).
+        Exist(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("check following: %w", err)
     }
-    res[cid] = perms
-  }
-  return res, nil
+
+    // 4) Проверяем, забанен ли текущий юзер
+    isBanned, err := uc.client.CommunityUserBan.
+        Query().
+        Where(
+            communityuserban.CommunityIDEQ(communityID),
+            communityuserban.UserIDEQ(userID),
+        ).
+        Exist(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("check ban: %w", err)
+    }
+
+    // 5) Проверяем, замучен ли текущий юзер
+    isMuted, err := uc.client.CommunityUserMute.
+        Query().
+        Where(
+            communityusermute.CommunityIDEQ(communityID),
+            communityusermute.UserIDEQ(userID),
+        ).
+        Exist(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("check mute: %w", err)
+    }
+
+    return &models.CommunityStatus{
+        FollowersCount: fmt.Sprintf("%d", followersCount),
+        PostsCount:     fmt.Sprintf("%d", postsCount),
+        IsFollowing:    isFollowing,
+        IsBanned:       isBanned,
+        IsMuted:        isMuted,
+    }, nil
 }

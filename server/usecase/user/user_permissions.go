@@ -3,8 +3,6 @@ package user
 import (
 	"context"
 	"stormlink/server/ent/community"
-	"stormlink/server/ent/communityuserban"
-	"stormlink/server/ent/communityusermute"
 	"stormlink/server/ent/hostrole"
 	"stormlink/server/ent/role"
 	"stormlink/server/ent/user"
@@ -23,22 +21,6 @@ func (uc *userUsecase) GetPermissionsByCommunities(
     Where(
       role.CommunityIDIn(communityIDs...),
       role.HasUsersWith(user.IDEQ(userID)),
-    ).
-    All(ctx)
-
-  // 2) Проверяем баны/мюты
-  bans, _ := uc.client.CommunityUserBan.
-    Query().
-    Where(
-      communityuserban.UserIDEQ(userID),
-      communityuserban.CommunityIDIn(communityIDs...),
-    ).
-    All(ctx)
-  mutes, _ := uc.client.CommunityUserMute.
-    Query().
-    Where(
-      communityusermute.UserIDEQ(userID),
-      communityusermute.CommunityIDIn(communityIDs...),
     ).
     All(ctx)
 
@@ -87,17 +69,6 @@ func (uc *userUsecase) GetPermissionsByCommunities(
 				if r.CommunityRemovePostFromPublication {
 					perms.CommunityRemovePostFromPublication = true
 				}
-      }
-    }
-    // ban/mute
-    for _, b := range bans {
-      if b.CommunityID == cid {
-        perms.CommunityUserHasBanned = true
-      }
-    }
-    for _, m := range mutes {
-      if m.CommunityID == cid {
-        perms.CommunityUserHasMuted = true
       }
     }
     res[cid] = perms

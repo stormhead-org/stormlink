@@ -485,6 +485,8 @@ type CommunityRuleWhereInput struct {
 type CommunityStatus struct {
 	FollowersCount string `json:"followersCount"`
 	PostsCount     string `json:"postsCount"`
+	IsBanned       bool   `json:"isBanned"`
+	IsMuted        bool   `json:"isMuted"`
 	IsFollowing    bool   `json:"isFollowing"`
 }
 
@@ -2230,6 +2232,8 @@ type UserResponse struct {
 type UserStatus struct {
 	FollowersCount string `json:"followersCount"`
 	FollowingCount string `json:"followingCount"`
+	IsHostBanned   bool   `json:"isHostBanned"`
+	IsHostMuted    bool   `json:"isHostMuted"`
 	IsFollowing    bool   `json:"isFollowing"`
 }
 

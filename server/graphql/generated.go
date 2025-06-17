@@ -151,8 +151,6 @@ type ComplexityRoot struct {
 		CommunityRemovePostFromPublication func(childComplexity int) int
 		CommunityRolesManagement           func(childComplexity int) int
 		CommunityUserBan                   func(childComplexity int) int
-		CommunityUserHasBanned             func(childComplexity int) int
-		CommunityUserHasMuted              func(childComplexity int) int
 		CommunityUserMute                  func(childComplexity int) int
 		HostOwner                          func(childComplexity int) int
 	}
@@ -169,7 +167,9 @@ type ComplexityRoot struct {
 
 	CommunityStatus struct {
 		FollowersCount func(childComplexity int) int
+		IsBanned       func(childComplexity int) int
 		IsFollowing    func(childComplexity int) int
+		IsMuted        func(childComplexity int) int
 		PostsCount     func(childComplexity int) int
 	}
 
@@ -550,6 +550,8 @@ type ComplexityRoot struct {
 		FollowersCount func(childComplexity int) int
 		FollowingCount func(childComplexity int) int
 		IsFollowing    func(childComplexity int) int
+		IsHostBanned   func(childComplexity int) int
+		IsHostMuted    func(childComplexity int) int
 	}
 
 	VerifyEmailResponse struct {
@@ -1180,20 +1182,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommunityPermissions.CommunityUserBan(childComplexity), true
 
-	case "CommunityPermissions.communityUserHasBanned":
-		if e.complexity.CommunityPermissions.CommunityUserHasBanned == nil {
-			break
-		}
-
-		return e.complexity.CommunityPermissions.CommunityUserHasBanned(childComplexity), true
-
-	case "CommunityPermissions.communityUserHasMuted":
-		if e.complexity.CommunityPermissions.CommunityUserHasMuted == nil {
-			break
-		}
-
-		return e.complexity.CommunityPermissions.CommunityUserHasMuted(childComplexity), true
-
 	case "CommunityPermissions.communityUserMute":
 		if e.complexity.CommunityPermissions.CommunityUserMute == nil {
 			break
@@ -1264,12 +1252,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommunityStatus.FollowersCount(childComplexity), true
 
+	case "CommunityStatus.isBanned":
+		if e.complexity.CommunityStatus.IsBanned == nil {
+			break
+		}
+
+		return e.complexity.CommunityStatus.IsBanned(childComplexity), true
+
 	case "CommunityStatus.isFollowing":
 		if e.complexity.CommunityStatus.IsFollowing == nil {
 			break
 		}
 
 		return e.complexity.CommunityStatus.IsFollowing(childComplexity), true
+
+	case "CommunityStatus.isMuted":
+		if e.complexity.CommunityStatus.IsMuted == nil {
+			break
+		}
+
+		return e.complexity.CommunityStatus.IsMuted(childComplexity), true
 
 	case "CommunityStatus.postsCount":
 		if e.complexity.CommunityStatus.PostsCount == nil {
@@ -3341,6 +3343,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserStatus.IsFollowing(childComplexity), true
+
+	case "UserStatus.isHostBanned":
+		if e.complexity.UserStatus.IsHostBanned == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.IsHostBanned(childComplexity), true
+
+	case "UserStatus.isHostMuted":
+		if e.complexity.UserStatus.IsHostMuted == nil {
+			break
+		}
+
+		return e.complexity.UserStatus.IsHostMuted(childComplexity), true
 
 	case "VerifyEmailResponse.message":
 		if e.complexity.VerifyEmailResponse.Message == nil {
@@ -7457,6 +7473,10 @@ func (ec *executionContext) fieldContext_Community_communityStatus(_ context.Con
 				return ec.fieldContext_CommunityStatus_followersCount(ctx, field)
 			case "postsCount":
 				return ec.fieldContext_CommunityStatus_postsCount(ctx, field)
+			case "isBanned":
+				return ec.fieldContext_CommunityStatus_isBanned(ctx, field)
+			case "isMuted":
+				return ec.fieldContext_CommunityStatus_isMuted(ctx, field)
 			case "isFollowing":
 				return ec.fieldContext_CommunityStatus_isFollowing(ctx, field)
 			}
@@ -8662,94 +8682,6 @@ func (ec *executionContext) fieldContext_CommunityPermissions_hostOwner(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CommunityPermissions_communityUserHasBanned(ctx context.Context, field graphql.CollectedField, obj *model.CommunityPermissions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityPermissions_communityUserHasBanned(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CommunityUserHasBanned, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_CommunityPermissions_communityUserHasBanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CommunityPermissions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _CommunityPermissions_communityUserHasMuted(ctx context.Context, field graphql.CollectedField, obj *model.CommunityPermissions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommunityPermissions_communityUserHasMuted(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CommunityUserHasMuted, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_CommunityPermissions_communityUserHasMuted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CommunityPermissions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _CommunityRule_id(ctx context.Context, field graphql.CollectedField, obj *models.CommunityRule) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommunityRule_id(ctx, field)
 	if err != nil {
@@ -9179,6 +9111,94 @@ func (ec *executionContext) fieldContext_CommunityStatus_postsCount(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommunityStatus_isBanned(ctx context.Context, field graphql.CollectedField, obj *models.CommunityStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityStatus_isBanned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsBanned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommunityStatus_isBanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommunityStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommunityStatus_isMuted(ctx context.Context, field graphql.CollectedField, obj *models.CommunityStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommunityStatus_isMuted(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsMuted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommunityStatus_isMuted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommunityStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16680,10 +16700,6 @@ func (ec *executionContext) fieldContext_Post_viewerPermissions(_ context.Contex
 				return ec.fieldContext_CommunityPermissions_communityOwner(ctx, field)
 			case "hostOwner":
 				return ec.fieldContext_CommunityPermissions_hostOwner(ctx, field)
-			case "communityUserHasBanned":
-				return ec.fieldContext_CommunityPermissions_communityUserHasBanned(ctx, field)
-			case "communityUserHasMuted":
-				return ec.fieldContext_CommunityPermissions_communityUserHasMuted(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CommunityPermissions", field.Name)
 		},
@@ -22322,6 +22338,10 @@ func (ec *executionContext) fieldContext_User_userStatus(_ context.Context, fiel
 				return ec.fieldContext_UserStatus_followersCount(ctx, field)
 			case "followingCount":
 				return ec.fieldContext_UserStatus_followingCount(ctx, field)
+			case "isHostBanned":
+				return ec.fieldContext_UserStatus_isHostBanned(ctx, field)
+			case "isHostMuted":
+				return ec.fieldContext_UserStatus_isHostMuted(ctx, field)
 			case "isFollowing":
 				return ec.fieldContext_UserStatus_isFollowing(ctx, field)
 			}
@@ -24441,6 +24461,94 @@ func (ec *executionContext) fieldContext_UserStatus_followingCount(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_isHostBanned(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_isHostBanned(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsHostBanned, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_isHostBanned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserStatus_isHostMuted(ctx context.Context, field graphql.CollectedField, obj *models.UserStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserStatus_isHostMuted(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsHostMuted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserStatus_isHostMuted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -40422,16 +40530,6 @@ func (ec *executionContext) _CommunityPermissions(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "communityUserHasBanned":
-			out.Values[i] = ec._CommunityPermissions_communityUserHasBanned(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "communityUserHasMuted":
-			out.Values[i] = ec._CommunityPermissions_communityUserHasMuted(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -40530,6 +40628,16 @@ func (ec *executionContext) _CommunityStatus(ctx context.Context, sel ast.Select
 			}
 		case "postsCount":
 			out.Values[i] = ec._CommunityStatus_postsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isBanned":
+			out.Values[i] = ec._CommunityStatus_isBanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isMuted":
+			out.Values[i] = ec._CommunityStatus_isMuted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -44724,6 +44832,16 @@ func (ec *executionContext) _UserStatus(ctx context.Context, sel ast.SelectionSe
 			}
 		case "followingCount":
 			out.Values[i] = ec._UserStatus_followingCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isHostBanned":
+			out.Values[i] = ec._UserStatus_isHostBanned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isHostMuted":
+			out.Values[i] = ec._UserStatus_isHostMuted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

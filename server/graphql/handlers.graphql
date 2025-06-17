@@ -24,6 +24,8 @@ type CommunityStatus {
 type UserStatus {
 	followersCount: String!
 	followingCount: String!
+	isHostBanned: Boolean!
+	isHostMuted: Boolean!
 	isFollowing: Boolean!
 }
 

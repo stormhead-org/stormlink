@@ -15,6 +15,7 @@ import (
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/middleware"
 	httpWithCookies "stormlink/server/pkg/http"
+	"stormlink/server/usecase/community"
 	"stormlink/server/usecase/user"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -38,10 +39,12 @@ func StartGraphQLServer(client *ent.Client) {
     // Инициализируем HTTPAuthMiddleware с gRPC-клиентом
     middleware.InitHTTPAuthMiddleware(authClient)
 
-    uc := user.NewUserUsecase(client)
+    uUC := user.NewUserUsecase(client)
+    cUC := community.NewCommunityUsecase(client)
     resolver := &graphql.Resolver{
         Client:     client,
-        UC:         uc,
+        UserUC:         uUC,
+        CommunityUC:    cUC,
         AuthClient: authClient,
         UserClient: userClient,
         MailClient: mailClient,

@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"stormlink/server/ent"
+	"stormlink/server/usecase/community"
 	"stormlink/server/usecase/user"
 
 	authpb "stormlink/server/grpc/auth/protobuf"
@@ -12,7 +13,8 @@ import (
 
 type Resolver struct {
 	Client *ent.Client
-	UC     user.UserUsecase
+	UserUC     user.UserUsecase
+	CommunityUC community.CommunityUsecase
 	AuthClient authpb.AuthServiceClient
   UserClient userpb.UserServiceClient
 	MailClient mailpb.MailServiceClient

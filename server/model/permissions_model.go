@@ -9,6 +9,4 @@ type CommunityPermissions struct {
 	CommunityRemovePostFromPublication bool `json:"communityRemovePostFromPublication"`
 	CommunityOwner                     bool `json:"communityOwner"`
 	HostOwner                          bool `json:"hostOwner"`
-	CommunityUserHasBanned             bool `json:"communityUserHasBanned"`
-	CommunityUserHasMuted              bool `json:"communityUserHasMuted"`
 }

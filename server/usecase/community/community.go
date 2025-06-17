@@ -4,19 +4,20 @@ import (
 	"context"
 	"stormlink/server/ent"
 	"stormlink/server/ent/community"
-	"stormlink/server/model"
+	"stormlink/server/graphql/models"
 )
 
 type CommunityUsecase interface {
-	GetCommunityByID(ctx context.Context, id int) (*ent.Community, error)
-	GetCommunityStatus(ctx context.Context, userID int, communityID int) (map[int]*model.CommunityStatus, error)
+  GetCommunityByID(ctx context.Context, id int) (*ent.Community, error)
+  GetCommunityStatus(ctx context.Context, userID int, communityID int) (*models.CommunityStatus, error)
 }
+
 
 type communityUsecase struct {
 	client *ent.Client
 }
 
-func NewCommunityUsecase(client *ent.Client) communityUsecase {
+func NewCommunityUsecase(client *ent.Client) CommunityUsecase {
 	return &communityUsecase{client: client}
 }
 

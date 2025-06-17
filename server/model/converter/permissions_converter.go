@@ -17,7 +17,5 @@ func ConvertPermissionsToCommunityPermissions(p *model.CommunityPermissions) *mo
 			CommunityRemovePostFromPublication: p.CommunityRemovePostFromPublication,
 			CommunityOwner:                      p.CommunityOwner,
 			HostOwner:                          p.HostOwner,
-			CommunityUserHasBanned:              p.CommunityUserHasBanned,
-			CommunityUserHasMuted:               p.CommunityUserHasMuted,
 	}
 }
