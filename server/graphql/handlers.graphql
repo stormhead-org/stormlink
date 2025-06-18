@@ -132,9 +132,14 @@ extend type Query {
 	communityUserBan(communityId: ID!, userId: ID!): CommunityUserBan
 	communityUserMute(communityId: ID!, userId: ID!): CommunityUserMute
 
+	communityModerator(communityId: ID!, userId: ID!): CommunityModerator
+
+	communityRule(id: ID!): CommunityRule
+
 	getMe: UserResponse!
 
 	user(id: ID!): User
+	userBySlug(slug: String!): User
 	users: [User!]!
 
 	profileTableInfoItem(id: ID!): ProfileTableInfoItem
@@ -179,6 +184,9 @@ extend type Mutation {
 	userRefreshToken: RefreshTokenResponse!
 
 	uploadMedia(file: Upload!, dir: String): Media!
+
+	followUser(input: FollowUserInput!): UserStatus!
+	unfollowUser(input: UnfollowUserInput!): UserStatus!
 }
 
 # Входные типы обновления настроек платформы
@@ -191,6 +199,16 @@ input UpdateHostInput {
 	bannerID: ID
 	authBannerID: ID
 	firstSettings: Boolean
+}
+
+# Входные типы подписки на юзера
+input FollowUserInput {
+	userID: ID!
+}
+
+# Входные типы отписки от юзера
+input UnfollowUserInput {
+	userID: ID!
 }
 
 # Входные типы обновления поста

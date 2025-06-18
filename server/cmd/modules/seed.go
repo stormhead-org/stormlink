@@ -5,6 +5,7 @@ import (
 	"log"
 	"stormlink/server/ent/hostrole"
 	"stormlink/server/ent/hostsidebarnavigation"
+	"stormlink/server/ent/hostsocialnavigation"
 
 	"stormlink/server/ent"
 	"stormlink/server/ent/host"
@@ -83,6 +84,21 @@ func Seed(client *ent.Client) error {
 			return err
 		}
 		log.Println("✅ Таблица навигации HostSidebarNavigation создана")
+	}
+
+	// Проверка: сидился ли дефолтный HostSocialNavigation
+	hostSocialNavigationExists, err := client.HostSocialNavigation.Query().Where(hostsocialnavigation.IDEQ(1)).Exist(ctx)
+	if err != nil {
+		log.Println("✅ Таблица навигации HostSocialNavigation уже существует...")
+		return err
+	}
+	if !hostSocialNavigationExists {
+		log.Println("🌱 Сидим навигацию HostSocialNavigation...")
+		if _, err := client.HostSocialNavigation.Create().
+			Save(ctx); err != nil {
+			return err
+		}
+		log.Println("✅ Таблица навигации HostSocialNavigation создана")
 	}
 
 	return nil

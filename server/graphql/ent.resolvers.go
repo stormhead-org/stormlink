@@ -11,16 +11,6 @@ import (
 	"stormlink/server/graphql/models"
 )
 
-// Moderators is the resolver for the moderators field.
-func (r *communityResolver) Moderators(ctx context.Context, obj *ent.Community) ([]*models.CommunityModerator, error) {
-	panic(fmt.Errorf("not implemented: Moderators - moderators"))
-}
-
-// Rules is the resolver for the rules field.
-func (r *communityResolver) Rules(ctx context.Context, obj *ent.Community) ([]*models.CommunityRule, error) {
-	panic(fmt.Errorf("not implemented: Rules - rules"))
-}
-
 // Followers is the resolver for the followers field.
 func (r *communityResolver) Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error) {
 	panic(fmt.Errorf("not implemented: Followers - followers"))
@@ -79,11 +69,6 @@ func (r *userResolver) Followers(ctx context.Context, obj *ent.User) ([]*models.
 // CommunitiesFollow is the resolver for the communitiesFollow field.
 func (r *userResolver) CommunitiesFollow(ctx context.Context, obj *ent.User) ([]*models.CommunityFollow, error) {
 	panic(fmt.Errorf("not implemented: CommunitiesFollow - communitiesFollow"))
-}
-
-// CommunitiesModerator is the resolver for the communitiesModerator field.
-func (r *userResolver) CommunitiesModerator(ctx context.Context, obj *ent.User) ([]*models.CommunityModerator, error) {
-	panic(fmt.Errorf("not implemented: CommunitiesModerator - communitiesModerator"))
 }
 
 // PostsLikes is the resolver for the postsLikes field.

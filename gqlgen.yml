@@ -169,6 +169,10 @@ models:
     model: stormlink/server/ent.CommunityUserBan
   CommunityUserMute:
     model: stormlink/server/ent.CommunityUserMute
+  CommunityModerator:
+    model: stormlink/server/ent.CommunityModerator
+  CommunityRule:
+    model: stormlink/server/ent.CommunityRule
   User:
     model: stormlink/server/ent.User
   Post:

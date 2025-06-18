@@ -19,6 +19,8 @@ import (
 	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/ent/role"
+	"stormlink/server/ent/user"
+	"stormlink/server/ent/userfollow"
 	"stormlink/server/graphql/models"
 	authpb "stormlink/server/grpc/auth/protobuf"
 	mailpb "stormlink/server/grpc/mail/protobuf"
@@ -442,6 +444,56 @@ func (r *mutationResolver) UploadMedia(ctx context.Context, file graphql.Upload,
 	}, nil
 }
 
+// FollowUser мутация подписки на пользователя.
+func (r *mutationResolver) FollowUser(ctx context.Context, input models.FollowUserInput) (*models.UserStatus, error) {
+	// 1) Узнаём currentUserID
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+			return nil, fmt.Errorf("unauthorized")
+	}
+	// 2) Создаём запись в user_follow
+	uID, _ := strconv.Atoi(input.UserID)
+	_, err = r.Client.UserFollow.
+			Create().
+			SetFollowerID(currentUserID).
+			SetFolloweeID(uID).
+			Save(ctx)
+	if err != nil {
+			return nil, fmt.Errorf("failed follow: %w", err)
+	}
+	// 3) Возвращаем актуальный UserStatus (используя ваш usecase)
+	status, err := r.UserUC.GetUserStatus(ctx, currentUserID, uID)
+	if err != nil {
+			return nil, fmt.Errorf("refresh status: %w", err)
+	}
+	return status, nil
+}
+
+// UnfollowUser мутация отписки от пользователя.
+func (r *mutationResolver) UnfollowUser(ctx context.Context, input models.UnfollowUserInput) (*models.UserStatus, error) {
+	currentUserID, err := auth.UserIDFromContext(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("unauthorized")
+    }
+    // Удаляем запись
+		uID, _ := strconv.Atoi(input.UserID)
+    _, err = r.Client.UserFollow.
+        Delete().
+        Where(
+            userfollow.FollowerIDEQ(currentUserID),
+            userfollow.FolloweeIDEQ(uID),
+        ).
+        Exec(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("failed unfollow: %w", err)
+    }
+    status, err := r.UserUC.GetUserStatus(ctx, currentUserID, uID)
+    if err != nil {
+        return nil, fmt.Errorf("refresh status: %w", err)
+    }
+    return status, nil
+}
+
 // ViewerPermissions для запрос постов.
 func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
 	// 1) Пытаемся достать userID из контекста
@@ -512,6 +564,8 @@ func (r *queryResolver) CommunityBySlug(ctx context.Context, slug string) (*ent.
 		WithLogo().
 		WithBanner().
 		WithOwner().
+		WithModerators().
+		WithRules().
 		WithCommunityInfo().
 		WithRoles().
 		Only(ctx)
@@ -572,6 +626,16 @@ func (r *queryResolver) CommunityUserMute(ctx context.Context, communityID strin
 	return mute, err
 }
 
+// CommunityModerator is the resolver for the communityModerator field.
+func (r *queryResolver) CommunityModerator(ctx context.Context, communityID string, userID string) (*ent.CommunityModerator, error) {
+	panic(fmt.Errorf("not implemented: CommunityModerator - communityModerator"))
+}
+
+// CommunityRule is the resolver for the communityRule field.
+func (r *queryResolver) CommunityRule(ctx context.Context, id string) (*ent.CommunityRule, error) {
+	panic(fmt.Errorf("not implemented: CommunityRule - communityRule"))
+}
+
 // GetMe отдает текущего авторизованного пользователя.
 func (r *queryResolver) GetMe(ctx context.Context) (*models.UserResponse, error) {
 	// Извлекаем userID из контекста
@@ -615,6 +679,22 @@ func (r *queryResolver) User(ctx context.Context, id string) (*ent.User, error) 
 		return nil, err
 	}
 	return r.Client.User.Get(ctx, userId)
+}
+
+// UserBySlug отдает одного пользователя по slug.
+func (r *queryResolver) UserBySlug(ctx context.Context, slug string) (*ent.User, error) {
+	return r.Client.User.
+		Query().
+		Where(user.SlugEQ(slug)).
+		WithAvatar().
+		WithBanner().
+		WithUserInfo().
+		WithHostRoles().
+		WithCommunitiesRoles().
+		WithCommunitiesBans().
+		WithCommunitiesMutes().
+		WithPosts().
+		Only(ctx)
 }
 
 // Users возвращает всех пользователей.
@@ -672,39 +752,39 @@ func (r *queryResolver) Posts(ctx context.Context, status *post.Status, communit
 	// 1) статус
 	st := post.StatusPublished
 	if status != nil {
-			st = *status
+		st = *status
 	}
 
 	// 2) базовый запрос
 	q := r.Client.Post.
-			Query().
-			Where(post.StatusEQ(st))
+		Query().
+		Where(post.StatusEQ(st))
 
 	// 3) фильтр по сообществу, если передан
 	if communityID != nil {
 		cid, err := strconv.Atoi(*communityID)
 		if err != nil {
-				return nil, fmt.Errorf("invalid communityID %q: %w", *communityID, err)
+			return nil, fmt.Errorf("invalid communityID %q: %w", *communityID, err)
 		}
 		q = q.Where(post.CommunityIDEQ(cid))
-}
+	}
 
 	// 4) фильтр по автору, если передан
 	if authorID != nil {
 		aid, err := strconv.Atoi(*authorID)
 		if err != nil {
-				return nil, fmt.Errorf("invalid authorID %q: %w", *authorID, err)
+			return nil, fmt.Errorf("invalid authorID %q: %w", *authorID, err)
 		}
 		q = q.Where(post.AuthorIDEQ(aid))
-}
+	}
 
 	// 5) подгружаем связи и отдаем результат
 	posts, err := q.
-			WithCommunity().
-			WithAuthor().
-			All(ctx)
+		WithCommunity().
+		WithAuthor().
+		All(ctx)
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
 	return posts, nil
 }
