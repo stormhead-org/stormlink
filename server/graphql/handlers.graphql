@@ -149,6 +149,7 @@ extend type Query {
 	): [ProfileTableInfoItem!]!
 
 	post(id: ID!): Post
+	postBySlug(slug: String!): Post
 	posts(status: PostStatus = PUBLISHED, communityID: ID, authorID: ID): [Post!]!
 
 	role(id: ID!): Role
@@ -187,6 +188,9 @@ extend type Mutation {
 
 	followUser(input: FollowUserInput!): UserStatus!
 	unfollowUser(input: UnfollowUserInput!): UserStatus!
+
+	followCommunity(input: FollowCommunityInput!): CommunityStatus!
+	unfollowCommunity(input: UnfollowCommunityInput!): CommunityStatus!
 }
 
 # Входные типы обновления настроек платформы
@@ -209,6 +213,16 @@ input FollowUserInput {
 # Входные типы отписки от юзера
 input UnfollowUserInput {
 	userID: ID!
+}
+
+# Входные типы подписки на сообщества
+input FollowCommunityInput {
+	communityID: ID!
+}
+
+# Входные типы отписки от сообщества
+input UnfollowCommunityInput {
+	communityID: ID!
 }
 
 # Входные типы обновления поста

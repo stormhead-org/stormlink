@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"stormlink/server/ent"
 	"stormlink/server/ent/community"
+	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
 	"stormlink/server/ent/communityusermute"
 	"stormlink/server/ent/post"
@@ -449,22 +450,22 @@ func (r *mutationResolver) FollowUser(ctx context.Context, input models.FollowUs
 	// 1) Узнаём currentUserID
 	currentUserID, err := auth.UserIDFromContext(ctx)
 	if err != nil {
-			return nil, fmt.Errorf("unauthorized")
+		return nil, fmt.Errorf("unauthorized")
 	}
 	// 2) Создаём запись в user_follow
 	uID, _ := strconv.Atoi(input.UserID)
 	_, err = r.Client.UserFollow.
-			Create().
-			SetFollowerID(currentUserID).
-			SetFolloweeID(uID).
-			Save(ctx)
+		Create().
+		SetFollowerID(currentUserID).
+		SetFolloweeID(uID).
+		Save(ctx)
 	if err != nil {
-			return nil, fmt.Errorf("failed follow: %w", err)
+		return nil, fmt.Errorf("failed follow: %w", err)
 	}
 	// 3) Возвращаем актуальный UserStatus (используя ваш usecase)
 	status, err := r.UserUC.GetUserStatus(ctx, currentUserID, uID)
 	if err != nil {
-			return nil, fmt.Errorf("refresh status: %w", err)
+		return nil, fmt.Errorf("refresh status: %w", err)
 	}
 	return status, nil
 }
@@ -472,26 +473,76 @@ func (r *mutationResolver) FollowUser(ctx context.Context, input models.FollowUs
 // UnfollowUser мутация отписки от пользователя.
 func (r *mutationResolver) UnfollowUser(ctx context.Context, input models.UnfollowUserInput) (*models.UserStatus, error) {
 	currentUserID, err := auth.UserIDFromContext(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("unauthorized")
-    }
-    // Удаляем запись
-		uID, _ := strconv.Atoi(input.UserID)
-    _, err = r.Client.UserFollow.
-        Delete().
-        Where(
-            userfollow.FollowerIDEQ(currentUserID),
-            userfollow.FolloweeIDEQ(uID),
-        ).
-        Exec(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("failed unfollow: %w", err)
-    }
-    status, err := r.UserUC.GetUserStatus(ctx, currentUserID, uID)
-    if err != nil {
-        return nil, fmt.Errorf("refresh status: %w", err)
-    }
-    return status, nil
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	// Удаляем запись
+	uID, _ := strconv.Atoi(input.UserID)
+	_, err = r.Client.UserFollow.
+		Delete().
+		Where(
+			userfollow.FollowerIDEQ(currentUserID),
+			userfollow.FolloweeIDEQ(uID),
+		).
+		Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed unfollow: %w", err)
+	}
+	status, err := r.UserUC.GetUserStatus(ctx, currentUserID, uID)
+	if err != nil {
+		return nil, fmt.Errorf("refresh status: %w", err)
+	}
+	return status, nil
+}
+
+// FollowCommunity мутация подписки на сообщество.
+func (r *mutationResolver) FollowCommunity(ctx context.Context, input models.FollowCommunityInput) (*models.CommunityStatus, error) {
+	// 1) Узнаём currentUserID
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	// 2) Создаём запись в community_follow
+	cID, _ := strconv.Atoi(input.CommunityID)
+	_, err = r.Client.CommunityFollow.
+		Create().
+		SetUserID(currentUserID).
+		SetCommunityID(cID).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed follow: %w", err)
+	}
+	// 3) Возвращаем актуальный CommunityStatus (используя ваш usecase)
+	status, err := r.CommunityUC.GetCommunityStatus(ctx, currentUserID, cID)
+	if err != nil {
+		return nil, fmt.Errorf("refresh status: %w", err)
+	}
+	return status, nil
+}
+
+// UnfollowCommunity мутация отписки от сообщества.
+func (r *mutationResolver) UnfollowCommunity(ctx context.Context, input models.UnfollowCommunityInput) (*models.CommunityStatus, error) {
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	// Удаляем запись
+	cID, _ := strconv.Atoi(input.CommunityID)
+	_, err = r.Client.CommunityFollow.
+		Delete().
+		Where(
+			communityfollow.UserIDEQ(currentUserID),
+			communityfollow.CommunityIDEQ(cID),
+		).
+		Exec(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed unfollow: %w", err)
+	}
+	status, err := r.CommunityUC.GetCommunityStatus(ctx, currentUserID, cID)
+	if err != nil {
+		return nil, fmt.Errorf("refresh status: %w", err)
+	}
+	return status, nil
 }
 
 // ViewerPermissions для запрос постов.
@@ -742,6 +793,17 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*ent.Post, error) 
 	return r.Client.Post.
 		Query().
 		Where(post.IDEQ(postId)).
+		WithCommunity().
+		WithAuthor().
+		Only(ctx)
+}
+
+// PostBySlug отдает один пост по его slug.
+func (r *queryResolver) PostBySlug(ctx context.Context, slug string) (*ent.Post, error) {
+	return r.Client.Post.
+		Query().
+		Where(post.SlugEQ(slug)).
+		WithHeroImage().
 		WithCommunity().
 		WithAuthor().
 		Only(ctx)

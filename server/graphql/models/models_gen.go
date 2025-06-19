@@ -800,6 +800,10 @@ type EmailVerificationWhereInput struct {
 	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
 }
 
+type FollowCommunityInput struct {
+	CommunityID string `json:"communityID"`
+}
+
 type FollowUserInput struct {
 	UserID string `json:"userID"`
 }
@@ -2071,6 +2075,10 @@ type RoleWhereInput struct {
 	// users edge predicates
 	HasUsers     *bool             `json:"hasUsers,omitempty"`
 	HasUsersWith []*UserWhereInput `json:"hasUsersWith,omitempty"`
+}
+
+type UnfollowCommunityInput struct {
+	CommunityID string `json:"communityID"`
 }
 
 type UnfollowUserInput struct {
