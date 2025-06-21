@@ -178,6 +178,9 @@ models:
   Post:
     model:
       - stormlink/server/ent.Post
+  Comment:
+    model:
+      - stormlink/server/ent.Comment
   Role:
     model:
       - stormlink/server/ent.Role

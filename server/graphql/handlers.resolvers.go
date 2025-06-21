@@ -13,6 +13,7 @@ import (
 	"log"
 	"math/rand"
 	"stormlink/server/ent"
+	"stormlink/server/ent/comment"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
@@ -241,6 +242,48 @@ func (r *mutationResolver) CreateCommunity(ctx context.Context, input models.Cre
 		return nil, fmt.Errorf("failed to create community: %w", err)
 	}
 	return newComm, nil
+}
+
+// CreateComment is the resolver for the createComment field.
+func (r *mutationResolver) CreateComment(ctx context.Context, input models.CreateCommentInput) (*ent.Comment, error) {
+	authorID, err := strconv.Atoi(input.AuthorID)
+  if err != nil {
+    return nil, fmt.Errorf("invalid authorID %q: %w", input.AuthorID, err)
+  }
+  communityID, err := strconv.Atoi(input.CommunityID)
+  if err != nil {
+    return nil, fmt.Errorf("invalid communityID %q: %w", input.CommunityID, err)
+  }
+  postID, err := strconv.Atoi(input.PostID)
+  if err != nil {
+    return nil, fmt.Errorf("invalid postID %q: %w", input.PostID, err)
+  }
+
+	var parentID *int
+  if input.ParentCommentID != nil {
+    pid, err := strconv.Atoi(*input.ParentCommentID)
+    if err != nil {
+      return nil, fmt.Errorf("invalid parentCommentID %q: %w", *input.ParentCommentID, err)
+    }
+    parentID = &pid
+  }
+	// 1) Создаём комментарий
+  c, err := r.Client.Comment.
+    Create().
+    SetAuthorID(authorID).
+    SetCommunityID(communityID).
+    SetPostID(postID).
+    SetContent(input.Content).
+    SetNillableParentCommentID(parentID).
+    Save(ctx)
+  if err != nil {
+    return nil, fmt.Errorf("create comment: %w", err)
+  }
+
+  // 2) Публикуем событие для подписок
+  publishCommentAdded(postID, c)
+
+  return c, nil
 }
 
 // Мутация LoginUser вызывает gRPC методы авторизации юзера
@@ -851,6 +894,36 @@ func (r *queryResolver) Posts(ctx context.Context, status *post.Status, communit
 	return posts, nil
 }
 
+// Comments возвращает все не удаленные комментарии.
+func (r *queryResolver) Comments(ctx context.Context, hasDeleted *bool) ([]*ent.Comment, error) {
+	q := r.Client.Comment.Query()
+  if hasDeleted != nil {
+    q = q.Where(comment.HasDeletedEQ(*hasDeleted))
+  }
+  return q.
+    WithAuthor().
+    WithPost().
+    WithCommunity().
+    All(ctx)
+}
+
+// CommentsByPostID возвращает все комментарии одного поста по его slug.
+func (r *queryResolver) CommentsByPostID(ctx context.Context, id string, hasDeleted *bool) ([]*ent.Comment, error) {
+	pid, err := strconv.Atoi(id)
+  if err != nil {
+    return nil, fmt.Errorf("invalid post ID: %w", err)
+  }
+  q := r.Client.Comment.Query().
+    Where(comment.PostIDEQ(pid))
+  if hasDeleted != nil {
+    q = q.Where(comment.HasDeletedEQ(*hasDeleted))
+  }
+  return q.
+    WithAuthor().
+    WithCommunity().
+    All(ctx)
+}
+
 // Role возвращает роль по ее ID.
 func (r *queryResolver) Role(ctx context.Context, id string) (*ent.Role, error) {
 	roleId, err := strconv.Atoi(id)
@@ -928,6 +1001,28 @@ func (r *queryResolver) Host(ctx context.Context) (*ent.Host, error) {
 	return r.Client.Host.Get(ctx, 1)
 }
 
+// CommentAdded подписка на новые комментарии.
+func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) (<-chan *ent.Comment, error) {
+	pid, err := strconv.Atoi(postID)
+  if err != nil {
+    return nil, fmt.Errorf("invalid postID: %w", err)
+  }
+  subID, ch := subscribeCommentAdded(pid)
+
+  // отписка при закрытии клиента
+  go func() {
+    <-ctx.Done()
+    unsubscribeCommentAdded(pid, subID)
+  }()
+
+  return ch, nil
+}
+
+// CommentUpdated is the resolver for the commentUpdated field.
+func (r *subscriptionResolver) CommentUpdated(ctx context.Context, postID string) (<-chan *ent.Comment, error) {
+	panic(fmt.Errorf("not implemented: CommentUpdated - commentUpdated"))
+}
+
 // UserStatus возвращает статус пользователя.
 func (r *userResolver) UserStatus(ctx context.Context, obj *ent.User) (*models.UserStatus, error) {
 	// 1) Получаем currentUserID из контекста (анонимы получат пустой статус)
@@ -956,4 +1051,8 @@ func (r *userResolver) UserStatus(ctx context.Context, obj *ent.User) (*models.U
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// Subscription returns SubscriptionResolver implementation.
+func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionResolver{r} }
+
 type mutationResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }

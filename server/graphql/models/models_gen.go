@@ -76,37 +76,14 @@ type BookmarkWhereInput struct {
 	HasPostWith []*PostWhereInput `json:"hasPostWith,omitempty"`
 }
 
-type Comment struct {
-	ID              string         `json:"id"`
-	AuthorID        string         `json:"authorID"`
-	PostID          string         `json:"postID"`
-	CommunityID     string         `json:"communityID"`
-	ParentCommentID *string        `json:"parentCommentID,omitempty"`
-	MediaID         *string        `json:"mediaID,omitempty"`
-	HasDeleted      bool           `json:"hasDeleted"`
-	HasUpdated      bool           `json:"hasUpdated"`
-	Content         string         `json:"content"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	UpdatedAt       time.Time      `json:"updatedAt"`
-	Author          *ent.User      `json:"author"`
-	Post            *ent.Post      `json:"post"`
-	Community       *ent.Community `json:"community"`
-	Media           *ent.Media     `json:"media,omitempty"`
-	ParentComment   *Comment       `json:"parentComment,omitempty"`
-	ChildrenComment []*Comment     `json:"childrenComment,omitempty"`
-	Likes           []*CommentLike `json:"likes,omitempty"`
-}
-
-func (Comment) IsNode() {}
-
 type CommentLike struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userID"`
-	CommentID string    `json:"commentID"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	User      *ent.User `json:"user"`
-	Comment   *Comment  `json:"comment"`
+	ID        string       `json:"id"`
+	UserID    string       `json:"userID"`
+	CommentID string       `json:"commentID"`
+	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
+	User      *ent.User    `json:"user"`
+	Comment   *ent.Comment `json:"comment"`
 }
 
 func (CommentLike) IsNode() {}
@@ -719,6 +696,15 @@ type CommunityWhereInput struct {
 	// comments edge predicates
 	HasComments     *bool                `json:"hasComments,omitempty"`
 	HasCommentsWith []*CommentWhereInput `json:"hasCommentsWith,omitempty"`
+}
+
+type CreateCommentInput struct {
+	AuthorID        string  `json:"authorID"`
+	CommunityID     string  `json:"communityID"`
+	PostID          string  `json:"postID"`
+	Content         string  `json:"content"`
+	HeroImageID     *string `json:"heroImageID,omitempty"`
+	ParentCommentID *string `json:"parentCommentID,omitempty"`
 }
 
 type CreateCommunityInput struct {
@@ -2075,6 +2061,9 @@ type RoleWhereInput struct {
 	// users edge predicates
 	HasUsers     *bool             `json:"hasUsers,omitempty"`
 	HasUsersWith []*UserWhereInput `json:"hasUsersWith,omitempty"`
+}
+
+type Subscription struct {
 }
 
 type UnfollowCommunityInput struct {

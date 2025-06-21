@@ -152,6 +152,9 @@ extend type Query {
 	postBySlug(slug: String!): Post
 	posts(status: PostStatus = PUBLISHED, communityID: ID, authorID: ID): [Post!]!
 
+	comments(hasDeleted: Boolean = false): [Comment!]!
+	commentsByPostId(id: ID!, hasDeleted: Boolean = false): [Comment!]!
+
 	role(id: ID!): Role
 	roles(id: ID!): [Role!]!
 
@@ -174,6 +177,7 @@ extend type Mutation {
 	post(input: UpdatePostInput!): Post!
 	createPost(input: CreatePostInput!): Post!
 	createCommunity(input: CreateCommunityInput!): Community!
+	createComment(input: CreateCommentInput!): Comment!
 
 	loginUser(input: LoginUserInput!): LoginUserResponse!
 	logoutUser: LogoutUserResponse!
@@ -191,6 +195,11 @@ extend type Mutation {
 
 	followCommunity(input: FollowCommunityInput!): CommunityStatus!
 	unfollowCommunity(input: UnfollowCommunityInput!): CommunityStatus!
+}
+
+extend type Subscription {
+	commentAdded(postId: ID!): Comment!
+	commentUpdated(postId: ID!): Comment!
 }
 
 # Входные типы обновления настроек платформы
@@ -255,6 +264,16 @@ input CreateCommunityInput {
 	slug: String!
 	description: String
 	ownerID: ID!
+}
+
+# Входные типы создания нового поста
+input CreateCommentInput {
+	authorID: ID!
+	communityID: ID!
+	postID: ID!
+	content: String!
+	heroImageID: ID
+	parentCommentID: ID
 }
 
 # Входные типы авторизации и аутентификации

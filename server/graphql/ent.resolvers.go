@@ -11,24 +11,19 @@ import (
 	"stormlink/server/graphql/models"
 )
 
+// Likes is the resolver for the likes field.
+func (r *commentResolver) Likes(ctx context.Context, obj *ent.Comment) ([]*models.CommentLike, error) {
+	panic(fmt.Errorf("not implemented: Likes - likes"))
+}
+
 // Followers is the resolver for the followers field.
 func (r *communityResolver) Followers(ctx context.Context, obj *ent.Community) ([]*models.CommunityFollow, error) {
 	panic(fmt.Errorf("not implemented: Followers - followers"))
 }
 
-// Comments is the resolver for the comments field.
-func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error) {
-	panic(fmt.Errorf("not implemented: Comments - comments"))
-}
-
 // Rules is the resolver for the rules field.
 func (r *hostResolver) Rules(ctx context.Context, obj *ent.Host) ([]*models.HostRule, error) {
 	panic(fmt.Errorf("not implemented: Rules - rules"))
-}
-
-// Comments is the resolver for the comments field.
-func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*models.Comment, error) {
-	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
 // Likes is the resolver for the likes field.
@@ -49,11 +44,6 @@ func (r *queryResolver) Node(ctx context.Context, id string) (ent.Noder, error) 
 // Nodes is the resolver for the nodes field.
 func (r *queryResolver) Nodes(ctx context.Context, ids []string) ([]ent.Noder, error) {
 	panic(fmt.Errorf("not implemented: Nodes - nodes"))
-}
-
-// Comments is the resolver for the comments field.
-func (r *userResolver) Comments(ctx context.Context, obj *ent.User) ([]*models.Comment, error) {
-	panic(fmt.Errorf("not implemented: Comments - comments"))
 }
 
 // Following is the resolver for the following field.
@@ -91,6 +81,9 @@ func (r *userResolver) EmailVerifications(ctx context.Context, obj *ent.User) ([
 	panic(fmt.Errorf("not implemented: EmailVerifications - emailVerifications"))
 }
 
+// Comment returns CommentResolver implementation.
+func (r *Resolver) Comment() CommentResolver { return &commentResolver{r} }
+
 // Community returns CommunityResolver implementation.
 func (r *Resolver) Community() CommunityResolver { return &communityResolver{r} }
 
@@ -106,8 +99,27 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
+type commentResolver struct{ *Resolver }
 type communityResolver struct{ *Resolver }
 type hostResolver struct{ *Resolver }
 type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *communityResolver) Comments(ctx context.Context, obj *ent.Community) ([]*models.Comment, error) {
+	panic(fmt.Errorf("not implemented: Comments - comments"))
+}
+func (r *postResolver) Comments(ctx context.Context, obj *ent.Post) ([]*models.Comment, error) {
+	panic(fmt.Errorf("not implemented: Comments - comments"))
+}
+func (r *userResolver) Comments(ctx context.Context, obj *ent.User) ([]*models.Comment, error) {
+	panic(fmt.Errorf("not implemented: Comments - comments"))
+}
+*/
