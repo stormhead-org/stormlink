@@ -272,7 +272,7 @@ input CreateCommentInput {
 	communityID: ID!
 	postID: ID!
 	content: String!
-	heroImageID: ID
+	mediaID: ID
 	parentCommentID: ID
 }
 

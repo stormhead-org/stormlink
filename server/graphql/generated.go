@@ -32305,7 +32305,7 @@ func (ec *executionContext) unmarshalInputCreateCommentInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"authorID", "communityID", "postID", "content", "heroImageID", "parentCommentID"}
+	fieldsInOrder := [...]string{"authorID", "communityID", "postID", "content", "mediaID", "parentCommentID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -32340,13 +32340,13 @@ func (ec *executionContext) unmarshalInputCreateCommentInput(ctx context.Context
 				return it, err
 			}
 			it.Content = data
-		case "heroImageID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("heroImageID"))
+		case "mediaID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mediaID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.HeroImageID = data
+			it.MediaID = data
 		case "parentCommentID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentCommentID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)

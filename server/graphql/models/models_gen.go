@@ -703,7 +703,7 @@ type CreateCommentInput struct {
 	CommunityID     string  `json:"communityID"`
 	PostID          string  `json:"postID"`
 	Content         string  `json:"content"`
-	HeroImageID     *string `json:"heroImageID,omitempty"`
+	MediaID         *string `json:"mediaID,omitempty"`
 	ParentCommentID *string `json:"parentCommentID,omitempty"`
 }
 
