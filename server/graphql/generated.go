@@ -358,25 +358,24 @@ type ComplexityRoot struct {
 	}
 
 	Post struct {
-		Author            func(childComplexity int) int
-		AuthorID          func(childComplexity int) int
-		Bookmarks         func(childComplexity int) int
-		Comments          func(childComplexity int) int
-		Community         func(childComplexity int) int
-		CommunityID       func(childComplexity int) int
-		Content           func(childComplexity int) int
-		CreatedAt         func(childComplexity int) int
-		HeroImage         func(childComplexity int) int
-		HeroImageID       func(childComplexity int) int
-		ID                func(childComplexity int) int
-		Likes             func(childComplexity int) int
-		PublishedAt       func(childComplexity int) int
-		RelatedPost       func(childComplexity int) int
-		Slug              func(childComplexity int) int
-		Status            func(childComplexity int) int
-		Title             func(childComplexity int) int
-		UpdatedAt         func(childComplexity int) int
-		ViewerPermissions func(childComplexity int) int
+		Author      func(childComplexity int) int
+		AuthorID    func(childComplexity int) int
+		Bookmarks   func(childComplexity int) int
+		Comments    func(childComplexity int) int
+		Community   func(childComplexity int) int
+		CommunityID func(childComplexity int) int
+		Content     func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		HeroImage   func(childComplexity int) int
+		HeroImageID func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Likes       func(childComplexity int) int
+		PublishedAt func(childComplexity int) int
+		RelatedPost func(childComplexity int) int
+		Slug        func(childComplexity int) int
+		Status      func(childComplexity int) int
+		Title       func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
 	}
 
 	PostLike struct {
@@ -614,7 +613,6 @@ type MutationResolver interface {
 type PostResolver interface {
 	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
 	Bookmarks(ctx context.Context, obj *ent.Post) ([]*models.Bookmark, error)
-	ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
@@ -2398,13 +2396,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Post.UpdatedAt(childComplexity), true
-
-	case "Post.viewerPermissions":
-		if e.complexity.Post.ViewerPermissions == nil {
-			break
-		}
-
-		return e.complexity.Post.ViewerPermissions(childComplexity), true
 
 	case "PostLike.createdAt":
 		if e.complexity.PostLike.CreatedAt == nil {
@@ -5330,8 +5321,6 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -6000,8 +5989,6 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -7976,8 +7963,6 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -14014,8 +13999,6 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -15545,8 +15528,6 @@ func (ec *executionContext) fieldContext_Mutation_post(ctx context.Context, fiel
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -15640,8 +15621,6 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -17397,8 +17376,6 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -17719,68 +17696,6 @@ func (ec *executionContext) fieldContext_Post_bookmarks(_ context.Context, field
 				return ec.fieldContext_Bookmark_post(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bookmark", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Post_viewerPermissions(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Post_viewerPermissions(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Post().ViewerPermissions(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.CommunityPermissions)
-	fc.Result = res
-	return ec.marshalNCommunityPermissions2ᚖstormlinkᚋserverᚋmodelᚐCommunityPermissions(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Post_viewerPermissions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Post",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "communityRolesManagement":
-				return ec.fieldContext_CommunityPermissions_communityRolesManagement(ctx, field)
-			case "communityUserBan":
-				return ec.fieldContext_CommunityPermissions_communityUserBan(ctx, field)
-			case "communityUserMute":
-				return ec.fieldContext_CommunityPermissions_communityUserMute(ctx, field)
-			case "communityDeletePost":
-				return ec.fieldContext_CommunityPermissions_communityDeletePost(ctx, field)
-			case "communityDeleteComments":
-				return ec.fieldContext_CommunityPermissions_communityDeleteComments(ctx, field)
-			case "communityRemovePostFromPublication":
-				return ec.fieldContext_CommunityPermissions_communityRemovePostFromPublication(ctx, field)
-			case "communityOwner":
-				return ec.fieldContext_CommunityPermissions_communityOwner(ctx, field)
-			case "hostOwner":
-				return ec.fieldContext_CommunityPermissions_hostOwner(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type CommunityPermissions", field.Name)
 		},
 	}
 	return fc, nil
@@ -18189,8 +18104,6 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -20137,8 +20050,6 @@ func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field g
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -20229,8 +20140,6 @@ func (ec *executionContext) fieldContext_Query_postBySlug(ctx context.Context, f
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -20324,8 +20233,6 @@ func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -23599,8 +23506,6 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
-			case "viewerPermissions":
-				return ec.fieldContext_Post_viewerPermissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -45078,42 +44983,6 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Post_bookmarks(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "viewerPermissions":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Post_viewerPermissions(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 

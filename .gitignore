@@ -28,8 +28,8 @@ proto/googleapis
 server/ent/*
 !server/ent/schema/
 !server/ent/schema/**
-!server/ent/cmd/entc.go
-!server/ent/cmd/generate.go
+!server/ent/entc.go
+!server/ent/generate.go
 
 # env file
 .env

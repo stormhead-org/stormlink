@@ -588,50 +588,6 @@ func (r *mutationResolver) UnfollowCommunity(ctx context.Context, input models.U
 	return status, nil
 }
 
-// ViewerPermissions для запрос постов.
-func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
-	// 1) Пытаемся достать userID из контекста
-	userID, err := auth.UserIDFromContext(ctx)
-	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
-	if err != nil {
-		// аноним — никаких прав
-		return &model.CommunityPermissions{}, nil
-	}
-
-	communityID := obj.CommunityID
-
-	// 2) Спрашиваем именно по одному сообществу
-	permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, userID, []int{communityID})
-	if err != nil {
-		return nil, fmt.Errorf("failed loading perms: %w", err)
-	}
-	base := permsMap[communityID]
-	if base == nil {
-		base = &model.CommunityPermissions{}
-	}
-	cm := converter.ConvertPermissionsToCommunityPermissions(base)
-
-	// 3) Если юзер — владелец сообщества, даём ему полный набор community-прав
-	communityEntity, err := r.Client.Community.Get(ctx, communityID)
-	if err == nil && communityEntity.OwnerID == userID {
-		cm.CommunityOwner = true
-		cm.CommunityRolesManagement = true
-		cm.CommunityUserBan = true
-		cm.CommunityUserMute = true
-		cm.CommunityDeletePost = true
-		cm.CommunityDeleteComments = true
-		cm.CommunityRemovePostFromPublication = true
-	}
-
-	// 4) Если юзер — владелец платформы
-	hostEntity, err := r.Client.Host.Get(ctx, 1)
-	if err == nil && hostEntity.OwnerID != nil && *hostEntity.OwnerID == userID {
-		cm.HostOwner = true
-	}
-
-	return cm, nil
-}
-
 // Media возвращает медиа по ID.
 func (r *queryResolver) Media(ctx context.Context, id string) (*ent.Media, error) {
 	mediaId, err := strconv.Atoi(id)
@@ -1056,3 +1012,54 @@ func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionRes
 
 type mutationResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
+	// 1) Пытаемся достать userID из контекста
+	userID, err := auth.UserIDFromContext(ctx)
+	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
+	if err != nil {
+		// аноним — никаких прав
+		return &model.CommunityPermissions{}, nil
+	}
+
+	communityID := obj.CommunityID
+
+	// 2) Спрашиваем именно по одному сообществу
+	permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, userID, []int{communityID})
+	if err != nil {
+		return nil, fmt.Errorf("failed loading perms: %w", err)
+	}
+	base := permsMap[communityID]
+	if base == nil {
+		base = &model.CommunityPermissions{}
+	}
+	cm := converter.ConvertPermissionsToCommunityPermissions(base)
+
+	// 3) Если юзер — владелец сообщества, даём ему полный набор community-прав
+	communityEntity, err := r.Client.Community.Get(ctx, communityID)
+	if err == nil && communityEntity.OwnerID == userID {
+		cm.CommunityOwner = true
+		cm.CommunityRolesManagement = true
+		cm.CommunityUserBan = true
+		cm.CommunityUserMute = true
+		cm.CommunityDeletePost = true
+		cm.CommunityDeleteComments = true
+		cm.CommunityRemovePostFromPublication = true
+	}
+
+	// 4) Если юзер — владелец платформы
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err == nil && hostEntity.OwnerID != nil && *hostEntity.OwnerID == userID {
+		cm.HostOwner = true
+	}
+
+	return cm, nil
+}
+*/

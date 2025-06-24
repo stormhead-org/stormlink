@@ -107,9 +107,9 @@ type UserResponse {
 #------------------------
 
 # Расширение модели Post
-extend type Post {
-	viewerPermissions: CommunityPermissions!
-}
+#extend type Post {
+#	viewerPermissions: CommunityPermissions!
+#}
 
 # Расширение модели Community
 extend type Community {
