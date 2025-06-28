@@ -2074,6 +2074,13 @@ type UnfollowUserInput struct {
 	UserID string `json:"userID"`
 }
 
+type UpdateCommentInput struct {
+	ID         string  `json:"id"`
+	Content    string  `json:"content"`
+	MediaID    *string `json:"mediaID,omitempty"`
+	HasDeleted *bool   `json:"hasDeleted,omitempty"`
+}
+
 type UpdateHostInput struct {
 	Title         *string `json:"title,omitempty"`
 	Slogan        *string `json:"slogan,omitempty"`

@@ -178,6 +178,7 @@ extend type Mutation {
 	createPost(input: CreatePostInput!): Post!
 	createCommunity(input: CreateCommunityInput!): Community!
 	createComment(input: CreateCommentInput!): Comment!
+	updateComment(input: UpdateCommentInput!): Comment!
 
 	loginUser(input: LoginUserInput!): LoginUserResponse!
 	logoutUser: LogoutUserResponse!
@@ -266,7 +267,7 @@ input CreateCommunityInput {
 	ownerID: ID!
 }
 
-# Входные типы создания нового поста
+# Входные типы создания нового комментария
 input CreateCommentInput {
 	authorID: ID!
 	communityID: ID!
@@ -274,6 +275,14 @@ input CreateCommentInput {
 	content: String!
 	mediaID: ID
 	parentCommentID: ID
+}
+
+# Входные типы обновления комментария
+input UpdateCommentInput {
+	id: ID!
+	content: String!
+	mediaID: ID
+	hasDeleted: Boolean
 }
 
 # Входные типы авторизации и аутентификации

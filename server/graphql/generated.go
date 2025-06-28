@@ -345,6 +345,7 @@ type ComplexityRoot struct {
 		ResendUserVerifyEmail func(childComplexity int, input models.ResendVerifyEmailInput) int
 		UnfollowCommunity     func(childComplexity int, input models.UnfollowCommunityInput) int
 		UnfollowUser          func(childComplexity int, input models.UnfollowUserInput) int
+		UpdateComment         func(childComplexity int, input models.UpdateCommentInput) int
 		UploadMedia           func(childComplexity int, file graphql.Upload, dir *string) int
 		UserRefreshToken      func(childComplexity int) int
 		UserVerifyEmail       func(childComplexity int, input models.VerifyEmailInput) int
@@ -598,6 +599,7 @@ type MutationResolver interface {
 	CreatePost(ctx context.Context, input models.CreatePostInput) (*ent.Post, error)
 	CreateCommunity(ctx context.Context, input models.CreateCommunityInput) (*ent.Community, error)
 	CreateComment(ctx context.Context, input models.CreateCommentInput) (*ent.Comment, error)
+	UpdateComment(ctx context.Context, input models.UpdateCommentInput) (*ent.Comment, error)
 	LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error)
 	LogoutUser(ctx context.Context) (*models.LogoutUserResponse, error)
 	RegisterUser(ctx context.Context, input models.RegisterUserInput) (*models.RegisterUserResponse, error)
@@ -2212,6 +2214,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UnfollowUser(childComplexity, args["input"].(models.UnfollowUserInput)), true
 
+	case "Mutation.updateComment":
+		if e.complexity.Mutation.UpdateComment == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateComment_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateComment(childComplexity, args["input"].(models.UpdateCommentInput)), true
+
 	case "Mutation.uploadMedia":
 		if e.complexity.Mutation.UploadMedia == nil {
 			break
@@ -3615,6 +3629,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputUnfollowCommunityInput,
 		ec.unmarshalInputUnfollowUserInput,
+		ec.unmarshalInputUpdateCommentInput,
 		ec.unmarshalInputUpdateHostInput,
 		ec.unmarshalInputUpdatePostInput,
 		ec.unmarshalInputUserFollowWhereInput,
@@ -4027,6 +4042,29 @@ func (ec *executionContext) field_Mutation_unfollowUser_argsInput(
 	}
 
 	var zeroVal models.UnfollowUserInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateComment_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateComment_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (models.UpdateCommentInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommentInput(ctx, tmp)
+	}
+
+	var zeroVal models.UpdateCommentInput
 	return zeroVal, nil
 }
 
@@ -15833,6 +15871,99 @@ func (ec *executionContext) fieldContext_Mutation_createComment(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createComment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateComment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateComment(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateComment(rctx, fc.Args["input"].(models.UpdateCommentInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Comment)
+	fc.Result = res
+	return ec.marshalNComment2ᚖstormlinkᚋserverᚋentᚐComment(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateComment(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Comment_authorID(ctx, field)
+			case "postID":
+				return ec.fieldContext_Comment_postID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Comment_communityID(ctx, field)
+			case "parentCommentID":
+				return ec.fieldContext_Comment_parentCommentID(ctx, field)
+			case "mediaID":
+				return ec.fieldContext_Comment_mediaID(ctx, field)
+			case "hasDeleted":
+				return ec.fieldContext_Comment_hasDeleted(ctx, field)
+			case "hasUpdated":
+				return ec.fieldContext_Comment_hasUpdated(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Comment_updatedAt(ctx, field)
+			case "author":
+				return ec.fieldContext_Comment_author(ctx, field)
+			case "post":
+				return ec.fieldContext_Comment_post(ctx, field)
+			case "community":
+				return ec.fieldContext_Comment_community(ctx, field)
+			case "media":
+				return ec.fieldContext_Comment_media(ctx, field)
+			case "parentComment":
+				return ec.fieldContext_Comment_parentComment(ctx, field)
+			case "childrenComment":
+				return ec.fieldContext_Comment_childrenComment(ctx, field)
+			case "likes":
+				return ec.fieldContext_Comment_likes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateComment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -39867,6 +39998,54 @@ func (ec *executionContext) unmarshalInputUnfollowUserInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateCommentInput(ctx context.Context, obj any) (models.UpdateCommentInput, error) {
+	var it models.UpdateCommentInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "content", "mediaID", "hasDeleted"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "content":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Content = data
+		case "mediaID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mediaID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MediaID = data
+		case "hasDeleted":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasDeleted"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasDeleted = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, obj any) (models.UpdateHostInput, error) {
 	var it models.UpdateHostInput
 	asMap := map[string]any{}
@@ -44561,6 +44740,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateComment":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateComment(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "loginUser":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_loginUser(ctx, field)
@@ -48874,6 +49060,11 @@ func (ec *executionContext) unmarshalNUnfollowCommunityInput2stormlinkᚋserver�
 
 func (ec *executionContext) unmarshalNUnfollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowUserInput(ctx context.Context, v any) (models.UnfollowUserInput, error) {
 	res, err := ec.unmarshalInputUnfollowUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommentInput(ctx context.Context, v any) (models.UpdateCommentInput, error) {
+	res, err := ec.unmarshalInputUpdateCommentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

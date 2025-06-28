@@ -286,6 +286,47 @@ func (r *mutationResolver) CreateComment(ctx context.Context, input models.Creat
 	return c, nil
 }
 
+// UpdateComment is the resolver for the updateComment field.
+func (r *mutationResolver) UpdateComment(ctx context.Context, input models.UpdateCommentInput) (*ent.Comment, error) {
+	// 1) Преобразуем строковый input.CommentID в int
+	cid, err := strconv.Atoi(input.ID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid commentID: %w", err)
+	}
+
+	// 2) Стартуем билд апдейт-запроса для нужного комментария
+	update := r.Client.Comment.
+		UpdateOneID(cid)
+
+	// 3) Если клиент хочет пометить как удалённый
+	if input.HasDeleted != nil && *input.HasDeleted {
+		update.
+			SetHasDeleted(true).
+			// Перезаписываем текст удалённого комментария
+			SetContent("Комментарий удален...")
+	} else {
+		// 4) Обновляем содержимое, ставим флаг has_updated
+		update = update.
+			SetContent(input.Content).
+			SetHasUpdated(true)
+		// 5) Если указали новое mediaID — обновляем
+		if input.MediaID != nil {
+			mid, err := strconv.Atoi(*input.MediaID)
+			if err != nil {
+				return nil, fmt.Errorf("invalid mediaID: %w", err)
+			}
+			update = update.SetMediaID(mid)
+		}
+	}
+
+	// 6) Выполняем сам апдейт
+	comment, err := update.Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed updating comment: %w", err)
+	}
+	return comment, nil
+}
+
 // Мутация LoginUser вызывает gRPC методы авторизации юзера
 func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error) {
 	// Вызываем gRPC-метод Login
@@ -1012,54 +1053,3 @@ func (r *Resolver) Subscription() SubscriptionResolver { return &subscriptionRes
 
 type mutationResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *postResolver) ViewerPermissions(ctx context.Context, obj *ent.Post) (*model.CommunityPermissions, error) {
-	// 1) Пытаемся достать userID из контекста
-	userID, err := auth.UserIDFromContext(ctx)
-	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
-	if err != nil {
-		// аноним — никаких прав
-		return &model.CommunityPermissions{}, nil
-	}
-
-	communityID := obj.CommunityID
-
-	// 2) Спрашиваем именно по одному сообществу
-	permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, userID, []int{communityID})
-	if err != nil {
-		return nil, fmt.Errorf("failed loading perms: %w", err)
-	}
-	base := permsMap[communityID]
-	if base == nil {
-		base = &model.CommunityPermissions{}
-	}
-	cm := converter.ConvertPermissionsToCommunityPermissions(base)
-
-	// 3) Если юзер — владелец сообщества, даём ему полный набор community-прав
-	communityEntity, err := r.Client.Community.Get(ctx, communityID)
-	if err == nil && communityEntity.OwnerID == userID {
-		cm.CommunityOwner = true
-		cm.CommunityRolesManagement = true
-		cm.CommunityUserBan = true
-		cm.CommunityUserMute = true
-		cm.CommunityDeletePost = true
-		cm.CommunityDeleteComments = true
-		cm.CommunityRemovePostFromPublication = true
-	}
-
-	// 4) Если юзер — владелец платформы
-	hostEntity, err := r.Client.Host.Get(ctx, 1)
-	if err == nil && hostEntity.OwnerID != nil && *hostEntity.OwnerID == userID {
-		cm.HostOwner = true
-	}
-
-	return cm, nil
-}
-*/
