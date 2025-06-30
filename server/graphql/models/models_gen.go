@@ -2076,7 +2076,7 @@ type UnfollowUserInput struct {
 
 type UpdateCommentInput struct {
 	ID         string  `json:"id"`
-	Content    string  `json:"content"`
+	Content    *string `json:"content,omitempty"`
 	MediaID    *string `json:"mediaID,omitempty"`
 	HasDeleted *bool   `json:"hasDeleted,omitempty"`
 }

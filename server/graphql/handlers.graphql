@@ -280,7 +280,7 @@ input CreateCommentInput {
 # Входные типы обновления комментария
 input UpdateCommentInput {
 	id: ID!
-	content: String!
+	content: String
 	mediaID: ID
 	hasDeleted: Boolean
 }
