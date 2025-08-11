@@ -13,10 +13,10 @@ import (
 
 type Resolver struct {
 	Client *ent.Client
-	UserUC     user.UserUsecase
-	CommunityUC community.CommunityUsecase
-	AuthClient authpb.AuthServiceClient
-  UserClient userpb.UserServiceClient
-	MailClient mailpb.MailServiceClient
-	MediaClient mediapb.MediaServiceClient
+    UserUC      user.UserUsecase
+    CommunityUC community.CommunityUsecase
+    AuthClient  authpb.AuthServiceClient
+    UserClient  userpb.UserServiceClient
+    MailClient  mailpb.MailServiceClient
+    MediaClient mediapb.MediaServiceClient
 }

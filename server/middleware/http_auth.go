@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"stormlink/server/grpc/auth/protobuf"
-	httpCookies "stormlink/server/pkg/http"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	sharedauth "stormlink/shared/auth"
+	httpCookies "stormlink/shared/http"
 )
 
+// HTTPAuthMiddleware валидирует Bearer access JWT локально и добавляет userID и Authorization в контекст
 var authClient protobuf.AuthServiceClient
 
 func InitHTTPAuthMiddleware(client protobuf.AuthServiceClient) {
@@ -21,46 +20,33 @@ func InitHTTPAuthMiddleware(client protobuf.AuthServiceClient) {
 
 func HTTPAuthMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Извлекаем заголовок Authorization
-        authHeader := r.Header.Get("Authorization")
-
-        // Добавляем http.ResponseWriter и http.Request в контекст
+        // Базовый контекст HTTP (для работы с куками в резолверах)
         ctx := httpCookies.WithHTTPContext(r.Context(), w, r)
-        ctx = context.WithValue(ctx, "userID", 0)
+        ctx = sharedauth.WithUserID(ctx, 0)
+
+        // Источник access токена: Authorization или cookie auth_token
+        authHeader := r.Header.Get("Authorization")
+        if authHeader == "" {
+            if c, err := r.Cookie("auth_token"); err == nil && c.Value != "" {
+                authHeader = "Bearer " + c.Value
+            }
+        }
         ctx = context.WithValue(ctx, "authorization", authHeader)
 
-        if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+        if !strings.HasPrefix(authHeader, "Bearer ") {
             next.ServeHTTP(w, r.WithContext(ctx))
             return
         }
 
         token := strings.TrimPrefix(authHeader, "Bearer ")
-
-        // Подключаемся к gRPC-серверу
-        conn, err := grpc.Dial("localhost:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
-        if err != nil {
-            log.Printf("❌ GraphQL: Ошибка подключения к gRPC: %v", err)
-            http.Error(w, `{"error": "internal server error"}`, http.StatusInternalServerError)
-            return
-        }
-        defer conn.Close()
-
-        // Создаём gRPC-клиент
-        authClient := protobuf.NewAuthServiceClient(conn)
-
-        // Валидируем токен
+        // валидация удалённо через auth-сервис
         resp, err := authClient.ValidateToken(ctx, &protobuf.ValidateTokenRequest{Token: token})
-        if err != nil || !resp.Valid {
-            log.Printf("❌ GraphQL: Ошибка валидации токена: %v", err)
-            ctx = context.WithValue(ctx, "userID", 0)
-            ctx = context.WithValue(ctx, "authorization", authHeader)
+        if err != nil || !resp.GetValid() {
+            log.Printf("❌ HTTPAuthMiddleware: invalid access token: %v", err)
             next.ServeHTTP(w, r.WithContext(ctx))
             return
         }
-
-        // Добавляем userID в контекст
-        ctx = context.WithValue(ctx, "userID", int(resp.UserId))
-        ctx = context.WithValue(ctx, "authorization", authHeader)
+        ctx = sharedauth.WithUserID(ctx, int(resp.GetUserId()))
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }

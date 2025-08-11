@@ -12,6 +12,8 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
+	"os"
 	"stormlink/server/ent"
 	"stormlink/server/ent/comment"
 	"stormlink/server/ent/community"
@@ -30,9 +32,9 @@ import (
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/model"
 	"stormlink/server/model/converter"
-	"stormlink/server/pkg/auth"
-	httpWithCookies "stormlink/server/pkg/http"
-	"stormlink/server/pkg/mapper"
+	"stormlink/shared/auth"
+	httpWithCookies "stormlink/shared/http"
+	sharedmapper "stormlink/shared/mapper"
 	"strconv"
 	"time"
 
@@ -333,7 +335,7 @@ func (r *mutationResolver) UpdateComment(ctx context.Context, input models.Updat
 // Мутация LoginUser вызывает gRPC методы авторизации юзера
 func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUserInput) (*models.LoginUserResponse, error) {
 	// Вызываем gRPC-метод Login
-	resp, err := r.AuthClient.Login(ctx, &authpb.LoginRequest{
+    resp, err := r.AuthClient.Login(ctx, &authpb.LoginRequest{
 		Email:    input.Email,
 		Password: input.Password,
 	})
@@ -343,7 +345,7 @@ func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUser
 	}
 
 	// Мапим gRPC-пользователя в GraphQL-пользователя
-	user, err := mapper.ProtoToGraphQLUser(resp.User)
+    user, err := sharedmapper.ProtoToGraphQLUser(resp.User)
 	if err != nil {
 		log.Printf("❌ [LoginUser] Failed to map user: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to map user: %v", err)
@@ -357,11 +359,11 @@ func (r *mutationResolver) LoginUser(ctx context.Context, input models.LoginUser
 		log.Println("⚠️ [LoginUser] HTTP response writer not found, cookies not set")
 	}
 
-	return &models.LoginUserResponse{
-		AccessToken:  resp.AccessToken,
-		RefreshToken: resp.RefreshToken,
-		User:         user,
-	}, nil
+    return &models.LoginUserResponse{
+        AccessToken:  "",
+        RefreshToken: "",
+        User:         user,
+    }, nil
 }
 
 // Мутация LogoutUser удаляет куки и сессию у авторизованного пользователя.
@@ -373,7 +375,7 @@ func (r *mutationResolver) LogoutUser(ctx context.Context) (*models.LogoutUserRe
 	}
 
 	// Вызываем gRPC-метод Logout
-	resp, err := r.AuthClient.Logout(ctx, &emptypb.Empty{})
+    resp, err := r.AuthClient.Logout(ctx, &emptypb.Empty{})
 	if err != nil {
 		log.Printf("❌ [LogoutUser] gRPC Logout error: %v", err)
 		return nil, err
@@ -401,7 +403,7 @@ func (r *mutationResolver) RegisterUser(ctx context.Context, input models.Regist
 	}
 
 	// Вызываем gRPC-метод RegisterUser
-	resp, err := r.UserClient.RegisterUser(ctx, &userpb.RegisterUserRequest{
+    resp, err := r.UserClient.RegisterUser(ctx, &userpb.RegisterUserRequest{
 		Name:     input.Name,
 		Email:    input.Email,
 		Password: input.Password,
@@ -426,7 +428,7 @@ func (r *mutationResolver) UserVerifyEmail(ctx context.Context, input models.Ver
 	}
 
 	// Вызываем gRPC-метод VerifyEmail
-	resp, err := r.MailClient.VerifyEmail(ctx, &mailpb.VerifyEmailRequest{
+    resp, err := r.MailClient.VerifyEmail(ctx, &mailpb.VerifyEmailRequest{
 		Token: input.Token,
 	})
 	if err != nil {
@@ -469,7 +471,7 @@ func (r *mutationResolver) UserRefreshToken(ctx context.Context) (*models.Refres
 	}
 
 	// 3. Вызываем gRPC-метод с заполненным refreshToken
-	resp, err := r.AuthClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
+    resp, err := r.AuthClient.RefreshToken(ctx, &authpb.RefreshTokenRequest{
 		RefreshToken: refreshToken,
 	})
 	if err != nil {
@@ -485,20 +487,35 @@ func (r *mutationResolver) UserRefreshToken(ctx context.Context) (*models.Refres
 		log.Println("⚠️ [UserRefreshToken] HTTP response writer not found, cookies not set")
 	}
 
-	return &models.RefreshTokenResponse{
-		AccessToken:  resp.AccessToken,
-		RefreshToken: resp.RefreshToken,
-	}, nil
+    return &models.RefreshTokenResponse{
+        AccessToken:  "",
+        RefreshToken: "",
+    }, nil
 }
 
 // UploadMedia is the resolver for the uploadMedia field.
 func (r *mutationResolver) UploadMedia(ctx context.Context, file graphql.Upload, dir *string) (*ent.Media, error) {
-	// 1) Читаем содержимое файла
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, file.File); err != nil {
-		return nil, fmt.Errorf("failed to read uploaded file: %w", err)
-	}
-	content := buf.Bytes()
+    // 1) Читаем содержимое файла с ограничением размера и базовой валидацией MIME
+    maxUpload := int64(20 * 1024 * 1024) // 20MB по умолчанию
+    if v := os.Getenv("UPLOAD_MAX_BYTES"); v != "" {
+        if n, err := strconv.Atoi(v); err == nil && n > 0 { maxUpload = int64(n) }
+    }
+    limited := io.LimitReader(file.File, maxUpload+1)
+    var buf bytes.Buffer
+    if _, err := io.Copy(&buf, limited); err != nil {
+        return nil, fmt.Errorf("failed to read uploaded file: %w", err)
+    }
+    if int64(buf.Len()) > maxUpload {
+        return nil, fmt.Errorf("file too large")
+    }
+    content := buf.Bytes()
+    // Проверяем content-type по сигнатуре
+    ct := http.DetectContentType(content)
+    switch ct {
+    case "image/jpeg", "image/png", "image/gif":
+    default:
+        return nil, fmt.Errorf("unsupported content type: %s", ct)
+    }
 
 	// 2) Прокидываем Authorization из контекста, если есть
 	if authHeader, _ := ctx.Value("authorization").(string); authHeader != "" {
@@ -516,7 +533,7 @@ func (r *mutationResolver) UploadMedia(ctx context.Context, file graphql.Upload,
 	}
 
 	// 4) Вызываем gRPC
-	resp, err := r.MediaClient.UploadMedia(ctx, grpcReq)
+    resp, err := r.MediaClient.UploadMedia(ctx, grpcReq)
 	if err != nil {
 		log.Printf("❌ gRPC UploadMedia error: %v", err)
 		return nil, fmt.Errorf("gRPC UploadMedia error: %w", err)
@@ -750,14 +767,14 @@ func (r *queryResolver) GetMe(ctx context.Context) (*models.UserResponse, error)
 	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authHeader)
 
 	// Вызываем gRPC-метод GetMe
-	resp, err := r.AuthClient.GetMe(ctx, &emptypb.Empty{})
+    resp, err := r.AuthClient.GetMe(ctx, &emptypb.Empty{})
 	if err != nil {
 		log.Printf("❌ GraphQL: failed to call GetMe: %v", err)
 		return nil, fmt.Errorf("failed to get user: %v", err)
 	}
 
 	// Мапим gRPC-пользователя в GraphQL-пользователя
-	user, err := mapper.ProtoToGraphQLUser(resp.User)
+    user, err := sharedmapper.ProtoToGraphQLUser(resp.User)
 	if err != nil {
 		log.Printf("❌ [LoginUser] Failed to map user: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to map user: %v", err)

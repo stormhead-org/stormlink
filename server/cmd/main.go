@@ -1,67 +1,38 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
-	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"stormlink/server/cmd/modules"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	// Инициализация окружения
-	modules.InitEnv()
-	modules.InitS3Client()
+    modules.InitEnv()
+    modules.InitS3Client()
 
-	// Подключение к базе данных
-	client := modules.ConnectDB()
-	defer client.Close()
+    client := modules.ConnectDB()
+    defer client.Close()
 
-	// Обработка флагов командной строки
-	resetDB := flag.Bool("reset-db", false, "drop and recreate all tables and columns")
-	seed := flag.Bool("seed", false, "seed roles, default host etc.")
-	flag.Parse()
+    resetDB := flag.Bool("reset-db", false, "drop and recreate all tables and columns")
+    seed := flag.Bool("seed", false, "seed roles, default host etc.")
+    flag.Parse()
 
-	// Миграция базы данных
-	modules.MigrateDB(client, *resetDB, *seed)
+    modules.MigrateDB(client, *resetDB, *seed)
 
-	// Настройка gRPC-сервера
-	grpcServer := modules.SetupGRPCServer(client)
+    // запуск сервера
+    modules.StartGraphQLServer(client)
 
-	// Запуск gRPC-сервера в отдельной горутине
-	go modules.StartGRPCServer(grpcServer)
-
-	// 🚀 Запуск GraphQL-сервера
-	go modules.StartGraphQLServer(client)
-
-	// Подключение к gRPC-серверу для использования в HTTP-хендлерах
-	grpcConn, err := grpc.Dial("localhost:4000", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("не удалось подключиться к gRPC-серверу: %v", err)
-	}
-	defer grpcConn.Close()
-
-	// Настройка HTTP-мультиплексора
-	mux := http.NewServeMux()
-	mux.HandleFunc("/storage/", modules.StorageHandler)
-	// Регистрация HTTP-хендлеров из modules/handlers.go
-	// mux.HandleFunc("/v1/users/login", func(w http.ResponseWriter, r *http.Request) {
-	// 	modules.LoginHandler(w, r, grpcConn)
-	// })
-	// mux.HandleFunc("/v1/users/logout", func(w http.ResponseWriter, r *http.Request) {
-	// 	modules.LogoutHandler(w, r, grpcConn)
-	// })
-	// mux.HandleFunc("/v1/users/refresh-token", func(w http.ResponseWriter, r *http.Request) {
-	// 	modules.RefreshTokenHandler(w, r, grpcConn)
-	// })
-	// mux.HandleFunc("/v1/media/upload", func(w http.ResponseWriter, r *http.Request) {
-	// 	modules.MediaUploadHandler(w, r, grpcConn, client)
-	// })
-
-	// Настройка и запуск HTTP-сервера
-	httpServer := modules.SetupHTTPServer(grpcConn, mux)
-	modules.StartHTTPServer(httpServer)
+    // ожидание сигналов и корректное завершение HTTP-сервера в модуле
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+    defer stop()
+    <-ctx.Done()
+    log.Println("👋 graphql server stopping...")
+    shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    _ = modules.ShutdownGraphQLServer(shutdownCtx)
 }

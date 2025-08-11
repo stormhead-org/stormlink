@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"stormlink/server/pkg/jwt"
+	"stormlink/shared/jwt"
 )
 
 func GRPCAuthMiddleware(
