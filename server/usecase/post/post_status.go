@@ -3,10 +3,10 @@ package post
 import (
 	"context"
 	"fmt"
-	"stormlink/server/ent/communityfollow"
-	"stormlink/server/ent/communityuserban"
-	"stormlink/server/ent/communityusermute"
+	"stormlink/server/ent/bookmark"
+	"stormlink/server/ent/comment"
 	"stormlink/server/ent/post"
+	"stormlink/server/ent/postlike"
 	"stormlink/server/graphql/models"
 )
 
@@ -14,66 +14,43 @@ func (uc *postUsecase) GetPostStatus(
     ctx context.Context,
     userID int,
     postID int,
-) (*models.CommunityStatus, error) {
-    // 1) Считаем общее число подписчиков
-    followersCount, err := uc.client.CommunityFollow.
-        Query().
-        Where(communityfollow.CommunityIDEQ(communityID)).
+) (*models.PostStatus, error) {
+    // 1) Загружаем пост (для определения published/draft по published_at)
+    p, err := uc.client.Post.Query().
+        Where(post.IDEQ(postID)).
+        Only(ctx)
+    if err != nil {
+        return nil, fmt.Errorf("load post: %w", err)
+    }
+
+    // 2) Считаем лайки/комментарии/закладки
+    likesCount, err := uc.client.PostLike.Query().
+        Where(postlike.HasPostWith(post.IDEQ(postID))).
         Count(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("count followers: %w", err)
-    }
+    if err != nil { return nil, fmt.Errorf("count likes: %w", err) }
 
-    // 2) Считаем общее число постов
-    postsCount, err := uc.client.Post.
-        Query().
-        Where(post.CommunityIDEQ(communityID)).
+    commentsCount, err := uc.client.Comment.Query().
+        Where(comment.PostIDEQ(postID)).
         Count(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("count posts: %w", err)
+    if err != nil { return nil, fmt.Errorf("count comments: %w", err) }
+
+    bookmarksCount, err := uc.client.Bookmark.Query().
+        Where(bookmark.PostIDEQ(postID)).
+        Count(ctx)
+    if err != nil { return nil, fmt.Errorf("count bookmarks: %w", err) }
+
+    // 3) Вычисляем статус (по умолчанию DRAFT)
+    vis := models.PostVisibilityDraft
+    if p.PublishedAt != nil && !p.PublishedAt.IsZero() {
+        vis = models.PostVisibilityPublished
     }
 
-    // 3) Проверяем, подписан ли текущий юзер
-    isFollowing, err := uc.client.CommunityFollow.
-        Query().
-        Where(
-            communityfollow.CommunityIDEQ(communityID),
-            communityfollow.UserIDEQ(userID),
-        ).
-        Exist(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("check following: %w", err)
-    }
-
-    // 4) Проверяем, забанен ли текущий юзер
-    isBanned, err := uc.client.CommunityUserBan.
-        Query().
-        Where(
-            communityuserban.CommunityIDEQ(communityID),
-            communityuserban.UserIDEQ(userID),
-        ).
-        Exist(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("check ban: %w", err)
-    }
-
-    // 5) Проверяем, замучен ли текущий юзер
-    isMuted, err := uc.client.CommunityUserMute.
-        Query().
-        Where(
-            communityusermute.CommunityIDEQ(communityID),
-            communityusermute.UserIDEQ(userID),
-        ).
-        Exist(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("check mute: %w", err)
-    }
-
-    return &models.CommunityStatus{
-        FollowersCount: fmt.Sprintf("%d", followersCount),
-        PostsCount:     fmt.Sprintf("%d", postsCount),
-        IsFollowing:    isFollowing,
-        IsBanned:       isBanned,
-        IsMuted:        isMuted,
+    // Views не храним — виртуально 0 (или подключите счётчик позже)
+    return &models.PostStatus{
+        LikesCount:     fmt.Sprintf("%d", likesCount),
+        CommentsCount:  fmt.Sprintf("%d", commentsCount),
+        BookmarksCount: fmt.Sprintf("%d", bookmarksCount),
+        ViewsCount:     "0",
+        Status:         vis,
     }, nil
 }

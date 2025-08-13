@@ -671,15 +671,8 @@ func (r *mutationResolver) IncrementViewsPost(ctx context.Context, input models.
 
 // PostStatus is the resolver for the postStatus field.
 func (r *postResolver) PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error) {
-	// Виртуальное поле: соберём агрегаты. По умолчанию всё нули, status=DRAFT заполним после регенерации моделей
-	// По умолчанию статус DRAFT
-	return &models.PostStatus{
-		LikesCount:     "0",
-		CommentsCount:  "0",
-		BookmarksCount: "0",
-		ViewsCount:     "0",
-		Status:         models.PostVisibilityDraft,
-	}, nil
+    // Делегируем в usecase (likes/comments/bookmarks + published/draft)
+    return r.PostUC.GetPostStatus(ctx, 0, obj.ID)
 }
 
 // Media возвращает медиа по ID.
