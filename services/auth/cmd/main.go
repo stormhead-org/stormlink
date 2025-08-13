@@ -11,6 +11,7 @@ import (
 
 	"stormlink/server/cmd/modules"
 	authpb "stormlink/server/grpc/auth/protobuf"
+	srvmiddleware "stormlink/server/middleware"
 	usersuc "stormlink/server/usecase/user"
 	"stormlink/services/auth/internal/service"
 
@@ -31,7 +32,12 @@ func main() {
     addr := os.Getenv("AUTH_GRPC_ADDR")
     if addr == "" { addr = ":4001" }
 
-    s := grpc.NewServer()
+    // gRPC middleware: rate limit публичных методов + auth
+    rl := srvmiddleware.NewRateLimiter(10, 30)
+    s := grpc.NewServer(grpc.ChainUnaryInterceptor(
+        srvmiddleware.RateLimitMiddleware(rl),
+        srvmiddleware.GRPCAuthMiddleware,
+    ))
     authpb.RegisterAuthServiceServer(s, svc)
 
     // gRPC health-check

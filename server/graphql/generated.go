@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"stormlink/server/ent"
-	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/graphql/models"
 	"stormlink/server/model"
@@ -332,12 +331,16 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AddBookmarkPost       func(childComplexity int, input models.BookmarkPostInput) int
 		CreateComment         func(childComplexity int, input models.CreateCommentInput) int
 		CreateCommunity       func(childComplexity int, input models.CreateCommunityInput) int
 		CreatePost            func(childComplexity int, input models.CreatePostInput) int
+		DeleteBookmarkPost    func(childComplexity int, input models.DeleteBookmarkPostInput) int
 		FollowCommunity       func(childComplexity int, input models.FollowCommunityInput) int
 		FollowUser            func(childComplexity int, input models.FollowUserInput) int
 		Host                  func(childComplexity int, input models.UpdateHostInput) int
+		IncrementViewsPost    func(childComplexity int, input models.IncrementViewsPostInput) int
+		LikePost              func(childComplexity int, input models.LikePostInput) int
 		LoginUser             func(childComplexity int, input models.LoginUserInput) int
 		LogoutUser            func(childComplexity int) int
 		Post                  func(childComplexity int, input models.UpdatePostInput) int
@@ -345,6 +348,7 @@ type ComplexityRoot struct {
 		ResendUserVerifyEmail func(childComplexity int, input models.ResendVerifyEmailInput) int
 		UnfollowCommunity     func(childComplexity int, input models.UnfollowCommunityInput) int
 		UnfollowUser          func(childComplexity int, input models.UnfollowUserInput) int
+		UnlikePost            func(childComplexity int, input models.UnlikePostInput) int
 		UpdateComment         func(childComplexity int, input models.UpdateCommentInput) int
 		UploadMedia           func(childComplexity int, file graphql.Upload, dir *string) int
 		UserRefreshToken      func(childComplexity int) int
@@ -371,10 +375,10 @@ type ComplexityRoot struct {
 		HeroImageID func(childComplexity int) int
 		ID          func(childComplexity int) int
 		Likes       func(childComplexity int) int
+		PostStatus  func(childComplexity int) int
 		PublishedAt func(childComplexity int) int
 		RelatedPost func(childComplexity int) int
 		Slug        func(childComplexity int) int
-		Status      func(childComplexity int) int
 		Title       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 	}
@@ -387,6 +391,14 @@ type ComplexityRoot struct {
 		UpdatedAt func(childComplexity int) int
 		User      func(childComplexity int) int
 		UserID    func(childComplexity int) int
+	}
+
+	PostStatus struct {
+		BookmarksCount func(childComplexity int) int
+		CommentsCount  func(childComplexity int) int
+		LikesCount     func(childComplexity int) int
+		Status         func(childComplexity int) int
+		ViewsCount     func(childComplexity int) int
 	}
 
 	ProfileTableInfoItem struct {
@@ -426,7 +438,7 @@ type ComplexityRoot struct {
 		Nodes                      func(childComplexity int, ids []string) int
 		Post                       func(childComplexity int, id string) int
 		PostBySlug                 func(childComplexity int, slug string) int
-		Posts                      func(childComplexity int, status *post.Status, communityID *string, authorID *string) int
+		Posts                      func(childComplexity int, communityID *string, authorID *string) int
 		ProfileTableInfoItem       func(childComplexity int, id string) int
 		ProfileTableInfoItems      func(childComplexity int, id string, typeArg profiletableinfoitem.Type) int
 		Role                       func(childComplexity int, id string) int
@@ -611,10 +623,16 @@ type MutationResolver interface {
 	UnfollowUser(ctx context.Context, input models.UnfollowUserInput) (*models.UserStatus, error)
 	FollowCommunity(ctx context.Context, input models.FollowCommunityInput) (*models.CommunityStatus, error)
 	UnfollowCommunity(ctx context.Context, input models.UnfollowCommunityInput) (*models.CommunityStatus, error)
+	LikePost(ctx context.Context, input models.LikePostInput) (*models.PostStatus, error)
+	UnlikePost(ctx context.Context, input models.UnlikePostInput) (*models.PostStatus, error)
+	AddBookmarkPost(ctx context.Context, input models.BookmarkPostInput) (*models.PostStatus, error)
+	DeleteBookmarkPost(ctx context.Context, input models.DeleteBookmarkPostInput) (*models.PostStatus, error)
+	IncrementViewsPost(ctx context.Context, input models.IncrementViewsPostInput) (*models.PostStatus, error)
 }
 type PostResolver interface {
 	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
 	Bookmarks(ctx context.Context, obj *ent.Post) ([]*models.Bookmark, error)
+	PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id string) (ent.Noder, error)
@@ -635,7 +653,7 @@ type QueryResolver interface {
 	ProfileTableInfoItems(ctx context.Context, id string, typeArg profiletableinfoitem.Type) ([]*ent.ProfileTableInfoItem, error)
 	Post(ctx context.Context, id string) (*ent.Post, error)
 	PostBySlug(ctx context.Context, slug string) (*ent.Post, error)
-	Posts(ctx context.Context, status *post.Status, communityID *string, authorID *string) ([]*ent.Post, error)
+	Posts(ctx context.Context, communityID *string, authorID *string) ([]*ent.Post, error)
 	Comments(ctx context.Context, hasDeleted *bool) ([]*ent.Comment, error)
 	CommentsByPostID(ctx context.Context, id string, hasDeleted *bool) ([]*ent.Comment, error)
 	Role(ctx context.Context, id string) (*ent.Role, error)
@@ -2063,6 +2081,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Media.UpdatedAt(childComplexity), true
 
+	case "Mutation.addBookmarkPost":
+		if e.complexity.Mutation.AddBookmarkPost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addBookmarkPost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddBookmarkPost(childComplexity, args["input"].(models.BookmarkPostInput)), true
+
 	case "Mutation.createComment":
 		if e.complexity.Mutation.CreateComment == nil {
 			break
@@ -2099,6 +2129,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreatePost(childComplexity, args["input"].(models.CreatePostInput)), true
 
+	case "Mutation.deleteBookmarkPost":
+		if e.complexity.Mutation.DeleteBookmarkPost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteBookmarkPost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteBookmarkPost(childComplexity, args["input"].(models.DeleteBookmarkPostInput)), true
+
 	case "Mutation.followCommunity":
 		if e.complexity.Mutation.FollowCommunity == nil {
 			break
@@ -2134,6 +2176,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.Host(childComplexity, args["input"].(models.UpdateHostInput)), true
+
+	case "Mutation.incrementViewsPost":
+		if e.complexity.Mutation.IncrementViewsPost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_incrementViewsPost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.IncrementViewsPost(childComplexity, args["input"].(models.IncrementViewsPostInput)), true
+
+	case "Mutation.likePost":
+		if e.complexity.Mutation.LikePost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_likePost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.LikePost(childComplexity, args["input"].(models.LikePostInput)), true
 
 	case "Mutation.loginUser":
 		if e.complexity.Mutation.LoginUser == nil {
@@ -2213,6 +2279,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UnfollowUser(childComplexity, args["input"].(models.UnfollowUserInput)), true
+
+	case "Mutation.unlikePost":
+		if e.complexity.Mutation.UnlikePost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unlikePost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnlikePost(childComplexity, args["input"].(models.UnlikePostInput)), true
 
 	case "Mutation.updateComment":
 		if e.complexity.Mutation.UpdateComment == nil {
@@ -2369,6 +2447,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Post.Likes(childComplexity), true
 
+	case "Post.postStatus":
+		if e.complexity.Post.PostStatus == nil {
+			break
+		}
+
+		return e.complexity.Post.PostStatus(childComplexity), true
+
 	case "Post.publishedAt":
 		if e.complexity.Post.PublishedAt == nil {
 			break
@@ -2389,13 +2474,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Post.Slug(childComplexity), true
-
-	case "Post.status":
-		if e.complexity.Post.Status == nil {
-			break
-		}
-
-		return e.complexity.Post.Status(childComplexity), true
 
 	case "Post.title":
 		if e.complexity.Post.Title == nil {
@@ -2459,6 +2537,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.PostLike.UserID(childComplexity), true
+
+	case "PostStatus.bookmarksCount":
+		if e.complexity.PostStatus.BookmarksCount == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.BookmarksCount(childComplexity), true
+
+	case "PostStatus.commentsCount":
+		if e.complexity.PostStatus.CommentsCount == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.CommentsCount(childComplexity), true
+
+	case "PostStatus.likesCount":
+		if e.complexity.PostStatus.LikesCount == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.LikesCount(childComplexity), true
+
+	case "PostStatus.status":
+		if e.complexity.PostStatus.Status == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.Status(childComplexity), true
+
+	case "PostStatus.viewsCount":
+		if e.complexity.PostStatus.ViewsCount == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.ViewsCount(childComplexity), true
 
 	case "ProfileTableInfoItem.community":
 		if e.complexity.ProfileTableInfoItem.Community == nil {
@@ -2781,7 +2894,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Posts(childComplexity, args["status"].(*post.Status), args["communityID"].(*string), args["authorID"].(*string)), true
+		return e.complexity.Query.Posts(childComplexity, args["communityID"].(*string), args["authorID"].(*string)), true
 
 	case "Query.profileTableInfoItem":
 		if e.complexity.Query.ProfileTableInfoItem == nil {
@@ -3594,6 +3707,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputBookmarkPostInput,
 		ec.unmarshalInputBookmarkWhereInput,
 		ec.unmarshalInputCommentLikeWhereInput,
 		ec.unmarshalInputCommentWhereInput,
@@ -3606,6 +3720,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCommentInput,
 		ec.unmarshalInputCreateCommunityInput,
 		ec.unmarshalInputCreatePostInput,
+		ec.unmarshalInputDeleteBookmarkPostInput,
 		ec.unmarshalInputEmailVerificationWhereInput,
 		ec.unmarshalInputFollowCommunityInput,
 		ec.unmarshalInputFollowUserInput,
@@ -3619,6 +3734,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputHostUserBanWhereInput,
 		ec.unmarshalInputHostUserMuteWhereInput,
 		ec.unmarshalInputHostWhereInput,
+		ec.unmarshalInputIncrementViewsPostInput,
+		ec.unmarshalInputLikePostInput,
 		ec.unmarshalInputLoginUserInput,
 		ec.unmarshalInputMediaWhereInput,
 		ec.unmarshalInputPostLikeWhereInput,
@@ -3629,6 +3746,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputUnfollowCommunityInput,
 		ec.unmarshalInputUnfollowUserInput,
+		ec.unmarshalInputUnlikePostInput,
 		ec.unmarshalInputUpdateCommentInput,
 		ec.unmarshalInputUpdateHostInput,
 		ec.unmarshalInputUpdatePostInput,
@@ -3769,1183 +3887,589 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Mutation_createComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_addBookmarkPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_createComment_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBookmarkPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkPostInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_createComment_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.CreateCommentInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNCreateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommentInput(ctx, tmp)
-	}
 
-	var zeroVal models.CreateCommentInput
-	return zeroVal, nil
+func (ec *executionContext) field_Mutation_createComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommentInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_createCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_createCommunity_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_createCommunity_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.CreateCommunityInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput(ctx, tmp)
-	}
-
-	var zeroVal models.CreateCommunityInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_createPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_createPost_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_createPost_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.CreatePostInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput(ctx, tmp)
-	}
 
-	var zeroVal models.CreatePostInput
-	return zeroVal, nil
+func (ec *executionContext) field_Mutation_deleteBookmarkPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDeleteBookmarkPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐDeleteBookmarkPostInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_followCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_followCommunity_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFollowCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐFollowCommunityInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_followCommunity_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.FollowCommunityInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNFollowCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐFollowCommunityInput(ctx, tmp)
-	}
-
-	var zeroVal models.FollowCommunityInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_followUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_followUser_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNFollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐFollowUserInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_followUser_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.FollowUserInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNFollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐFollowUserInput(ctx, tmp)
-	}
-
-	var zeroVal models.FollowUserInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_host_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_host_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_host_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.UpdateHostInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostInput(ctx, tmp)
-	}
 
-	var zeroVal models.UpdateHostInput
-	return zeroVal, nil
+func (ec *executionContext) field_Mutation_incrementViewsPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNIncrementViewsPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐIncrementViewsPostInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_likePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNLikePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLikePostInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_loginUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_loginUser_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_loginUser_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.LoginUserInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserInput(ctx, tmp)
-	}
-
-	var zeroVal models.LoginUserInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_post_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_post_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.UpdatePostInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput(ctx, tmp)
-	}
-
-	var zeroVal models.UpdatePostInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_registerUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_registerUser_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_registerUser_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.RegisterUserInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserInput(ctx, tmp)
-	}
-
-	var zeroVal models.RegisterUserInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_resendUserVerifyEmail_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_resendUserVerifyEmail_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_resendUserVerifyEmail_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.ResendVerifyEmailInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailInput(ctx, tmp)
-	}
-
-	var zeroVal models.ResendVerifyEmailInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_unfollowCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_unfollowCommunity_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUnfollowCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowCommunityInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Mutation_unfollowCommunity_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.UnfollowCommunityInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUnfollowCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowCommunityInput(ctx, tmp)
-	}
-
-	var zeroVal models.UnfollowCommunityInput
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Mutation_unfollowUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_unfollowUser_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUnfollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowUserInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_unfollowUser_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.UnfollowUserInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUnfollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowUserInput(ctx, tmp)
-	}
 
-	var zeroVal models.UnfollowUserInput
-	return zeroVal, nil
+func (ec *executionContext) field_Mutation_unlikePost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUnlikePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnlikePostInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
 }
 
 func (ec *executionContext) field_Mutation_updateComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_updateComment_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommentInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_updateComment_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.UpdateCommentInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommentInput(ctx, tmp)
-	}
-
-	var zeroVal models.UpdateCommentInput
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Mutation_uploadMedia_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_uploadMedia_argsFile(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "file", ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload)
 	if err != nil {
 		return nil, err
 	}
 	args["file"] = arg0
-	arg1, err := ec.field_Mutation_uploadMedia_argsDir(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "dir", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
 	args["dir"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_uploadMedia_argsFile(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (graphql.Upload, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
-	if tmp, ok := rawArgs["file"]; ok {
-		return ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, tmp)
-	}
-
-	var zeroVal graphql.Upload
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Mutation_uploadMedia_argsDir(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("dir"))
-	if tmp, ok := rawArgs["dir"]; ok {
-		return ec.unmarshalOString2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Mutation_userVerifyEmail_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_userVerifyEmail_argsInput(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Mutation_userVerifyEmail_argsInput(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (models.VerifyEmailInput, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-	if tmp, ok := rawArgs["input"]; ok {
-		return ec.unmarshalNVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐVerifyEmailInput(ctx, tmp)
-	}
-
-	var zeroVal models.VerifyEmailInput
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query___type_argsName(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
 	args["name"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query___type_argsName(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-	if tmp, ok := rawArgs["name"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_commentsByPostId_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_commentsByPostId_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
-	arg1, err := ec.field_Query_commentsByPostId_argsHasDeleted(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
 	args["hasDeleted"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Query_commentsByPostId_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_commentsByPostId_argsHasDeleted(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hasDeleted"))
-	if tmp, ok := rawArgs["hasDeleted"]; ok {
-		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-	}
-
-	var zeroVal *bool
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_comments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_comments_argsHasDeleted(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
 	args["hasDeleted"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_comments_argsHasDeleted(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hasDeleted"))
-	if tmp, ok := rawArgs["hasDeleted"]; ok {
-		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-	}
-
-	var zeroVal *bool
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_communities_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communities_argsOnlyNotBanned(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "onlyNotBanned", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
 	args["onlyNotBanned"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_communities_argsOnlyNotBanned(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("onlyNotBanned"))
-	if tmp, ok := rawArgs["onlyNotBanned"]; ok {
-		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-	}
-
-	var zeroVal *bool
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_communityBySlug_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communityBySlug_argsSlug(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "slug", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
 	args["slug"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_communityBySlug_argsSlug(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
-	if tmp, ok := rawArgs["slug"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_communityModerator_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communityModerator_argsCommunityID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["communityId"] = arg0
-	arg1, err := ec.field_Query_communityModerator_argsUserID(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["userId"] = arg1
 	return args, nil
-}
-func (ec *executionContext) field_Query_communityModerator_argsCommunityID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityId"))
-	if tmp, ok := rawArgs["communityId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_communityModerator_argsUserID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
-	if tmp, ok := rawArgs["userId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_communityRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communityRule_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_communityRule_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_communityUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communityUserBan_argsCommunityID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["communityId"] = arg0
-	arg1, err := ec.field_Query_communityUserBan_argsUserID(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["userId"] = arg1
 	return args, nil
-}
-func (ec *executionContext) field_Query_communityUserBan_argsCommunityID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityId"))
-	if tmp, ok := rawArgs["communityId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_communityUserBan_argsUserID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
-	if tmp, ok := rawArgs["userId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_communityUserMute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_communityUserMute_argsCommunityID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["communityId"] = arg0
-	arg1, err := ec.field_Query_communityUserMute_argsUserID(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["userId"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Query_communityUserMute_argsCommunityID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityId"))
-	if tmp, ok := rawArgs["communityId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_communityUserMute_argsUserID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
-	if tmp, ok := rawArgs["userId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_community_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_community_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_community_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_hostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_hostRole_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_hostRole_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_hostUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_hostUserBan_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_hostUserBan_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_media_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_media_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_media_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_node_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_node_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_nodes_argsIds(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ids", ec.unmarshalNID2ᚕstringᚄ)
 	if err != nil {
 		return nil, err
 	}
 	args["ids"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_nodes_argsIds(
-	ctx context.Context,
-	rawArgs map[string]any,
-) ([]string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("ids"))
-	if tmp, ok := rawArgs["ids"]; ok {
-		return ec.unmarshalNID2ᚕstringᚄ(ctx, tmp)
-	}
-
-	var zeroVal []string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_postBySlug_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_postBySlug_argsSlug(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "slug", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
 	args["slug"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_postBySlug_argsSlug(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
-	if tmp, ok := rawArgs["slug"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_post_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_post_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_posts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_posts_argsStatus(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalOID2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["status"] = arg0
-	arg1, err := ec.field_Query_posts_argsCommunityID(ctx, rawArgs)
+	args["communityID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "authorID", ec.unmarshalOID2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["communityID"] = arg1
-	arg2, err := ec.field_Query_posts_argsAuthorID(ctx, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	args["authorID"] = arg2
+	args["authorID"] = arg1
 	return args, nil
-}
-func (ec *executionContext) field_Query_posts_argsStatus(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*post.Status, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-	if tmp, ok := rawArgs["status"]; ok {
-		return ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, tmp)
-	}
-
-	var zeroVal *post.Status
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_posts_argsCommunityID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
-	if tmp, ok := rawArgs["communityID"]; ok {
-		return ec.unmarshalOID2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_posts_argsAuthorID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("authorID"))
-	if tmp, ok := rawArgs["authorID"]; ok {
-		return ec.unmarshalOID2ᚖstring(ctx, tmp)
-	}
-
-	var zeroVal *string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_profileTableInfoItem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_profileTableInfoItem_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_profileTableInfoItem_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_profileTableInfoItems_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_profileTableInfoItems_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
-	arg1, err := ec.field_Query_profileTableInfoItems_argsType(ctx, rawArgs)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "type", ec.unmarshalNProfileTableInfoItemType2stormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType)
 	if err != nil {
 		return nil, err
 	}
 	args["type"] = arg1
 	return args, nil
 }
-func (ec *executionContext) field_Query_profileTableInfoItems_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
-
-func (ec *executionContext) field_Query_profileTableInfoItems_argsType(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (profiletableinfoitem.Type, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-	if tmp, ok := rawArgs["type"]; ok {
-		return ec.unmarshalNProfileTableInfoItemType2stormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType(ctx, tmp)
-	}
-
-	var zeroVal profiletableinfoitem.Type
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_role_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_role_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Query_role_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Query_roles_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_roles_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_roles_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_userBySlug_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_userBySlug_argsSlug(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "slug", ec.unmarshalNString2string)
 	if err != nil {
 		return nil, err
 	}
 	args["slug"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_userBySlug_argsSlug(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
-	if tmp, ok := rawArgs["slug"]; ok {
-		return ec.unmarshalNString2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_user_argsID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["id"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Query_user_argsID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field_Subscription_commentAdded_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Subscription_commentAdded_argsPostID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["postId"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field_Subscription_commentAdded_argsPostID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("postId"))
-	if tmp, ok := rawArgs["postId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field_Subscription_commentUpdated_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Subscription_commentUpdated_argsPostID(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
 	args["postId"] = arg0
 	return args, nil
 }
-func (ec *executionContext) field_Subscription_commentUpdated_argsPostID(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (string, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("postId"))
-	if tmp, ok := rawArgs["postId"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
-	}
-
-	var zeroVal string
-	return zeroVal, nil
-}
 
 func (ec *executionContext) field___Directive_args_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field___Directive_args_argsIncludeDeprecated(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeDeprecated", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
 	args["includeDeprecated"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field___Directive_args_argsIncludeDeprecated(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("includeDeprecated"))
-	if tmp, ok := rawArgs["includeDeprecated"]; ok {
-		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-	}
-
-	var zeroVal *bool
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field___Field_args_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field___Field_args_argsIncludeDeprecated(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeDeprecated", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
 	args["includeDeprecated"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field___Field_args_argsIncludeDeprecated(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (*bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("includeDeprecated"))
-	if tmp, ok := rawArgs["includeDeprecated"]; ok {
-		return ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
-	}
-
-	var zeroVal *bool
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field___Type_enumValues_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field___Type_enumValues_argsIncludeDeprecated(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeDeprecated", ec.unmarshalOBoolean2bool)
 	if err != nil {
 		return nil, err
 	}
 	args["includeDeprecated"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field___Type_enumValues_argsIncludeDeprecated(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("includeDeprecated"))
-	if tmp, ok := rawArgs["includeDeprecated"]; ok {
-		return ec.unmarshalOBoolean2bool(ctx, tmp)
-	}
-
-	var zeroVal bool
-	return zeroVal, nil
 }
 
 func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field___Type_fields_argsIncludeDeprecated(ctx, rawArgs)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeDeprecated", ec.unmarshalOBoolean2bool)
 	if err != nil {
 		return nil, err
 	}
 	args["includeDeprecated"] = arg0
 	return args, nil
-}
-func (ec *executionContext) field___Type_fields_argsIncludeDeprecated(
-	ctx context.Context,
-	rawArgs map[string]any,
-) (bool, error) {
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("includeDeprecated"))
-	if tmp, ok := rawArgs["includeDeprecated"]; ok {
-		return ec.unmarshalOBoolean2bool(ctx, tmp)
-	}
-
-	var zeroVal bool
-	return zeroVal, nil
 }
 
 // endregion ***************************** args.gotpl *****************************
@@ -5337,8 +4861,6 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -5359,6 +4881,8 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -6005,8 +5529,6 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -6027,6 +5549,8 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -7979,8 +7503,6 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -8001,6 +7523,8 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -14015,8 +13539,6 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -14037,6 +13559,8 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -15544,8 +15068,6 @@ func (ec *executionContext) fieldContext_Mutation_post(ctx context.Context, fiel
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -15566,6 +15088,8 @@ func (ec *executionContext) fieldContext_Mutation_post(ctx context.Context, fiel
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -15637,8 +15161,6 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -15659,6 +15181,8 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -16651,6 +16175,341 @@ func (ec *executionContext) fieldContext_Mutation_unfollowCommunity(ctx context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_likePost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_likePost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LikePost(rctx, fc.Args["input"].(models.LikePostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_likePost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_likePost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unlikePost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unlikePost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnlikePost(rctx, fc.Args["input"].(models.UnlikePostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unlikePost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unlikePost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addBookmarkPost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addBookmarkPost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddBookmarkPost(rctx, fc.Args["input"].(models.BookmarkPostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addBookmarkPost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addBookmarkPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteBookmarkPost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteBookmarkPost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteBookmarkPost(rctx, fc.Args["input"].(models.DeleteBookmarkPostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteBookmarkPost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteBookmarkPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_incrementViewsPost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_incrementViewsPost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().IncrementViewsPost(rctx, fc.Args["input"].(models.IncrementViewsPostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_incrementViewsPost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_incrementViewsPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
@@ -17126,50 +16985,6 @@ func (ec *executionContext) fieldContext_Post_authorID(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Post_status(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Post_status(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(post.Status)
-	fc.Result = res
-	return ec.marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Post_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Post",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type PostStatus does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Post_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_createdAt(ctx, field)
 	if err != nil {
@@ -17485,8 +17300,6 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -17507,6 +17320,8 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -17827,6 +17642,62 @@ func (ec *executionContext) fieldContext_Post_bookmarks(_ context.Context, field
 				return ec.fieldContext_Bookmark_post(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Bookmark", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_postStatus(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_postStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Post().PostStatus(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PostStatus)
+	fc.Result = res
+	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Post_postStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likesCount":
+				return ec.fieldContext_PostStatus_likesCount(ctx, field)
+			case "commentsCount":
+				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
+			case "bookmarksCount":
+				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+			case "viewsCount":
+				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
+			case "status":
+				return ec.fieldContext_PostStatus_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
 	}
 	return fc, nil
@@ -18213,8 +18084,6 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -18235,8 +18104,230 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostStatus_likesCount(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_likesCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LikesCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostStatus_likesCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostStatus_commentsCount(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_commentsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CommentsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostStatus_commentsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostStatus_bookmarksCount(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BookmarksCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostStatus_bookmarksCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostStatus_viewsCount(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_viewsCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ViewsCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostStatus_viewsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PostStatus_status(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(models.PostVisibility)
+	fc.Result = res
+	return ec.marshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PostStatus_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PostStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PostVisibility does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20159,8 +20250,6 @@ func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field g
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -20181,6 +20270,8 @@ func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field g
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -20249,8 +20340,6 @@ func (ec *executionContext) fieldContext_Query_postBySlug(ctx context.Context, f
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -20271,6 +20360,8 @@ func (ec *executionContext) fieldContext_Query_postBySlug(ctx context.Context, f
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -20303,7 +20394,7 @@ func (ec *executionContext) _Query_posts(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Posts(rctx, fc.Args["status"].(*post.Status), fc.Args["communityID"].(*string), fc.Args["authorID"].(*string))
+		return ec.resolvers.Query().Posts(rctx, fc.Args["communityID"].(*string), fc.Args["authorID"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20342,8 +20433,6 @@ func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -20364,6 +20453,8 @@ func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field 
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -23615,8 +23706,6 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
-			case "status":
-				return ec.fieldContext_Post_status(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -23637,6 +23726,8 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_likes(ctx, field)
 			case "bookmarks":
 				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
@@ -28612,6 +28703,33 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputBookmarkPostInput(ctx context.Context, obj any) (models.BookmarkPostInput, error) {
+	var it models.BookmarkPostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"postID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "postID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBookmarkWhereInput(ctx context.Context, obj any) (models.BookmarkWhereInput, error) {
 	var it models.BookmarkWhereInput
 	asMap := map[string]any{}
@@ -32451,11 +32569,7 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	if _, present := asMap["status"]; !present {
-		asMap["status"] = "DRAFT"
-	}
-
-	fieldsInOrder := [...]string{"title", "content", "authorID", "communityID", "heroImageID", "status", "publishedAt"}
+	fieldsInOrder := [...]string{"title", "content", "authorID", "communityID", "heroImageID", "publishedAt"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -32497,13 +32611,6 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.HeroImageID = data
-		case "status":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Status = data
 		case "publishedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -32511,6 +32618,33 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.PublishedAt = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDeleteBookmarkPostInput(ctx context.Context, obj any) (models.DeleteBookmarkPostInput, error) {
+	var it models.DeleteBookmarkPostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"postID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "postID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostID = data
 		}
 	}
 
@@ -37103,6 +37237,60 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputIncrementViewsPostInput(ctx context.Context, obj any) (models.IncrementViewsPostInput, error) {
+	var it models.IncrementViewsPostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"postID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "postID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLikePostInput(ctx context.Context, obj any) (models.LikePostInput, error) {
+	var it models.LikePostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"postID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "postID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputLoginUserInput(ctx context.Context, obj any) (models.LoginUserInput, error) {
 	var it models.LoginUserInput
 	asMap := map[string]any{}
@@ -38066,7 +38254,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38430,34 +38618,6 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.AuthorIDNotIn = data
-		case "status":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Status = data
-		case "statusNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNEQ"))
-			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.StatusNeq = data
-		case "statusIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusIn"))
-			data, err := ec.unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.StatusIn = data
-		case "statusNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusNotIn"))
-			data, err := ec.unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.StatusNotIn = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -39998,6 +40158,33 @@ func (ec *executionContext) unmarshalInputUnfollowUserInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUnlikePostInput(ctx context.Context, obj any) (models.UnlikePostInput, error) {
+	var it models.UnlikePostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"postID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "postID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PostID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateCommentInput(ctx context.Context, obj any) (models.UpdateCommentInput, error) {
 	var it models.UpdateCommentInput
 	asMap := map[string]any{}
@@ -40129,7 +40316,7 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "title", "slug", "content", "communityID", "heroImageID", "views", "status", "publishedAt"}
+	fieldsInOrder := [...]string{"id", "title", "slug", "content", "communityID", "heroImageID", "publishedAt"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -40178,20 +40365,6 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.HeroImageID = data
-		case "views":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("views"))
-			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Views = data
-		case "status":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
-			data, err := ec.unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Status = data
 		case "publishedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -44824,6 +44997,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "likePost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_likePost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unlikePost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unlikePost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addBookmarkPost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addBookmarkPost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteBookmarkPost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteBookmarkPost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "incrementViewsPost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_incrementViewsPost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44935,11 +45143,6 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "authorID":
 			out.Values[i] = ec._Post_authorID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "status":
-			out.Values[i] = ec._Post_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -45192,6 +45395,42 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "postStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Post_postStatus(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -45258,6 +45497,65 @@ func (ec *executionContext) _PostLike(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "post":
 			out.Values[i] = ec._PostLike_post(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var postStatusImplementors = []string{"PostStatus"}
+
+func (ec *executionContext) _PostStatus(ctx context.Context, sel ast.SelectionSet, obj *models.PostStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, postStatusImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PostStatus")
+		case "likesCount":
+			out.Values[i] = ec._PostStatus_likesCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "commentsCount":
+			out.Values[i] = ec._PostStatus_commentsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bookmarksCount":
+			out.Values[i] = ec._PostStatus_bookmarksCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewsCount":
+			out.Values[i] = ec._PostStatus_viewsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._PostStatus_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -48006,6 +48304,11 @@ func (ec *executionContext) marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚋm
 	return ec._Bookmark(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBookmarkPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkPostInput(ctx context.Context, v any) (models.BookmarkPostInput, error) {
+	res, err := ec.unmarshalInputBookmarkPostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNBookmarkWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmarkWhereInput(ctx context.Context, v any) (*models.BookmarkWhereInput, error) {
 	res, err := ec.unmarshalInputBookmarkWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -48283,6 +48586,11 @@ func (ec *executionContext) unmarshalNCreateCommunityInput2stormlinkᚋserverᚋ
 
 func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput(ctx context.Context, v any) (models.CreatePostInput, error) {
 	res, err := ec.unmarshalInputCreatePostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDeleteBookmarkPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐDeleteBookmarkPostInput(ctx context.Context, v any) (models.DeleteBookmarkPostInput, error) {
+	res, err := ec.unmarshalInputDeleteBookmarkPostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -48619,6 +48927,11 @@ func (ec *executionContext) marshalNID2ᚕstringᚄ(ctx context.Context, sel ast
 	return ret
 }
 
+func (ec *executionContext) unmarshalNIncrementViewsPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐIncrementViewsPostInput(ctx context.Context, v any) (models.IncrementViewsPostInput, error) {
+	res, err := ec.unmarshalInputIncrementViewsPostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNJSON2map(ctx context.Context, v any) (map[string]any, error) {
 	res, err := graphql.UnmarshalMap(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -48639,6 +48952,11 @@ func (ec *executionContext) marshalNJSON2map(ctx context.Context, sel ast.Select
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNLikePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLikePostInput(ctx context.Context, v any) (models.LikePostInput, error) {
+	res, err := ec.unmarshalInputLikePostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNLoginUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐLoginUserInput(ctx context.Context, v any) (models.LoginUserInput, error) {
@@ -48804,13 +49122,27 @@ func (ec *executionContext) unmarshalNPostLikeWhereInput2ᚖstormlinkᚋserver�
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, v any) (post.Status, error) {
-	var res post.Status
+func (ec *executionContext) marshalNPostStatus2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx context.Context, sel ast.SelectionSet, v models.PostStatus) graphql.Marshaler {
+	return ec._PostStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx context.Context, sel ast.SelectionSet, v *models.PostStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PostStatus(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx context.Context, v any) (models.PostVisibility, error) {
+	var res models.PostVisibility
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, sel ast.SelectionSet, v post.Status) graphql.Marshaler {
+func (ec *executionContext) marshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx context.Context, sel ast.SelectionSet, v models.PostVisibility) graphql.Marshaler {
 	return v
 }
 
@@ -49060,6 +49392,11 @@ func (ec *executionContext) unmarshalNUnfollowCommunityInput2stormlinkᚋserver�
 
 func (ec *executionContext) unmarshalNUnfollowUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnfollowUserInput(ctx context.Context, v any) (models.UnfollowUserInput, error) {
 	res, err := ec.unmarshalInputUnfollowUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUnlikePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUnlikePostInput(ctx context.Context, v any) (models.UnlikePostInput, error) {
+	res, err := ec.unmarshalInputUnlikePostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -50970,24 +51307,6 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalInt32(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOInt2ᚖint32(ctx context.Context, sel ast.SelectionSet, v *int32) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalInt32(*v)
-	return res
-}
-
 func (ec *executionContext) unmarshalOJSON2map(ctx context.Context, v any) (map[string]any, error) {
 	if v == nil {
 		return nil, nil
@@ -51171,87 +51490,6 @@ func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserver�
 	}
 	res, err := ec.unmarshalInputPostLikeWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx context.Context, v any) ([]post.Status, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]post.Status, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalOPostStatus2ᚕstormlinkᚋserverᚋentᚋpostᚐStatusᚄ(ctx context.Context, sel ast.SelectionSet, v []post.Status) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNPostStatus2stormlinkᚋserverᚋentᚋpostᚐStatus(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) unmarshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, v any) (*post.Status, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(post.Status)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOPostStatus2ᚖstormlinkᚋserverᚋentᚋpostᚐStatus(ctx context.Context, sel ast.SelectionSet, v *post.Status) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*models.PostWhereInput, error) {

@@ -55,6 +55,7 @@
 		"protoc",
 		"RABBITMQ",
 		"sess",
+		"srvmiddleware",
 		"stormlink",
 		"Upgrader",
 		"usecase",

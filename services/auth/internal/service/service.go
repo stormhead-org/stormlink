@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"stormlink/server/ent"
@@ -14,6 +13,7 @@ import (
 	authpb "stormlink/server/grpc/auth/protobuf"
 	useruc "stormlink/server/usecase/user"
 	"stormlink/shared/auth"
+	errorsx "stormlink/shared/errors"
 	httpCookies "stormlink/shared/http"
 	"stormlink/shared/jwt"
 	sharedmapper "stormlink/shared/mapper"
@@ -41,7 +41,7 @@ func NewAuthService(client *ent.Client, uc useruc.UserUsecase) *AuthService {
 
 func (s *AuthService) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
     if err := req.Validate(); err != nil {
-        return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.InvalidArgument, "validation error", err)
     }
     email := req.GetEmail()
     password := req.GetPassword()
@@ -55,23 +55,23 @@ func (s *AuthService) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
         WithCommunitiesRoles().
         Only(ctx)
     if err != nil {
-        return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
+        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "invalid credentials", nil)
     }
 
     if err := jwt.ComparePassword(u.PasswordHash, password, u.Salt); err != nil {
-        return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
+        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "invalid credentials", nil)
     }
     if !u.IsVerified {
-        return nil, status.Errorf(codes.FailedPrecondition, "user email not verified")
+        return nil, errorsx.FromGRPCCode(codes.FailedPrecondition, "user email not verified", nil)
     }
 
     accessToken, err := jwt.GenerateAccessToken(u.ID)
     if err != nil {
-        return nil, status.Errorf(codes.Internal, "error generating access token: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Internal, "error generating access token", err)
     }
     refreshToken, err := jwt.GenerateRefreshToken(u.ID)
     if err != nil {
-        return nil, status.Errorf(codes.Internal, "error generating refresh token: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Internal, "error generating refresh token", err)
     }
 
     // Опционально: записать сессию/refresh в Redis с TTL, чтобы можно было делать revoke/rotation
@@ -93,10 +93,10 @@ func (s *AuthService) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 func (s *AuthService) Logout(ctx context.Context, _ *emptypb.Empty) (*authpb.LogoutResponse, error) {
     userID, err := auth.UserIDFromContext(ctx)
     if err != nil {
-        return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "unauthenticated", err)
     }
     if _, err := s.client.User.Query().Where(entuser.IDEQ(userID)).Only(ctx); err != nil {
-        return nil, status.Errorf(codes.NotFound, "user not found")
+        return nil, errorsx.FromGRPCCode(codes.NotFound, "user not found", nil)
     }
     // Если используем Redis — удалим текущий refresh из хранилища
     if s.redis != nil {
@@ -127,21 +127,21 @@ func (s *AuthService) ValidateToken(ctx context.Context, req *authpb.ValidateTok
 func (s *AuthService) GetMe(ctx context.Context, _ *emptypb.Empty) (*authpb.GetMeResponse, error) {
     userID, err := auth.UserIDFromContext(ctx)
     if err != nil {
-        return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "unauthenticated", err)
     }
     u, err := s.uc.GetUserByID(ctx, userID)
     if err != nil {
         if ent.IsNotFound(err) {
-            return nil, status.Errorf(codes.NotFound, "user not found")
+            return nil, errorsx.FromGRPCCode(codes.NotFound, "user not found", nil)
         }
-        return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Internal, "failed to get user", err)
     }
     return &authpb.GetMeResponse{User: sharedmapper.UserToProto(u)}, nil
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, req *authpb.RefreshTokenRequest) (*authpb.RefreshTokenResponse, error) {
     if err := req.Validate(); err != nil {
-        return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.InvalidArgument, "validation error", err)
     }
     refreshToken := req.GetRefreshToken()
     if refreshToken == "" {
@@ -152,29 +152,29 @@ func (s *AuthService) RefreshToken(ctx context.Context, req *authpb.RefreshToken
         }
     }
     if refreshToken == "" {
-        return nil, status.Errorf(codes.InvalidArgument, "refresh token is required")
+        return nil, errorsx.FromGRPCCode(codes.InvalidArgument, "refresh token is required", nil)
     }
     claims, err := jwt.ParseRefreshToken(refreshToken)
     if err != nil {
-        return nil, status.Errorf(codes.Unauthenticated, "invalid refresh token: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "invalid refresh token", err)
     }
     // Проверяем, что refresh присутствует и не отозван (если есть Redis)
     if s.redis != nil {
         if _, err := s.redis.Get(ctx, "refresh:"+refreshToken).Result(); err != nil {
-            return nil, status.Errorf(codes.Unauthenticated, "refresh token is revoked or unknown")
+            return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "refresh token is revoked or unknown", nil)
         }
     }
     userID := claims.UserID
     if _, err := s.client.User.Query().Where(entuser.IDEQ(userID)).Only(ctx); err != nil {
-        return nil, status.Errorf(codes.NotFound, "user not found")
+        return nil, errorsx.FromGRPCCode(codes.NotFound, "user not found", nil)
     }
     newAccess, err := jwt.GenerateAccessToken(userID)
     if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to generate access token")
+        return nil, errorsx.FromGRPCCode(codes.Internal, "failed to generate access token", err)
     }
     newRefresh, err := jwt.GenerateRefreshToken(userID)
     if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to generate refresh token")
+        return nil, errorsx.FromGRPCCode(codes.Internal, "failed to generate refresh token", err)
     }
 
     // Ротация refresh: помечаем старый как использованный и сохраняем новый, если есть Redis

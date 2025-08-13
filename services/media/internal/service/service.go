@@ -4,10 +4,10 @@ import (
 	"context"
 	"stormlink/server/ent"
 	mediapb "stormlink/server/grpc/media/protobuf"
+	errorsx "stormlink/shared/errors"
 	shareds3 "stormlink/shared/s3"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type MediaService struct {
@@ -22,7 +22,7 @@ func NewMediaServiceWithClient(s3client *shareds3.S3Client, client *ent.Client) 
 
 func (s *MediaService) UploadMedia(ctx context.Context, req *mediapb.UploadMediaRequest) (*mediapb.UploadMediaResponse, error) {
     if err := req.Validate(); err != nil {
-        return nil, status.Errorf(codes.InvalidArgument, "validation error: %v", err)
+        return nil, errorsx.FromGRPCCode(codes.InvalidArgument, "validation error", err)
     }
     dir := req.GetDir()
     if dir == "" { dir = "media" }
@@ -30,10 +30,10 @@ func (s *MediaService) UploadMedia(ctx context.Context, req *mediapb.UploadMedia
     fileContent := req.GetFileContent()
 
     url, sanitized, err := s.s3.UploadFile(ctx, dir, filename, fileContent)
-    if err != nil { return nil, status.Errorf(codes.Internal, "failed to upload file to S3: %v", err) }
+    if err != nil { return nil, errorsx.FromGRPCCode(codes.Internal, "failed to upload file to S3", err) }
 
     m, err := s.client.Media.Create().SetFilename(sanitized).SetURL(url).Save(ctx)
-    if err != nil { return nil, status.Errorf(codes.Internal, "failed to save media in DB: %v", err) }
+    if err != nil { return nil, errorsx.FromGRPCCode(codes.Internal, "failed to save media in DB", err) }
 
     return &mediapb.UploadMediaResponse{Url: url, Filename: sanitized, Id: int64(m.ID)}, nil
 }

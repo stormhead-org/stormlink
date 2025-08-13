@@ -21,6 +21,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/websocket"
 	"github.com/rs/cors"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 	"golang.org/x/time/rate"
 
 	"stormlink/server/ent"
@@ -32,11 +33,14 @@ import (
 	"stormlink/server/middleware"
 	communityuc "stormlink/server/usecase/community"
 	useruc "stormlink/server/usecase/user"
+	errorsx "stormlink/shared/errors"
 	httpWithCookies "stormlink/shared/http"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 var httpSrv *http.Server
@@ -115,6 +119,29 @@ func StartGraphQLServer(client *ent.Client) {
 
     // 5) Конфигурируем gqlgen‑сервер вручную (не NewDefaultServer)
     srv := handler.New(graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}))
+    // Нормализованный presenter ошибок (глобально для GraphQL)
+    srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
+        // Специальный маппинг ent.NotFound → GraphQL code=NotFound
+        if ent.IsNotFound(err) {
+            e := gqlerror.Errorf("not found")
+            if e.Extensions == nil {
+                e.Extensions = map[string]any{}
+            }
+            e.Extensions["code"] = codes.NotFound.String()
+            return e
+        }
+        // Если это gRPC status — нормализуем через shared/errors
+        ge := errorsx.ToGraphQL(err)
+        if ge == nil {
+            return gqlerror.Errorf("unknown error")
+        }
+        e := gqlerror.Errorf("%s", ge.Message)
+        if e.Extensions == nil {
+            e.Extensions = map[string]any{}
+        }
+        e.Extensions["code"] = ge.Code
+        return e
+    })
 
     // Безопасность и производительность
     if os.Getenv("ENV") != "production" {
@@ -147,15 +174,44 @@ func StartGraphQLServer(client *ent.Client) {
     })
 
     // 6) HTTP маршруты
+    // Инициализируем S3‑клиент один раз и переиспользуем в хэндлерах и проверках готовности
+    s3client := InitS3()
     mux := http.NewServeMux()
     // healthz/readyz
     mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK); _, _ = w.Write([]byte("ok")) })
     mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-        ctx, cancel := context.WithTimeout(r.Context(), 500*time.Millisecond)
+        ctx, cancel := context.WithTimeout(r.Context(), 800*time.Millisecond)
         defer cancel()
         if _, err := client.User.Query().Limit(1).All(ctx); err != nil {
             w.WriteHeader(http.StatusServiceUnavailable)
             _, _ = w.Write([]byte("db not ready"))
+            return
+        }
+        // S3 probe
+        if err := s3client.HealthCheck(); err != nil {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            _, _ = w.Write([]byte("s3 not ready"))
+            return
+        }
+        // gRPC upstream health checks
+        if resp, err := healthpb.NewHealthClient(authConn).Check(ctx, &healthpb.HealthCheckRequest{}); err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            _, _ = w.Write([]byte("auth grpc not ready"))
+            return
+        }
+        if resp, err := healthpb.NewHealthClient(userConn).Check(ctx, &healthpb.HealthCheckRequest{}); err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            _, _ = w.Write([]byte("user grpc not ready"))
+            return
+        }
+        if resp, err := healthpb.NewHealthClient(mailConn).Check(ctx, &healthpb.HealthCheckRequest{}); err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            _, _ = w.Write([]byte("mail grpc not ready"))
+            return
+        }
+        if resp, err := healthpb.NewHealthClient(mediaConn).Check(ctx, &healthpb.HealthCheckRequest{}); err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            _, _ = w.Write([]byte("media grpc not ready"))
             return
         }
         w.WriteHeader(http.StatusOK)
@@ -214,8 +270,8 @@ func StartGraphQLServer(client *ent.Client) {
         middleware.HTTPAuthMiddleware(srv).ServeHTTP(w, r)
     }))
 
-    // Static storage proxy to S3
-    mux.HandleFunc("/storage/", StorageHandler)
+    // Static storage proxy to S3 (инициализируем локальный клиент и передаем в handler)
+    mux.HandleFunc("/storage/", NewStorageHandler(s3client))
 
     // 7) CORS
     frontend := os.Getenv("FRONTEND_ORIGIN")

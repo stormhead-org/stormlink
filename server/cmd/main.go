@@ -13,7 +13,6 @@ import (
 
 func main() {
     modules.InitEnv()
-    modules.InitS3Client()
 
     client := modules.ConnectDB()
     defer client.Close()

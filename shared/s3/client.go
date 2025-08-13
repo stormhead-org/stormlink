@@ -49,4 +49,17 @@ func NewS3Client() (*S3Client, error) {
     return &S3Client{svc: svc, bucket: bucket, endpoint: endpoint, region: region, usePathStyle: usePathStyle, aliasHost: aliasHost}, nil
 }
 
+// HealthCheck выполняет простой запрос к S3, чтобы убедиться в доступности бакета
+func (c *S3Client) HealthCheck() error {
+    if c == nil || c.svc == nil || c.bucket == "" {
+        return fmt.Errorf("s3 client is not initialized")
+    }
+    // Лёгкая операция: получить локацию бакета
+    _, err := c.svc.GetBucketLocation(&awss3.GetBucketLocationInput{Bucket: aws.String(c.bucket)})
+    if err != nil {
+        return fmt.Errorf("s3 bucket health failed: %w", err)
+    }
+    return nil
+}
+
 

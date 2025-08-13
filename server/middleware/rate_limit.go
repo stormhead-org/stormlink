@@ -60,8 +60,10 @@ func RateLimitMiddleware(rl *RateLimiter) grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
         publicMethods := map[string]bool{
-            "/auth.AuthService/Login":       true,
-            "/user.UserService/RegisterUser": true,
+            "/auth.AuthService/Login":             true,
+            "/user.UserService/RegisterUser":      true,
+            "/mail.MailService/VerifyEmail":       true,
+            "/mail.MailService/ResendVerifyEmail": true,
         }
 
 		if !publicMethods[info.FullMethod] {
