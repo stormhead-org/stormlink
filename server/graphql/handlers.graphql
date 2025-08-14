@@ -19,18 +19,12 @@ type CommunityStatus {
 	isFollowing: Boolean!
 }
 
-enum PostVisibility {
-	PUBLISHED
-	DRAFT
-	DELETED
-}
-
 type PostStatus {
 	likesCount: String!
 	commentsCount: String!
 	bookmarksCount: String!
-	viewsCount: String!
-	status: PostVisibility!
+	isLiked: Boolean!
+	hasBookmark: Boolean!
 }
 
 # Тип прав пользователей
@@ -168,7 +162,11 @@ extend type Query {
 
 	post(id: ID!): Post
 	postBySlug(slug: String!): Post
-	posts(communityID: ID, authorID: ID): [Post!]!
+	posts(
+		visibility: PostVisibility = PUBLISHED
+		communityID: ID
+		authorID: ID
+	): [Post!]!
 
 	comments(hasDeleted: Boolean = false): [Comment!]!
 	commentsByPostId(id: ID!, hasDeleted: Boolean = false): [Comment!]!
@@ -221,7 +219,8 @@ extend type Mutation {
 	addBookmarkPost(input: BookmarkPostInput!): PostStatus!
 	deleteBookmarkPost(input: DeleteBookmarkPostInput!): PostStatus!
 
-	incrementViewsPost(input: IncrementViewsPostInput!): PostStatus!
+	# Атомарное увеличение счётчика просмотров
+	incrementPostViews(postID: ID!): Post!
 }
 
 extend type Subscription {
@@ -281,11 +280,6 @@ input DeleteBookmarkPostInput {
 	postID: ID!
 }
 
-# Входные типы снятия закладки с поста
-input IncrementViewsPostInput {
-	postID: ID!
-}
-
 # Входные типы обновления поста
 input UpdatePostInput {
 	id: ID!
@@ -294,6 +288,8 @@ input UpdatePostInput {
 	content: JSON
 	communityID: ID
 	heroImageID: ID
+	views: Int
+	visibility: PostVisibility
 	publishedAt: Time
 }
 
@@ -304,6 +300,7 @@ input CreatePostInput {
 	authorID: ID!
 	communityID: ID!
 	heroImageID: ID
+	status: PostVisibility = DRAFT
 	publishedAt: Time
 }
 

@@ -15,15 +15,7 @@ func (uc *postUsecase) GetPostStatus(
     userID int,
     postID int,
 ) (*models.PostStatus, error) {
-    // 1) Загружаем пост (для определения published/draft по published_at)
-    p, err := uc.client.Post.Query().
-        Where(post.IDEQ(postID)).
-        Only(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("load post: %w", err)
-    }
-
-    // 2) Считаем лайки/комментарии/закладки
+    // 1) Считаем лайки/комментарии/закладки
     likesCount, err := uc.client.PostLike.Query().
         Where(postlike.HasPostWith(post.IDEQ(postID))).
         Count(ctx)
@@ -39,18 +31,34 @@ func (uc *postUsecase) GetPostStatus(
         Count(ctx)
     if err != nil { return nil, fmt.Errorf("count bookmarks: %w", err) }
 
-    // 3) Вычисляем статус (по умолчанию DRAFT)
-    vis := models.PostVisibilityDraft
-    if p.PublishedAt != nil && !p.PublishedAt.IsZero() {
-        vis = models.PostVisibilityPublished
+    // Флаги по текущему пользователю
+    isLiked := false
+    hasBookmark := false
+    if userID > 0 {
+        liked, err := uc.client.PostLike.Query().
+            Where(
+                postlike.PostIDEQ(postID),
+                postlike.UserIDEQ(userID),
+            ).
+            Exist(ctx)
+        if err != nil { return nil, fmt.Errorf("check liked: %w", err) }
+        isLiked = liked
+
+        bm, err := uc.client.Bookmark.Query().
+            Where(
+                bookmark.PostIDEQ(postID),
+                bookmark.UserIDEQ(userID),
+            ).
+            Exist(ctx)
+        if err != nil { return nil, fmt.Errorf("check bookmark: %w", err) }
+        hasBookmark = bm
     }
 
-    // Views не храним — виртуально 0 (или подключите счётчик позже)
     return &models.PostStatus{
         LikesCount:     fmt.Sprintf("%d", likesCount),
         CommentsCount:  fmt.Sprintf("%d", commentsCount),
         BookmarksCount: fmt.Sprintf("%d", bookmarksCount),
-        ViewsCount:     "0",
-        Status:         vis,
+        IsLiked:        isLiked,
+        HasBookmark:    hasBookmark,
     }, nil
 }

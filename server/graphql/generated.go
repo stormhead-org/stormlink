@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"stormlink/server/ent"
+	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/graphql/models"
 	"stormlink/server/model"
@@ -339,7 +340,7 @@ type ComplexityRoot struct {
 		FollowCommunity       func(childComplexity int, input models.FollowCommunityInput) int
 		FollowUser            func(childComplexity int, input models.FollowUserInput) int
 		Host                  func(childComplexity int, input models.UpdateHostInput) int
-		IncrementViewsPost    func(childComplexity int, input models.IncrementViewsPostInput) int
+		IncrementPostViews    func(childComplexity int, postID string) int
 		LikePost              func(childComplexity int, input models.LikePostInput) int
 		LoginUser             func(childComplexity int, input models.LoginUserInput) int
 		LogoutUser            func(childComplexity int) int
@@ -381,6 +382,8 @@ type ComplexityRoot struct {
 		Slug        func(childComplexity int) int
 		Title       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Views       func(childComplexity int) int
+		Visibility  func(childComplexity int) int
 	}
 
 	PostLike struct {
@@ -396,9 +399,9 @@ type ComplexityRoot struct {
 	PostStatus struct {
 		BookmarksCount func(childComplexity int) int
 		CommentsCount  func(childComplexity int) int
+		HasBookmark    func(childComplexity int) int
+		IsLiked        func(childComplexity int) int
 		LikesCount     func(childComplexity int) int
-		Status         func(childComplexity int) int
-		ViewsCount     func(childComplexity int) int
 	}
 
 	ProfileTableInfoItem struct {
@@ -438,7 +441,7 @@ type ComplexityRoot struct {
 		Nodes                      func(childComplexity int, ids []string) int
 		Post                       func(childComplexity int, id string) int
 		PostBySlug                 func(childComplexity int, slug string) int
-		Posts                      func(childComplexity int, communityID *string, authorID *string) int
+		Posts                      func(childComplexity int, visibility *post.Visibility, communityID *string, authorID *string) int
 		ProfileTableInfoItem       func(childComplexity int, id string) int
 		ProfileTableInfoItems      func(childComplexity int, id string, typeArg profiletableinfoitem.Type) int
 		Role                       func(childComplexity int, id string) int
@@ -627,7 +630,7 @@ type MutationResolver interface {
 	UnlikePost(ctx context.Context, input models.UnlikePostInput) (*models.PostStatus, error)
 	AddBookmarkPost(ctx context.Context, input models.BookmarkPostInput) (*models.PostStatus, error)
 	DeleteBookmarkPost(ctx context.Context, input models.DeleteBookmarkPostInput) (*models.PostStatus, error)
-	IncrementViewsPost(ctx context.Context, input models.IncrementViewsPostInput) (*models.PostStatus, error)
+	IncrementPostViews(ctx context.Context, postID string) (*ent.Post, error)
 }
 type PostResolver interface {
 	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
@@ -653,7 +656,7 @@ type QueryResolver interface {
 	ProfileTableInfoItems(ctx context.Context, id string, typeArg profiletableinfoitem.Type) ([]*ent.ProfileTableInfoItem, error)
 	Post(ctx context.Context, id string) (*ent.Post, error)
 	PostBySlug(ctx context.Context, slug string) (*ent.Post, error)
-	Posts(ctx context.Context, communityID *string, authorID *string) ([]*ent.Post, error)
+	Posts(ctx context.Context, visibility *post.Visibility, communityID *string, authorID *string) ([]*ent.Post, error)
 	Comments(ctx context.Context, hasDeleted *bool) ([]*ent.Comment, error)
 	CommentsByPostID(ctx context.Context, id string, hasDeleted *bool) ([]*ent.Comment, error)
 	Role(ctx context.Context, id string) (*ent.Role, error)
@@ -2177,17 +2180,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.Host(childComplexity, args["input"].(models.UpdateHostInput)), true
 
-	case "Mutation.incrementViewsPost":
-		if e.complexity.Mutation.IncrementViewsPost == nil {
+	case "Mutation.incrementPostViews":
+		if e.complexity.Mutation.IncrementPostViews == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_incrementViewsPost_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_incrementPostViews_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Mutation.IncrementViewsPost(childComplexity, args["input"].(models.IncrementViewsPostInput)), true
+		return e.complexity.Mutation.IncrementPostViews(childComplexity, args["postID"].(string)), true
 
 	case "Mutation.likePost":
 		if e.complexity.Mutation.LikePost == nil {
@@ -2489,6 +2492,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Post.UpdatedAt(childComplexity), true
 
+	case "Post.views":
+		if e.complexity.Post.Views == nil {
+			break
+		}
+
+		return e.complexity.Post.Views(childComplexity), true
+
+	case "Post.visibility":
+		if e.complexity.Post.Visibility == nil {
+			break
+		}
+
+		return e.complexity.Post.Visibility(childComplexity), true
+
 	case "PostLike.createdAt":
 		if e.complexity.PostLike.CreatedAt == nil {
 			break
@@ -2552,26 +2569,26 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PostStatus.CommentsCount(childComplexity), true
 
+	case "PostStatus.hasBookmark":
+		if e.complexity.PostStatus.HasBookmark == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.HasBookmark(childComplexity), true
+
+	case "PostStatus.isLiked":
+		if e.complexity.PostStatus.IsLiked == nil {
+			break
+		}
+
+		return e.complexity.PostStatus.IsLiked(childComplexity), true
+
 	case "PostStatus.likesCount":
 		if e.complexity.PostStatus.LikesCount == nil {
 			break
 		}
 
 		return e.complexity.PostStatus.LikesCount(childComplexity), true
-
-	case "PostStatus.status":
-		if e.complexity.PostStatus.Status == nil {
-			break
-		}
-
-		return e.complexity.PostStatus.Status(childComplexity), true
-
-	case "PostStatus.viewsCount":
-		if e.complexity.PostStatus.ViewsCount == nil {
-			break
-		}
-
-		return e.complexity.PostStatus.ViewsCount(childComplexity), true
 
 	case "ProfileTableInfoItem.community":
 		if e.complexity.ProfileTableInfoItem.Community == nil {
@@ -2894,7 +2911,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Posts(childComplexity, args["communityID"].(*string), args["authorID"].(*string)), true
+		return e.complexity.Query.Posts(childComplexity, args["visibility"].(*post.Visibility), args["communityID"].(*string), args["authorID"].(*string)), true
 
 	case "Query.profileTableInfoItem":
 		if e.complexity.Query.ProfileTableInfoItem == nil {
@@ -3734,7 +3751,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputHostUserBanWhereInput,
 		ec.unmarshalInputHostUserMuteWhereInput,
 		ec.unmarshalInputHostWhereInput,
-		ec.unmarshalInputIncrementViewsPostInput,
 		ec.unmarshalInputLikePostInput,
 		ec.unmarshalInputLoginUserInput,
 		ec.unmarshalInputMediaWhereInput,
@@ -3975,14 +3991,14 @@ func (ec *executionContext) field_Mutation_host_args(ctx context.Context, rawArg
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_incrementViewsPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_incrementPostViews_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNIncrementViewsPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐIncrementViewsPostInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postID", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
-	args["input"] = arg0
+	args["postID"] = arg0
 	return args, nil
 }
 
@@ -4322,16 +4338,21 @@ func (ec *executionContext) field_Query_post_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_posts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalOID2ᚖstring)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "visibility", ec.unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility)
 	if err != nil {
 		return nil, err
 	}
-	args["communityID"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "authorID", ec.unmarshalOID2ᚖstring)
+	args["visibility"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalOID2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["authorID"] = arg1
+	args["communityID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "authorID", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["authorID"] = arg2
 	return args, nil
 }
 
@@ -4861,6 +4882,10 @@ func (ec *executionContext) fieldContext_Bookmark_post(_ context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -5529,6 +5554,10 @@ func (ec *executionContext) fieldContext_Comment_post(_ context.Context, field g
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -7503,6 +7532,10 @@ func (ec *executionContext) fieldContext_Community_posts(_ context.Context, fiel
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -13539,6 +13572,10 @@ func (ec *executionContext) fieldContext_HostSidebarNavigationItem_post(_ contex
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -15068,6 +15105,10 @@ func (ec *executionContext) fieldContext_Mutation_post(ctx context.Context, fiel
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -15161,6 +15202,10 @@ func (ec *executionContext) fieldContext_Mutation_createPost(ctx context.Context
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -16220,10 +16265,10 @@ func (ec *executionContext) fieldContext_Mutation_likePost(ctx context.Context, 
 				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
 			case "bookmarksCount":
 				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "isLiked":
+				return ec.fieldContext_PostStatus_isLiked(ctx, field)
+			case "hasBookmark":
+				return ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
@@ -16287,10 +16332,10 @@ func (ec *executionContext) fieldContext_Mutation_unlikePost(ctx context.Context
 				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
 			case "bookmarksCount":
 				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "isLiked":
+				return ec.fieldContext_PostStatus_isLiked(ctx, field)
+			case "hasBookmark":
+				return ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
@@ -16354,10 +16399,10 @@ func (ec *executionContext) fieldContext_Mutation_addBookmarkPost(ctx context.Co
 				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
 			case "bookmarksCount":
 				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "isLiked":
+				return ec.fieldContext_PostStatus_isLiked(ctx, field)
+			case "hasBookmark":
+				return ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
@@ -16421,10 +16466,10 @@ func (ec *executionContext) fieldContext_Mutation_deleteBookmarkPost(ctx context
 				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
 			case "bookmarksCount":
 				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "isLiked":
+				return ec.fieldContext_PostStatus_isLiked(ctx, field)
+			case "hasBookmark":
+				return ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
@@ -16443,8 +16488,8 @@ func (ec *executionContext) fieldContext_Mutation_deleteBookmarkPost(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_incrementViewsPost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_incrementViewsPost(ctx, field)
+func (ec *executionContext) _Mutation_incrementPostViews(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_incrementPostViews(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -16457,7 +16502,7 @@ func (ec *executionContext) _Mutation_incrementViewsPost(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().IncrementViewsPost(rctx, fc.Args["input"].(models.IncrementViewsPostInput))
+		return ec.resolvers.Mutation().IncrementPostViews(rctx, fc.Args["postID"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16469,12 +16514,12 @@ func (ec *executionContext) _Mutation_incrementViewsPost(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*models.PostStatus)
+	res := resTmp.(*ent.Post)
 	fc.Result = res
-	return ec.marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostStatus(ctx, field.Selections, res)
+	return ec.marshalNPost2ᚖstormlinkᚋserverᚋentᚐPost(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_incrementViewsPost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_incrementPostViews(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -16482,18 +16527,48 @@ func (ec *executionContext) fieldContext_Mutation_incrementViewsPost(ctx context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "likesCount":
-				return ec.fieldContext_PostStatus_likesCount(ctx, field)
-			case "commentsCount":
-				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
-			case "bookmarksCount":
-				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "id":
+				return ec.fieldContext_Post_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Post_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Post_slug(ctx, field)
+			case "content":
+				return ec.fieldContext_Post_content(ctx, field)
+			case "heroImageID":
+				return ec.fieldContext_Post_heroImageID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Post_communityID(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Post_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Post_updatedAt(ctx, field)
+			case "publishedAt":
+				return ec.fieldContext_Post_publishedAt(ctx, field)
+			case "heroImage":
+				return ec.fieldContext_Post_heroImage(ctx, field)
+			case "comments":
+				return ec.fieldContext_Post_comments(ctx, field)
+			case "relatedPost":
+				return ec.fieldContext_Post_relatedPost(ctx, field)
+			case "community":
+				return ec.fieldContext_Post_community(ctx, field)
+			case "author":
+				return ec.fieldContext_Post_author(ctx, field)
+			case "likes":
+				return ec.fieldContext_Post_likes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_Post_bookmarks(ctx, field)
+			case "postStatus":
+				return ec.fieldContext_Post_postStatus(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Post", field.Name)
 		},
 	}
 	defer func() {
@@ -16503,7 +16578,7 @@ func (ec *executionContext) fieldContext_Mutation_incrementViewsPost(ctx context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_incrementViewsPost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_incrementPostViews_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -16985,6 +17060,94 @@ func (ec *executionContext) fieldContext_Post_authorID(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Post_views(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_views(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Views, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int32)
+	fc.Result = res
+	return ec.marshalNInt2int32(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Post_views(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Post_visibility(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Post_visibility(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Visibility, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(post.Visibility)
+	fc.Result = res
+	return ec.marshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Post_visibility(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Post",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type PostVisibility does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Post_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Post_createdAt(ctx, field)
 	if err != nil {
@@ -17300,6 +17463,10 @@ func (ec *executionContext) fieldContext_Post_relatedPost(_ context.Context, fie
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -17692,10 +17859,10 @@ func (ec *executionContext) fieldContext_Post_postStatus(_ context.Context, fiel
 				return ec.fieldContext_PostStatus_commentsCount(ctx, field)
 			case "bookmarksCount":
 				return ec.fieldContext_PostStatus_bookmarksCount(ctx, field)
-			case "viewsCount":
-				return ec.fieldContext_PostStatus_viewsCount(ctx, field)
-			case "status":
-				return ec.fieldContext_PostStatus_status(ctx, field)
+			case "isLiked":
+				return ec.fieldContext_PostStatus_isLiked(ctx, field)
+			case "hasBookmark":
+				return ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PostStatus", field.Name)
 		},
@@ -18084,6 +18251,10 @@ func (ec *executionContext) fieldContext_PostLike_post(_ context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -18245,8 +18416,8 @@ func (ec *executionContext) fieldContext_PostStatus_bookmarksCount(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _PostStatus_viewsCount(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PostStatus_viewsCount(ctx, field)
+func (ec *executionContext) _PostStatus_isLiked(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_isLiked(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -18259,7 +18430,7 @@ func (ec *executionContext) _PostStatus_viewsCount(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ViewsCount, nil
+		return obj.IsLiked, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18271,26 +18442,26 @@ func (ec *executionContext) _PostStatus_viewsCount(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PostStatus_viewsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PostStatus_isLiked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PostStatus",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _PostStatus_status(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_PostStatus_status(ctx, field)
+func (ec *executionContext) _PostStatus_hasBookmark(ctx context.Context, field graphql.CollectedField, obj *models.PostStatus) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PostStatus_hasBookmark(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -18303,7 +18474,7 @@ func (ec *executionContext) _PostStatus_status(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
+		return obj.HasBookmark, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -18315,19 +18486,19 @@ func (ec *executionContext) _PostStatus_status(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(models.PostVisibility)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_PostStatus_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_PostStatus_hasBookmark(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PostStatus",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type PostVisibility does not have child fields")
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20250,6 +20421,10 @@ func (ec *executionContext) fieldContext_Query_post(ctx context.Context, field g
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -20340,6 +20515,10 @@ func (ec *executionContext) fieldContext_Query_postBySlug(ctx context.Context, f
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -20394,7 +20573,7 @@ func (ec *executionContext) _Query_posts(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Posts(rctx, fc.Args["communityID"].(*string), fc.Args["authorID"].(*string))
+		return ec.resolvers.Query().Posts(rctx, fc.Args["visibility"].(*post.Visibility), fc.Args["communityID"].(*string), fc.Args["authorID"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -20433,6 +20612,10 @@ func (ec *executionContext) fieldContext_Query_posts(ctx context.Context, field 
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -23706,6 +23889,10 @@ func (ec *executionContext) fieldContext_User_posts(_ context.Context, field gra
 				return ec.fieldContext_Post_communityID(ctx, field)
 			case "authorID":
 				return ec.fieldContext_Post_authorID(ctx, field)
+			case "views":
+				return ec.fieldContext_Post_views(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Post_visibility(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Post_createdAt(ctx, field)
 			case "updatedAt":
@@ -32569,7 +32756,11 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"title", "content", "authorID", "communityID", "heroImageID", "publishedAt"}
+	if _, present := asMap["status"]; !present {
+		asMap["status"] = "DRAFT"
+	}
+
+	fieldsInOrder := [...]string{"title", "content", "authorID", "communityID", "heroImageID", "status", "publishedAt"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -32611,6 +32802,13 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.HeroImageID = data
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
 		case "publishedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -37237,33 +37435,6 @@ func (ec *executionContext) unmarshalInputHostWhereInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputIncrementViewsPostInput(ctx context.Context, obj any) (models.IncrementViewsPostInput, error) {
-	var it models.IncrementViewsPostInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"postID"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "postID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postID"))
-			data, err := ec.unmarshalNID2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PostID = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputLikePostInput(ctx context.Context, obj any) (models.LikePostInput, error) {
 	var it models.LikePostInput
 	asMap := map[string]any{}
@@ -38254,7 +38425,7 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleEqualFold", "titleContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "heroImageID", "heroImageIDNEQ", "heroImageIDIn", "heroImageIDNotIn", "heroImageIDIsNil", "heroImageIDNotNil", "communityID", "communityIDNEQ", "communityIDIn", "communityIDNotIn", "authorID", "authorIDNEQ", "authorIDIn", "authorIDNotIn", "views", "viewsNEQ", "viewsIn", "viewsNotIn", "viewsGT", "viewsGTE", "viewsLT", "viewsLTE", "visibility", "visibilityNEQ", "visibilityIn", "visibilityNotIn", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "publishedAt", "publishedAtNEQ", "publishedAtIn", "publishedAtNotIn", "publishedAtGT", "publishedAtGTE", "publishedAtLT", "publishedAtLTE", "publishedAtIsNil", "publishedAtNotNil", "hasHeroImage", "hasHeroImageWith", "hasComments", "hasCommentsWith", "hasRelatedPost", "hasRelatedPostWith", "hasCommunity", "hasCommunityWith", "hasAuthor", "hasAuthorWith", "hasLikes", "hasLikesWith", "hasBookmarks", "hasBookmarksWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -38618,6 +38789,90 @@ func (ec *executionContext) unmarshalInputPostWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.AuthorIDNotIn = data
+		case "views":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("views"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Views = data
+		case "viewsNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsNEQ"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsNeq = data
+		case "viewsIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsIn"))
+			data, err := ec.unmarshalOInt2ᚕint32ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsIn = data
+		case "viewsNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsNotIn"))
+			data, err := ec.unmarshalOInt2ᚕint32ᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsNotIn = data
+		case "viewsGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsGT"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsGt = data
+		case "viewsGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsGTE"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsGte = data
+		case "viewsLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsLT"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsLt = data
+		case "viewsLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("viewsLTE"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ViewsLte = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
+		case "visibilityNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibilityNEQ"))
+			data, err := ec.unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VisibilityNeq = data
+		case "visibilityIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibilityIn"))
+			data, err := ec.unmarshalOPostVisibility2ᚕstormlinkᚋserverᚋentᚋpostᚐVisibilityᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VisibilityIn = data
+		case "visibilityNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibilityNotIn"))
+			data, err := ec.unmarshalOPostVisibility2ᚕstormlinkᚋserverᚋentᚋpostᚐVisibilityᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VisibilityNotIn = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -40316,7 +40571,7 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "title", "slug", "content", "communityID", "heroImageID", "publishedAt"}
+	fieldsInOrder := [...]string{"id", "title", "slug", "content", "communityID", "heroImageID", "views", "visibility", "publishedAt"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -40365,6 +40620,20 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.HeroImageID = data
+		case "views":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("views"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Views = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
 		case "publishedAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publishedAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -45025,9 +45294,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "incrementViewsPost":
+		case "incrementPostViews":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_incrementViewsPost(ctx, field)
+				return ec._Mutation_incrementPostViews(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -45143,6 +45412,16 @@ func (ec *executionContext) _Post(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "authorID":
 			out.Values[i] = ec._Post_authorID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "views":
+			out.Values[i] = ec._Post_views(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "visibility":
+			out.Values[i] = ec._Post_visibility(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -45549,13 +45828,13 @@ func (ec *executionContext) _PostStatus(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "viewsCount":
-			out.Values[i] = ec._PostStatus_viewsCount(ctx, field, obj)
+		case "isLiked":
+			out.Values[i] = ec._PostStatus_isLiked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "status":
-			out.Values[i] = ec._PostStatus_status(ctx, field, obj)
+		case "hasBookmark":
+			out.Values[i] = ec._PostStatus_hasBookmark(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -48927,9 +49206,20 @@ func (ec *executionContext) marshalNID2ᚕstringᚄ(ctx context.Context, sel ast
 	return ret
 }
 
-func (ec *executionContext) unmarshalNIncrementViewsPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐIncrementViewsPostInput(ctx context.Context, v any) (models.IncrementViewsPostInput, error) {
-	res, err := ec.unmarshalInputIncrementViewsPostInput(ctx, v)
+func (ec *executionContext) unmarshalNInt2int32(ctx context.Context, v any) (int32, error) {
+	res, err := graphql.UnmarshalInt32(v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt32(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNJSON2map(ctx context.Context, v any) (map[string]any, error) {
@@ -49136,13 +49426,13 @@ func (ec *executionContext) marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphql�
 	return ec._PostStatus(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx context.Context, v any) (models.PostVisibility, error) {
-	var res models.PostVisibility
+func (ec *executionContext) unmarshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, v any) (post.Visibility, error) {
+	var res post.Visibility
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPostVisibility2stormlinkᚋserverᚋgraphqlᚋmodelsᚐPostVisibility(ctx context.Context, sel ast.SelectionSet, v models.PostVisibility) graphql.Marshaler {
+func (ec *executionContext) marshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, sel ast.SelectionSet, v post.Visibility) graphql.Marshaler {
 	return v
 }
 
@@ -51307,6 +51597,60 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalOInt2ᚕint32ᚄ(ctx context.Context, v any) ([]int32, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]int32, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int32(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOInt2ᚕint32ᚄ(ctx context.Context, sel ast.SelectionSet, v []int32) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int32(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt32(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint32(ctx context.Context, sel ast.SelectionSet, v *int32) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt32(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOJSON2map(ctx context.Context, v any) (map[string]any, error) {
 	if v == nil {
 		return nil, nil
@@ -51490,6 +51834,87 @@ func (ec *executionContext) unmarshalOPostLikeWhereInput2ᚖstormlinkᚋserver�
 	}
 	res, err := ec.unmarshalInputPostLikeWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOPostVisibility2ᚕstormlinkᚋserverᚋentᚋpostᚐVisibilityᚄ(ctx context.Context, v any) ([]post.Visibility, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]post.Visibility, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOPostVisibility2ᚕstormlinkᚋserverᚋentᚋpostᚐVisibilityᚄ(ctx context.Context, sel ast.SelectionSet, v []post.Visibility) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, v any) (*post.Visibility, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(post.Visibility)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, sel ast.SelectionSet, v *post.Visibility) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*models.PostWhereInput, error) {

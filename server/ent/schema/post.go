@@ -33,6 +33,11 @@ func (Post) Fields() []ent.Field {
 			Annotations(entgql.Type("JSON")).
 			Annotations(entgql.Skip()),
 
+		field.Int32("views").Default(0),
+		field.Enum("visibility").
+			Values("published", "draft", "deleted").
+			Default("draft"),
+
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 		field.Time("published_at").Optional().Nillable(),

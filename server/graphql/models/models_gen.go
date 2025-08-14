@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"stormlink/server/ent"
+	"stormlink/server/ent/post"
 	"stormlink/server/ent/profiletableinfoitem"
 	"strconv"
 	"time"
@@ -718,12 +719,13 @@ type CreateCommunityInput struct {
 }
 
 type CreatePostInput struct {
-	Title       string         `json:"title"`
-	Content     map[string]any `json:"content"`
-	AuthorID    string         `json:"authorID"`
-	CommunityID string         `json:"communityID"`
-	HeroImageID *string        `json:"heroImageID,omitempty"`
-	PublishedAt *time.Time     `json:"publishedAt,omitempty"`
+	Title       string           `json:"title"`
+	Content     map[string]any   `json:"content"`
+	AuthorID    string           `json:"authorID"`
+	CommunityID string           `json:"communityID"`
+	HeroImageID *string          `json:"heroImageID,omitempty"`
+	Status      *post.Visibility `json:"status,omitempty"`
+	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
 }
 
 type DeleteBookmarkPostInput struct {
@@ -1541,10 +1543,6 @@ type HostWhereInput struct {
 	HasRulesWith []*HostRuleWhereInput `json:"hasRulesWith,omitempty"`
 }
 
-type IncrementViewsPostInput struct {
-	PostID string `json:"postID"`
-}
-
 type LikePostInput struct {
 	PostID string `json:"postID"`
 }
@@ -1743,11 +1741,11 @@ type PostLikeWhereInput struct {
 }
 
 type PostStatus struct {
-	LikesCount     string         `json:"likesCount"`
-	CommentsCount  string         `json:"commentsCount"`
-	BookmarksCount string         `json:"bookmarksCount"`
-	ViewsCount     string         `json:"viewsCount"`
-	Status         PostVisibility `json:"status"`
+	LikesCount     string `json:"likesCount"`
+	CommentsCount  string `json:"commentsCount"`
+	BookmarksCount string `json:"bookmarksCount"`
+	IsLiked        bool   `json:"isLiked"`
+	HasBookmark    bool   `json:"hasBookmark"`
 }
 
 // PostWhereInput is used for filtering Post objects.
@@ -1810,6 +1808,20 @@ type PostWhereInput struct {
 	AuthorIdneq   *string  `json:"authorIDNEQ,omitempty"`
 	AuthorIDIn    []string `json:"authorIDIn,omitempty"`
 	AuthorIDNotIn []string `json:"authorIDNotIn,omitempty"`
+	// views field predicates
+	Views      *int32  `json:"views,omitempty"`
+	ViewsNeq   *int32  `json:"viewsNEQ,omitempty"`
+	ViewsIn    []int32 `json:"viewsIn,omitempty"`
+	ViewsNotIn []int32 `json:"viewsNotIn,omitempty"`
+	ViewsGt    *int32  `json:"viewsGT,omitempty"`
+	ViewsGte   *int32  `json:"viewsGTE,omitempty"`
+	ViewsLt    *int32  `json:"viewsLT,omitempty"`
+	ViewsLte   *int32  `json:"viewsLTE,omitempty"`
+	// visibility field predicates
+	Visibility      *post.Visibility  `json:"visibility,omitempty"`
+	VisibilityNeq   *post.Visibility  `json:"visibilityNEQ,omitempty"`
+	VisibilityIn    []post.Visibility `json:"visibilityIn,omitempty"`
+	VisibilityNotIn []post.Visibility `json:"visibilityNotIn,omitempty"`
 	// created_at field predicates
 	CreatedAt      *time.Time   `json:"createdAt,omitempty"`
 	CreatedAtNeq   *time.Time   `json:"createdAtNEQ,omitempty"`
@@ -2114,13 +2126,15 @@ type UpdateHostInput struct {
 }
 
 type UpdatePostInput struct {
-	ID          string         `json:"id"`
-	Title       *string        `json:"title,omitempty"`
-	Slug        *string        `json:"slug,omitempty"`
-	Content     map[string]any `json:"content,omitempty"`
-	CommunityID *string        `json:"communityID,omitempty"`
-	HeroImageID *string        `json:"heroImageID,omitempty"`
-	PublishedAt *time.Time     `json:"publishedAt,omitempty"`
+	ID          string           `json:"id"`
+	Title       *string          `json:"title,omitempty"`
+	Slug        *string          `json:"slug,omitempty"`
+	Content     map[string]any   `json:"content,omitempty"`
+	CommunityID *string          `json:"communityID,omitempty"`
+	HeroImageID *string          `json:"heroImageID,omitempty"`
+	Views       *int32           `json:"views,omitempty"`
+	Visibility  *post.Visibility `json:"visibility,omitempty"`
+	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
 }
 
 type UserAvatarResponse struct {
@@ -2498,63 +2512,6 @@ func (e *OrderDirection) UnmarshalJSON(b []byte) error {
 }
 
 func (e OrderDirection) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type PostVisibility string
-
-const (
-	PostVisibilityPublished PostVisibility = "PUBLISHED"
-	PostVisibilityDraft     PostVisibility = "DRAFT"
-	PostVisibilityDeleted   PostVisibility = "DELETED"
-)
-
-var AllPostVisibility = []PostVisibility{
-	PostVisibilityPublished,
-	PostVisibilityDraft,
-	PostVisibilityDeleted,
-}
-
-func (e PostVisibility) IsValid() bool {
-	switch e {
-	case PostVisibilityPublished, PostVisibilityDraft, PostVisibilityDeleted:
-		return true
-	}
-	return false
-}
-
-func (e PostVisibility) String() string {
-	return string(e)
-}
-
-func (e *PostVisibility) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = PostVisibility(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid PostVisibility", str)
-	}
-	return nil
-}
-
-func (e PostVisibility) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *PostVisibility) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e PostVisibility) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

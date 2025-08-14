@@ -15,12 +15,14 @@ import (
 	"net/http"
 	"os"
 	"stormlink/server/ent"
+	"stormlink/server/ent/bookmark"
 	"stormlink/server/ent/comment"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
 	"stormlink/server/ent/communityusermute"
 	"stormlink/server/ent/post"
+	"stormlink/server/ent/postlike"
 	"stormlink/server/ent/profiletableinfoitem"
 	"stormlink/server/ent/role"
 	"stormlink/server/ent/user"
@@ -35,6 +37,7 @@ import (
 	"stormlink/shared/auth"
 	httpWithCookies "stormlink/shared/http"
 	sharedmapper "stormlink/shared/mapper"
+	redisx "stormlink/shared/redis"
 	"strconv"
 	"time"
 
@@ -646,33 +649,113 @@ func (r *mutationResolver) UnfollowCommunity(ctx context.Context, input models.U
 
 // LikePost is the resolver for the likePost field.
 func (r *mutationResolver) LikePost(ctx context.Context, input models.LikePostInput) (*models.PostStatus, error) {
-	panic(fmt.Errorf("not implemented: LikePost - likePost"))
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	pid, err := strconv.Atoi(input.PostID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	// idempotent: если уже лайкнул — не дублируем
+	exists, err := r.Client.PostLike.Query().Where(postlike.UserIDEQ(userID), postlike.PostIDEQ(pid)).Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("like exists: %w", err)
+	}
+	if !exists {
+		if _, err := r.Client.PostLike.Create().SetUserID(userID).SetPostID(pid).Save(ctx); err != nil {
+			return nil, fmt.Errorf("like create: %w", err)
+		}
+	}
+	return r.PostUC.GetPostStatus(ctx, userID, pid)
 }
 
 // UnlikePost is the resolver for the unlikePost field.
 func (r *mutationResolver) UnlikePost(ctx context.Context, input models.UnlikePostInput) (*models.PostStatus, error) {
-	panic(fmt.Errorf("not implemented: UnlikePost - unlikePost"))
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	pid, err := strconv.Atoi(input.PostID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	if _, err := r.Client.PostLike.Delete().Where(postlike.UserIDEQ(userID), postlike.PostIDEQ(pid)).Exec(ctx); err != nil {
+		return nil, fmt.Errorf("like delete: %w", err)
+	}
+	return r.PostUC.GetPostStatus(ctx, userID, pid)
 }
 
 // AddBookmarkPost is the resolver for the addBookmarkPost field.
 func (r *mutationResolver) AddBookmarkPost(ctx context.Context, input models.BookmarkPostInput) (*models.PostStatus, error) {
-	panic(fmt.Errorf("not implemented: AddBookmarkPost - addBookmarkPost"))
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	pid, err := strconv.Atoi(input.PostID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	exists, err := r.Client.Bookmark.Query().Where(bookmark.UserIDEQ(userID), bookmark.PostIDEQ(pid)).Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("bookmark exists: %w", err)
+	}
+	if !exists {
+		if _, err := r.Client.Bookmark.Create().SetUserID(userID).SetPostID(pid).Save(ctx); err != nil {
+			return nil, fmt.Errorf("bookmark create: %w", err)
+		}
+	}
+	return r.PostUC.GetPostStatus(ctx, userID, pid)
 }
 
 // DeleteBookmarkPost is the resolver for the deleteBookmarkPost field.
 func (r *mutationResolver) DeleteBookmarkPost(ctx context.Context, input models.DeleteBookmarkPostInput) (*models.PostStatus, error) {
-	panic(fmt.Errorf("not implemented: DeleteBookmarkPost - deleteBookmarkPost"))
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	pid, err := strconv.Atoi(input.PostID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	if _, err := r.Client.Bookmark.Delete().Where(bookmark.UserIDEQ(userID), bookmark.PostIDEQ(pid)).Exec(ctx); err != nil {
+		return nil, fmt.Errorf("bookmark delete: %w", err)
+	}
+	return r.PostUC.GetPostStatus(ctx, userID, pid)
 }
 
-// IncrementViewsPost is the resolver for the incrementViewsPost field.
-func (r *mutationResolver) IncrementViewsPost(ctx context.Context, input models.IncrementViewsPostInput) (*models.PostStatus, error) {
-	panic(fmt.Errorf("not implemented: IncrementViewsPost - incrementViewsPost"))
+// IncrementPostViews is the resolver for the incrementPostViews field.
+func (r *mutationResolver) IncrementPostViews(ctx context.Context, postID string) (*ent.Post, error) {
+	id, err := strconv.Atoi(postID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	if rds, err := redisx.NewClient(); err == nil && rds != nil {
+		key := fmt.Sprintf("view:post:%d", id)
+		if uid, uerr := auth.UserIDFromContext(ctx); uerr == nil && uid > 0 {
+			key += fmt.Sprintf(":u:%d", uid)
+		} else if r := httpWithCookies.GetHTTPRequest(ctx); r != nil {
+			key += ":" + r.RemoteAddr
+		}
+		if set := rds.SetNX(ctx, key, 1, 15*time.Minute); set.Err() == nil && !set.Val() {
+			return r.Client.Post.Get(ctx, id)
+		}
+	}
+	p, err := r.Client.Post.UpdateOneID(id).AddViews(1).Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("increment views: %w", err)
+	}
+	return p, nil
 }
 
 // PostStatus is the resolver for the postStatus field.
 func (r *postResolver) PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error) {
-    // Делегируем в usecase (likes/comments/bookmarks + published/draft)
-    return r.PostUC.GetPostStatus(ctx, 0, obj.ID)
+    // Берём текущего пользователя из контекста, для корректного isLiked/hasBookmark
+    uid := 0
+    if id, err := auth.UserIDFromContext(ctx); err == nil {
+        uid = id
+    }
+    return r.PostUC.GetPostStatus(ctx, uid, obj.ID)
 }
 
 // Media возвращает медиа по ID.
@@ -896,7 +979,7 @@ func (r *queryResolver) PostBySlug(ctx context.Context, slug string) (*ent.Post,
 }
 
 // Posts возвращает посты в зависимости от их статуса.
-func (r *queryResolver) Posts(ctx context.Context, communityID *string, authorID *string) ([]*ent.Post, error) {
+func (r *queryResolver) Posts(ctx context.Context, visibility *post.Visibility, communityID *string, authorID *string) ([]*ent.Post, error) {
 	// Базовый запрос без статуса (status вынесен в виртуальный PostStatus)
 	q := r.Client.Post.
 		Query()
