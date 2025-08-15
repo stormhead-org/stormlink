@@ -25,6 +25,8 @@ type PostStatus {
 	bookmarksCount: String!
 	isLiked: Boolean!
 	hasBookmark: Boolean!
+	authorCommunityOwner: Boolean!
+	authorHostOwner: Boolean!
 }
 
 # Тип прав пользователей
@@ -37,6 +39,12 @@ type CommunityPermissions {
 	communityRemovePostFromPublication: Boolean!
 	communityOwner: Boolean!
 	hostOwner: Boolean!
+}
+
+# Древовидная структура комментариев
+type CommentTree {
+	comment: Comment!
+	children: [CommentTree!]!
 }
 
 # Запросы авторизации и аутентификации
@@ -72,6 +80,7 @@ type UserAvatarResponse {
 	id: String!
 	url: String!
 }
+
 type UserInfoResponse {
 	id: ID!
 	key: String!
@@ -168,8 +177,23 @@ extend type Query {
 		authorID: ID
 	): [Post!]!
 
+	# Посты в закладках текущего пользователя
+	bookmarkedPosts(visibility: PostVisibility = PUBLISHED): [Post!]!
+
+	# Лента постов от подписок пользователя
+	feedPosts(visibility: PostVisibility = PUBLISHED): [Post!]!
+
+	# Плоский список всех комментариев (для общей ленты)
 	comments(hasDeleted: Boolean = false): [Comment!]!
+
+	# Плоский список комментариев к посту (устаревший)
 	commentsByPostId(id: ID!, hasDeleted: Boolean = false): [Comment!]!
+
+	# Древовидная структура комментариев к посту
+	commentsTree(postId: ID!, hasDeleted: Boolean = false): [CommentTree!]!
+
+	# Лента всех комментариев в реальном времени (плоский список)
+	commentsFeed(limit: Int = 50): [Comment!]!
 
 	role(id: ID!): Role
 	roles(id: ID!): [Role!]!
@@ -288,7 +312,6 @@ input UpdatePostInput {
 	content: JSON
 	communityID: ID
 	heroImageID: ID
-	views: Int
 	visibility: PostVisibility
 	publishedAt: Time
 }
@@ -300,7 +323,7 @@ input CreatePostInput {
 	authorID: ID!
 	communityID: ID!
 	heroImageID: ID
-	status: PostVisibility = DRAFT
+	visibility: PostVisibility = DRAFT
 	publishedAt: Time
 }
 

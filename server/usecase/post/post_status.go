@@ -15,7 +15,15 @@ func (uc *postUsecase) GetPostStatus(
     userID int,
     postID int,
 ) (*models.PostStatus, error) {
-    // 1) Считаем лайки/комментарии/закладки
+    // 1) Получаем пост с автором и сообществом
+    p, err := uc.client.Post.Query().
+        Where(post.IDEQ(postID)).
+        WithAuthor().
+        WithCommunity().
+        Only(ctx)
+    if err != nil { return nil, fmt.Errorf("get post: %w", err) }
+
+    // 2) Считаем лайки/комментарии/закладки
     likesCount, err := uc.client.PostLike.Query().
         Where(postlike.HasPostWith(post.IDEQ(postID))).
         Count(ctx)
@@ -31,34 +39,53 @@ func (uc *postUsecase) GetPostStatus(
         Count(ctx)
     if err != nil { return nil, fmt.Errorf("count bookmarks: %w", err) }
 
-    // Флаги по текущему пользователю
+    // 3) Флаги по текущему пользователю
     isLiked := false
     hasBookmark := false
     if userID > 0 {
         liked, err := uc.client.PostLike.Query().
-            Where(
+        Where(
                 postlike.PostIDEQ(postID),
                 postlike.UserIDEQ(userID),
-            ).
-            Exist(ctx)
+        ).
+        Exist(ctx)
         if err != nil { return nil, fmt.Errorf("check liked: %w", err) }
         isLiked = liked
 
         bm, err := uc.client.Bookmark.Query().
-            Where(
+        Where(
                 bookmark.PostIDEQ(postID),
                 bookmark.UserIDEQ(userID),
-            ).
-            Exist(ctx)
+        ).
+        Exist(ctx)
         if err != nil { return nil, fmt.Errorf("check bookmark: %w", err) }
         hasBookmark = bm
     }
 
+    // 4) Проверяем, является ли автор поста владельцем сообщества
+    authorCommunityOwner := false
+    if p.Edges.Community != nil && p.Edges.Author != nil {
+        authorCommunityOwner = p.Edges.Community.OwnerID == p.Edges.Author.ID
+    }
+
+    // 5) Проверяем, является ли автор поста владельцем платформы (host)
+    authorHostOwner := false
+    if p.Edges.Author != nil {
+        host, err := uc.client.Host.Query().
+            Where().
+            Only(ctx)
+        if err == nil && host.OwnerID != nil && *host.OwnerID == p.Edges.Author.ID {
+            authorHostOwner = true
+        }
+    }
+
     return &models.PostStatus{
-        LikesCount:     fmt.Sprintf("%d", likesCount),
-        CommentsCount:  fmt.Sprintf("%d", commentsCount),
-        BookmarksCount: fmt.Sprintf("%d", bookmarksCount),
-        IsLiked:        isLiked,
-        HasBookmark:    hasBookmark,
+        LikesCount:           fmt.Sprintf("%d", likesCount),
+        CommentsCount:        fmt.Sprintf("%d", commentsCount),
+        BookmarksCount:       fmt.Sprintf("%d", bookmarksCount),
+        IsLiked:              isLiked,
+        HasBookmark:          hasBookmark,
+        AuthorCommunityOwner: authorCommunityOwner,
+        AuthorHostOwner:      authorHostOwner,
     }, nil
 }

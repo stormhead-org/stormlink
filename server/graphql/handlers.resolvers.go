@@ -164,7 +164,9 @@ func (r *mutationResolver) Post(ctx context.Context, input models.UpdatePostInpu
 		}
 		upd = upd.SetHeroImageID(heroID)
 	}
-	// Поля views/status удалены из ent-схемы и вынесены в виртуальный PostStatus
+	if input.Visibility != nil {
+		upd = upd.SetVisibility(*input.Visibility)
+	}
 	if input.PublishedAt != nil {
 		upd = upd.SetPublishedAt(*input.PublishedAt)
 	}
@@ -200,7 +202,10 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input models.CreatePo
 		}
 	}
 
-	// Поле status удалено из ent-схемы и вынесено в виртуальный PostStatus
+	// Устанавливаем visibility
+	if input.Visibility != nil {
+		builder = builder.SetVisibility(*input.Visibility)
+	}
 
 	if input.PublishedAt != nil {
 		builder = builder.SetPublishedAt(time.Time(*input.PublishedAt))
@@ -750,12 +755,12 @@ func (r *mutationResolver) IncrementPostViews(ctx context.Context, postID string
 
 // PostStatus is the resolver for the postStatus field.
 func (r *postResolver) PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error) {
-    // Берём текущего пользователя из контекста, для корректного isLiked/hasBookmark
-    uid := 0
-    if id, err := auth.UserIDFromContext(ctx); err == nil {
-        uid = id
-    }
-    return r.PostUC.GetPostStatus(ctx, uid, obj.ID)
+	// Берём текущего пользователя из контекста, для корректного isLiked/hasBookmark
+	uid := 0
+	if id, err := auth.UserIDFromContext(ctx); err == nil {
+		uid = id
+	}
+	return r.PostUC.GetPostStatus(ctx, uid, obj.ID)
 }
 
 // Media возвращает медиа по ID.
@@ -978,13 +983,16 @@ func (r *queryResolver) PostBySlug(ctx context.Context, slug string) (*ent.Post,
 		Only(ctx)
 }
 
-// Posts возвращает посты в зависимости от их статуса.
+// Posts возвращает посты в зависимости от их visibility.
 func (r *queryResolver) Posts(ctx context.Context, visibility *post.Visibility, communityID *string, authorID *string) ([]*ent.Post, error) {
-	// Базовый запрос без статуса (status вынесен в виртуальный PostStatus)
-	q := r.Client.Post.
-		Query()
+	q := r.Client.Post.Query()
 
-	// 3) фильтр по сообществу, если передан
+	// 1) фильтр по visibility
+	if visibility != nil {
+		q = q.Where(post.VisibilityEQ(*visibility))
+	}
+
+	// 2) фильтр по сообществу, если передан
 	if communityID != nil {
 		cid, err := strconv.Atoi(*communityID)
 		if err != nil {
@@ -993,7 +1001,7 @@ func (r *queryResolver) Posts(ctx context.Context, visibility *post.Visibility, 
 		q = q.Where(post.CommunityIDEQ(cid))
 	}
 
-	// 4) фильтр по автору, если передан
+	// 3) фильтр по автору, если передан
 	if authorID != nil {
 		aid, err := strconv.Atoi(*authorID)
 		if err != nil {
@@ -1002,7 +1010,7 @@ func (r *queryResolver) Posts(ctx context.Context, visibility *post.Visibility, 
 		q = q.Where(post.AuthorIDEQ(aid))
 	}
 
-	// 5) подгружаем связи и отдаем результат
+	// 4) подгружаем связи и отдаем результат
 	posts, err := q.
 		WithCommunity().
 		WithAuthor().
@@ -1010,6 +1018,82 @@ func (r *queryResolver) Posts(ctx context.Context, visibility *post.Visibility, 
 	if err != nil {
 		return nil, err
 	}
+	return posts, nil
+}
+
+// BookmarkedPosts is the resolver for the bookmarkedPosts field.
+func (r *queryResolver) BookmarkedPosts(ctx context.Context, visibility *post.Visibility) ([]*ent.Post, error) {
+	// Получаем ID текущего пользователя
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized: %w", err)
+	}
+
+	// Получаем посты в закладках пользователя
+	q := r.Client.Post.Query().
+		Where(
+			post.HasBookmarksWith(
+				bookmark.UserIDEQ(userID),
+			),
+		)
+
+	// Фильтр по visibility
+	if visibility != nil {
+		q = q.Where(post.VisibilityEQ(*visibility))
+	}
+
+	posts, err := q.
+		Order(ent.Desc(post.FieldCreatedAt)).
+		All(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bookmarked posts: %w", err)
+	}
+
+	return posts, nil
+}
+
+// FeedPosts is the resolver for the feedPosts field.
+func (r *queryResolver) FeedPosts(ctx context.Context, visibility *post.Visibility) ([]*ent.Post, error) {
+	// Получаем ID текущего пользователя
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized: %w", err)
+	}
+
+	// Получаем посты от пользователей на которых подписан текущий пользователь
+	// И посты из сообществ на которые подписан пользователь
+	q := r.Client.Post.Query().
+		Where(
+			post.Or(
+				// Посты от пользователей на которых подписан
+				post.HasAuthorWith(
+					user.HasFollowersWith(
+						userfollow.FollowerIDEQ(userID),
+					),
+				),
+				// Посты из сообществ на которые подписан
+				post.HasCommunityWith(
+					community.HasFollowersWith(
+						communityfollow.UserIDEQ(userID),
+					),
+				),
+			),
+		)
+
+	// Фильтр по visibility
+	if visibility != nil {
+		q = q.Where(post.VisibilityEQ(*visibility))
+	}
+
+	posts, err := q.
+		Order(ent.Desc(post.FieldCreatedAt)).
+		All(ctx)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get feed posts: %w", err)
+	}
+
 	return posts, nil
 }
 
@@ -1041,6 +1125,80 @@ func (r *queryResolver) CommentsByPostID(ctx context.Context, id string, hasDele
 		WithAuthor().
 		WithCommunity().
 		All(ctx)
+}
+
+// CommentsTree is the resolver for the commentsTree field.
+func (r *queryResolver) CommentsTree(ctx context.Context, postID string, hasDeleted *bool) ([]*models.CommentTree, error) {
+	postIDInt, err := strconv.Atoi(postID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+
+	// Получаем все комментарии к посту
+	q := r.Client.Comment.Query().Where(comment.PostIDEQ(postIDInt))
+	
+	if hasDeleted != nil && !*hasDeleted {
+		q = q.Where(comment.HasDeletedEQ(false))
+	}
+
+	comments, err := q.
+		WithAuthor().
+		WithPost().
+		WithCommunity().
+		WithMedia().
+		Order(ent.Asc(comment.FieldCreatedAt)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get comments: %w", err)
+	}
+
+	// Строим дерево комментариев
+	return r.buildCommentTree(comments, nil), nil
+}
+
+// CommentsFeed is the resolver for the commentsFeed field.
+func (r *queryResolver) CommentsFeed(ctx context.Context, limit *int32) ([]*ent.Comment, error) {
+	limitValue := int32(50)
+	if limit != nil {
+		limitValue = *limit
+	}
+
+	comments, err := r.Client.Comment.Query().
+		Where(comment.HasDeletedEQ(false)).
+		WithAuthor().
+		WithPost().
+		WithCommunity().
+		WithMedia().
+		Order(ent.Desc(comment.FieldCreatedAt)).
+		Limit(int(limitValue)).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get comments feed: %w", err)
+	}
+
+	return comments, nil
+}
+
+// buildCommentTree строит дерево комментариев из плоского списка
+func (r *queryResolver) buildCommentTree(comments []*ent.Comment, parentID *int) []*models.CommentTree {
+	var result []*models.CommentTree
+
+	for _, comment := range comments {
+		// Проверяем соответствие родительского ID
+		if (parentID == nil && comment.ParentCommentID == nil) ||
+			(parentID != nil && comment.ParentCommentID != nil && *comment.ParentCommentID == *parentID) {
+			
+			// Рекурсивно строим дочерние комментарии
+			children := r.buildCommentTree(comments, &comment.ID)
+			
+			result = append(result, &models.CommentTree{
+				Comment:  comment,
+				Children: children,
+			})
+		}
+	}
+
+	return result
 }
 
 // Role возвращает роль по ее ID.
