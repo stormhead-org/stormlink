@@ -16,7 +16,6 @@ import (
 	"os"
 	"stormlink/server/ent"
 	"stormlink/server/ent/bookmark"
-	"stormlink/server/ent/comment"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
@@ -1099,15 +1098,7 @@ func (r *queryResolver) FeedPosts(ctx context.Context, visibility *post.Visibili
 
 // Comments возвращает все не удаленные комментарии.
 func (r *queryResolver) Comments(ctx context.Context, hasDeleted *bool) ([]*ent.Comment, error) {
-	q := r.Client.Comment.Query()
-	if hasDeleted != nil {
-		q = q.Where(comment.HasDeletedEQ(*hasDeleted))
-	}
-	return q.
-		WithAuthor().
-		WithPost().
-		WithCommunity().
-		All(ctx)
+	return r.CommentUC.GetAllComments(ctx, hasDeleted)
 }
 
 // CommentsByPostID возвращает все комментарии одного поста по его slug.
@@ -1116,44 +1107,77 @@ func (r *queryResolver) CommentsByPostID(ctx context.Context, id string, hasDele
 	if err != nil {
 		return nil, fmt.Errorf("invalid post ID: %w", err)
 	}
-	q := r.Client.Comment.Query().
-		Where(comment.PostIDEQ(pid))
-	if hasDeleted != nil {
-		q = q.Where(comment.HasDeletedEQ(*hasDeleted))
-	}
-	return q.
-		WithAuthor().
-		WithCommunity().
-		All(ctx)
+	// Используем облегченную версию для снижения нагрузки на PostgreSQL
+	return r.CommentUC.GetCommentsByPostIDLight(ctx, pid, hasDeleted)
 }
 
-// CommentsTree is the resolver for the commentsTree field.
-func (r *queryResolver) CommentsTree(ctx context.Context, postID string, hasDeleted *bool) ([]*models.CommentTree, error) {
-	postIDInt, err := strconv.Atoi(postID)
+// CommentsByPostIDPage возвращает комментарии одного поста постранично
+func (r *queryResolver) CommentsByPostIDPage(ctx context.Context, id string, hasDeleted *bool, limit *int32, offset *int32) ([]*ent.Comment, error) {
+	pid, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid postID: %w", err)
+		return nil, fmt.Errorf("invalid post ID: %w", err)
 	}
 
-	// Получаем все комментарии к посту
-	q := r.Client.Comment.Query().Where(comment.PostIDEQ(postIDInt))
-	
-	if hasDeleted != nil && !*hasDeleted {
-		q = q.Where(comment.HasDeletedEQ(false))
+	var lim int32 = 40
+	if limit != nil && *limit > 0 {
+		lim = *limit
 	}
 
-	comments, err := q.
-		WithAuthor().
-		WithPost().
-		WithCommunity().
-		WithMedia().
-		Order(ent.Asc(comment.FieldCreatedAt)).
-		All(ctx)
+	var off int32 = 0
+	if offset != nil && *offset > 0 {
+		off = *offset
+	}
+
+	return r.CommentUC.GetCommentsByPostIDLightPaginated(ctx, pid, hasDeleted, lim, off)
+}
+
+// CommentsByPostConnection реализует двунаправленную курсорную пагинацию
+func (r *queryResolver) CommentsByPostConnection(ctx context.Context, postID string, first *int32, after *string, last *int32, before *string, hasDeleted *bool) (*models.CommentsConnection, error) {
+	pid, err := strconv.Atoi(postID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get comments: %w", err)
+		return nil, fmt.Errorf("invalid post ID: %w", err)
 	}
+	var f *int
+	var l *int
+	if first != nil {
+		fv := int(*first)
+		f = &fv
+	}
+	if last != nil {
+		lv := int(*last)
+		l = &lv
+	}
+	return r.CommentUC.CommentsByPostConnection(ctx, pid, hasDeleted, f, after, l, before)
+}
 
-	// Строим дерево комментариев
-	return r.buildCommentTree(comments, nil), nil
+// CommentsWindow возвращает окно вокруг якоря
+func (r *queryResolver) CommentsWindow(ctx context.Context, postID string, anchorID string, before *int32, after *int32, hasDeleted *bool) (*models.CommentsConnection, error) {
+	pid, err := strconv.Atoi(postID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid post ID: %w", err)
+	}
+	aid, err := strconv.Atoi(anchorID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid anchor ID: %w", err)
+	}
+	b := 20
+	if before != nil && *before > 0 {
+		b = int(*before)
+	}
+	a := 20
+	if after != nil && *after > 0 {
+		a = int(*after)
+	}
+	return r.CommentUC.CommentsWindow(ctx, pid, aid, b, a, hasDeleted)
+}
+
+// CommentByID возвращает комментарий по ID
+func (r *queryResolver) CommentByID(ctx context.Context, id string) (*ent.Comment, error) {
+	cid, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid comment ID: %w", err)
+	}
+	return r.CommentUC.CommentByID(ctx, cid)
 }
 
 // CommentsFeed is the resolver for the commentsFeed field.
@@ -1163,42 +1187,22 @@ func (r *queryResolver) CommentsFeed(ctx context.Context, limit *int32) ([]*ent.
 		limitValue = *limit
 	}
 
-	comments, err := r.Client.Comment.Query().
-		Where(comment.HasDeletedEQ(false)).
-		WithAuthor().
-		WithPost().
-		WithCommunity().
-		WithMedia().
-		Order(ent.Desc(comment.FieldCreatedAt)).
-		Limit(int(limitValue)).
-		All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get comments feed: %w", err)
-	}
-
-	return comments, nil
+	return r.CommentUC.GetCommentsFeed(ctx, limitValue)
 }
 
-// buildCommentTree строит дерево комментариев из плоского списка
-func (r *queryResolver) buildCommentTree(comments []*ent.Comment, parentID *int) []*models.CommentTree {
-	var result []*models.CommentTree
-
-	for _, comment := range comments {
-		// Проверяем соответствие родительского ID
-		if (parentID == nil && comment.ParentCommentID == nil) ||
-			(parentID != nil && comment.ParentCommentID != nil && *comment.ParentCommentID == *parentID) {
-			
-			// Рекурсивно строим дочерние комментарии
-			children := r.buildCommentTree(comments, &comment.ID)
-			
-			result = append(result, &models.CommentTree{
-				Comment:  comment,
-				Children: children,
-			})
-		}
+// CommentsFeedConnection реализует курсорную выдачу общей ленты
+func (r *queryResolver) CommentsFeedConnection(ctx context.Context, first *int32, after *string, last *int32, before *string, hasDeleted *bool) (*models.CommentsConnection, error) {
+	var f *int
+	var l *int
+	if first != nil {
+		fv := int(*first)
+		f = &fv
 	}
-
-	return result
+	if last != nil {
+		lv := int(*last)
+		l = &lv
+	}
+	return r.CommentUC.CommentsFeedConnection(ctx, hasDeleted, f, after, l, before)
 }
 
 // Role возвращает роль по ее ID.
@@ -1298,6 +1302,17 @@ func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) 
 // CommentUpdated is the resolver for the commentUpdated field.
 func (r *subscriptionResolver) CommentUpdated(ctx context.Context, postID string) (<-chan *ent.Comment, error) {
 	panic(fmt.Errorf("not implemented: CommentUpdated - commentUpdated"))
+}
+
+// CommentAddedGlobal — глобальная подписка для общей ленты (только опубликованные посты)
+func (r *subscriptionResolver) CommentAddedGlobal(ctx context.Context) (<-chan *ent.Comment, error) {
+	subID, ch := subscribeCommentAddedGlobal()
+	// отписка при закрытии клиента
+	go func() {
+		<-ctx.Done()
+		unsubscribeCommentAddedGlobal(subID)
+	}()
+	return ch, nil
 }
 
 // UserStatus возвращает статус пользователя.

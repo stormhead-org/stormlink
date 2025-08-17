@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"stormlink/server/ent"
+	"stormlink/server/usecase/comment"
 	"stormlink/server/usecase/community"
 	"stormlink/server/usecase/post"
 	"stormlink/server/usecase/user"
@@ -16,7 +17,8 @@ type Resolver struct {
 	Client *ent.Client
     UserUC      user.UserUsecase
     CommunityUC community.CommunityUsecase
-		PostUC post.PostUsecase
+	PostUC      post.PostUsecase
+	CommentUC   comment.CommentUsecase
     AuthClient  authpb.AuthServiceClient
     UserClient  userpb.UserServiceClient
     MailClient  mailpb.MailServiceClient

@@ -90,6 +90,11 @@ type ComplexityRoot struct {
 		UpdatedAt       func(childComplexity int) int
 	}
 
+	CommentEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
 	CommentLike struct {
 		Comment   func(childComplexity int) int
 		CommentID func(childComplexity int) int
@@ -100,9 +105,9 @@ type ComplexityRoot struct {
 		UserID    func(childComplexity int) int
 	}
 
-	CommentTree struct {
-		Children func(childComplexity int) int
-		Comment  func(childComplexity int) int
+	CommentsConnection struct {
+		Edges    func(childComplexity int) int
+		PageInfo func(childComplexity int) int
 	}
 
 	Community struct {
@@ -426,10 +431,14 @@ type ComplexityRoot struct {
 
 	Query struct {
 		BookmarkedPosts            func(childComplexity int, visibility *post.Visibility) int
+		CommentByID                func(childComplexity int, id string) int
 		Comments                   func(childComplexity int, hasDeleted *bool) int
+		CommentsByPostConnection   func(childComplexity int, postID string, first *int32, after *string, last *int32, before *string, hasDeleted *bool) int
 		CommentsByPostID           func(childComplexity int, id string, hasDeleted *bool) int
+		CommentsByPostIDPage       func(childComplexity int, id string, hasDeleted *bool, limit *int32, offset *int32) int
 		CommentsFeed               func(childComplexity int, limit *int32) int
-		CommentsTree               func(childComplexity int, postID string, hasDeleted *bool) int
+		CommentsFeedConnection     func(childComplexity int, first *int32, after *string, last *int32, before *string, hasDeleted *bool) int
+		CommentsWindow             func(childComplexity int, postID string, anchorID string, before *int32, after *int32, hasDeleted *bool) int
 		Communities                func(childComplexity int, onlyNotBanned *bool) int
 		Community                  func(childComplexity int, id string) int
 		CommunityBySlug            func(childComplexity int, slug string) int
@@ -495,8 +504,9 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		CommentAdded   func(childComplexity int, postID string) int
-		CommentUpdated func(childComplexity int, postID string) int
+		CommentAdded       func(childComplexity int, postID string) int
+		CommentAddedGlobal func(childComplexity int) int
+		CommentUpdated     func(childComplexity int, postID string) int
 	}
 
 	User struct {
@@ -672,8 +682,12 @@ type QueryResolver interface {
 	FeedPosts(ctx context.Context, visibility *post.Visibility) ([]*ent.Post, error)
 	Comments(ctx context.Context, hasDeleted *bool) ([]*ent.Comment, error)
 	CommentsByPostID(ctx context.Context, id string, hasDeleted *bool) ([]*ent.Comment, error)
-	CommentsTree(ctx context.Context, postID string, hasDeleted *bool) ([]*models.CommentTree, error)
+	CommentsByPostIDPage(ctx context.Context, id string, hasDeleted *bool, limit *int32, offset *int32) ([]*ent.Comment, error)
+	CommentsByPostConnection(ctx context.Context, postID string, first *int32, after *string, last *int32, before *string, hasDeleted *bool) (*models.CommentsConnection, error)
+	CommentsWindow(ctx context.Context, postID string, anchorID string, before *int32, after *int32, hasDeleted *bool) (*models.CommentsConnection, error)
+	CommentByID(ctx context.Context, id string) (*ent.Comment, error)
 	CommentsFeed(ctx context.Context, limit *int32) ([]*ent.Comment, error)
+	CommentsFeedConnection(ctx context.Context, first *int32, after *string, last *int32, before *string, hasDeleted *bool) (*models.CommentsConnection, error)
 	Role(ctx context.Context, id string) (*ent.Role, error)
 	Roles(ctx context.Context, id string) ([]*ent.Role, error)
 	HostRole(ctx context.Context, id string) (*ent.HostRole, error)
@@ -688,6 +702,7 @@ type QueryResolver interface {
 type SubscriptionResolver interface {
 	CommentAdded(ctx context.Context, postID string) (<-chan *ent.Comment, error)
 	CommentUpdated(ctx context.Context, postID string) (<-chan *ent.Comment, error)
+	CommentAddedGlobal(ctx context.Context) (<-chan *ent.Comment, error)
 }
 type UserResolver interface {
 	Following(ctx context.Context, obj *ent.User) ([]*models.UserFollow, error)
@@ -895,6 +910,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Comment.UpdatedAt(childComplexity), true
 
+	case "CommentEdge.cursor":
+		if e.complexity.CommentEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.CommentEdge.Cursor(childComplexity), true
+
+	case "CommentEdge.node":
+		if e.complexity.CommentEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.CommentEdge.Node(childComplexity), true
+
 	case "CommentLike.comment":
 		if e.complexity.CommentLike.Comment == nil {
 			break
@@ -944,19 +973,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CommentLike.UserID(childComplexity), true
 
-	case "CommentTree.children":
-		if e.complexity.CommentTree.Children == nil {
+	case "CommentsConnection.edges":
+		if e.complexity.CommentsConnection.Edges == nil {
 			break
 		}
 
-		return e.complexity.CommentTree.Children(childComplexity), true
+		return e.complexity.CommentsConnection.Edges(childComplexity), true
 
-	case "CommentTree.comment":
-		if e.complexity.CommentTree.Comment == nil {
+	case "CommentsConnection.pageInfo":
+		if e.complexity.CommentsConnection.PageInfo == nil {
 			break
 		}
 
-		return e.complexity.CommentTree.Comment(childComplexity), true
+		return e.complexity.CommentsConnection.PageInfo(childComplexity), true
 
 	case "Community.banner":
 		if e.complexity.Community.Banner == nil {
@@ -2715,6 +2744,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.BookmarkedPosts(childComplexity, args["visibility"].(*post.Visibility)), true
 
+	case "Query.commentById":
+		if e.complexity.Query.CommentByID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_commentById_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommentByID(childComplexity, args["id"].(string)), true
+
 	case "Query.comments":
 		if e.complexity.Query.Comments == nil {
 			break
@@ -2726,6 +2767,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Comments(childComplexity, args["hasDeleted"].(*bool)), true
+
+	case "Query.commentsByPostConnection":
+		if e.complexity.Query.CommentsByPostConnection == nil {
+			break
+		}
+
+		args, err := ec.field_Query_commentsByPostConnection_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommentsByPostConnection(childComplexity, args["postId"].(string), args["first"].(*int32), args["after"].(*string), args["last"].(*int32), args["before"].(*string), args["hasDeleted"].(*bool)), true
 
 	case "Query.commentsByPostId":
 		if e.complexity.Query.CommentsByPostID == nil {
@@ -2739,6 +2792,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.CommentsByPostID(childComplexity, args["id"].(string), args["hasDeleted"].(*bool)), true
 
+	case "Query.commentsByPostIdPage":
+		if e.complexity.Query.CommentsByPostIDPage == nil {
+			break
+		}
+
+		args, err := ec.field_Query_commentsByPostIdPage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommentsByPostIDPage(childComplexity, args["id"].(string), args["hasDeleted"].(*bool), args["limit"].(*int32), args["offset"].(*int32)), true
+
 	case "Query.commentsFeed":
 		if e.complexity.Query.CommentsFeed == nil {
 			break
@@ -2751,17 +2816,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.CommentsFeed(childComplexity, args["limit"].(*int32)), true
 
-	case "Query.commentsTree":
-		if e.complexity.Query.CommentsTree == nil {
+	case "Query.commentsFeedConnection":
+		if e.complexity.Query.CommentsFeedConnection == nil {
 			break
 		}
 
-		args, err := ec.field_Query_commentsTree_args(ctx, rawArgs)
+		args, err := ec.field_Query_commentsFeedConnection_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.CommentsTree(childComplexity, args["postId"].(string), args["hasDeleted"].(*bool)), true
+		return e.complexity.Query.CommentsFeedConnection(childComplexity, args["first"].(*int32), args["after"].(*string), args["last"].(*int32), args["before"].(*string), args["hasDeleted"].(*bool)), true
+
+	case "Query.commentsWindow":
+		if e.complexity.Query.CommentsWindow == nil {
+			break
+		}
+
+		args, err := ec.field_Query_commentsWindow_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommentsWindow(childComplexity, args["postId"].(string), args["anchorId"].(string), args["before"].(*int32), args["after"].(*int32), args["hasDeleted"].(*bool)), true
 
 	case "Query.communities":
 		if e.complexity.Query.Communities == nil {
@@ -3234,6 +3311,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Subscription.CommentAdded(childComplexity, args["postId"].(string)), true
+
+	case "Subscription.commentAddedGlobal":
+		if e.complexity.Subscription.CommentAddedGlobal == nil {
+			break
+		}
+
+		return e.complexity.Subscription.CommentAddedGlobal(childComplexity), true
 
 	case "Subscription.commentUpdated":
 		if e.complexity.Subscription.CommentUpdated == nil {
@@ -4241,6 +4325,79 @@ func (ec *executionContext) field_Query_bookmarkedPosts_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_commentById_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_commentsByPostConnection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["postId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "last", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["last"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["hasDeleted"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_commentsByPostIdPage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["hasDeleted"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "offset", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg3
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_commentsByPostId_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4257,6 +4414,37 @@ func (ec *executionContext) field_Query_commentsByPostId_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_commentsFeedConnection_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "last", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["last"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["hasDeleted"] = arg4
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_commentsFeed_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4268,7 +4456,7 @@ func (ec *executionContext) field_Query_commentsFeed_args(ctx context.Context, r
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_commentsTree_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_commentsWindow_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "postId", ec.unmarshalNID2string)
@@ -4276,11 +4464,26 @@ func (ec *executionContext) field_Query_commentsTree_args(ctx context.Context, r
 		return nil, err
 	}
 	args["postId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "anchorId", ec.unmarshalNID2string)
 	if err != nil {
 		return nil, err
 	}
-	args["hasDeleted"] = arg1
+	args["anchorId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "before", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["before"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "hasDeleted", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["hasDeleted"] = arg4
 	return args, nil
 }
 
@@ -6095,6 +6298,132 @@ func (ec *executionContext) fieldContext_Comment_likes(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _CommentEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *models.CommentEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommentEdge_cursor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cursor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommentEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommentEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CommentEdge_node(ctx context.Context, field graphql.CollectedField, obj *models.CommentEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommentEdge_node(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Node, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Comment)
+	fc.Result = res
+	return ec.marshalNComment2ᚖstormlinkᚋserverᚋentᚐComment(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CommentEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CommentEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Comment_authorID(ctx, field)
+			case "postID":
+				return ec.fieldContext_Comment_postID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Comment_communityID(ctx, field)
+			case "parentCommentID":
+				return ec.fieldContext_Comment_parentCommentID(ctx, field)
+			case "mediaID":
+				return ec.fieldContext_Comment_mediaID(ctx, field)
+			case "hasDeleted":
+				return ec.fieldContext_Comment_hasDeleted(ctx, field)
+			case "hasUpdated":
+				return ec.fieldContext_Comment_hasUpdated(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Comment_updatedAt(ctx, field)
+			case "author":
+				return ec.fieldContext_Comment_author(ctx, field)
+			case "post":
+				return ec.fieldContext_Comment_post(ctx, field)
+			case "community":
+				return ec.fieldContext_Comment_community(ctx, field)
+			case "media":
+				return ec.fieldContext_Comment_media(ctx, field)
+			case "parentComment":
+				return ec.fieldContext_Comment_parentComment(ctx, field)
+			case "childrenComment":
+				return ec.fieldContext_Comment_childrenComment(ctx, field)
+			case "likes":
+				return ec.fieldContext_Comment_likes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CommentLike_id(ctx context.Context, field graphql.CollectedField, obj *models.CommentLike) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommentLike_id(ctx, field)
 	if err != nil {
@@ -6505,8 +6834,8 @@ func (ec *executionContext) fieldContext_CommentLike_comment(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentTree_comment(ctx context.Context, field graphql.CollectedField, obj *models.CommentTree) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommentTree_comment(ctx, field)
+func (ec *executionContext) _CommentsConnection_edges(ctx context.Context, field graphql.CollectedField, obj *models.CommentsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommentsConnection_edges(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6519,7 +6848,7 @@ func (ec *executionContext) _CommentTree_comment(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Comment, nil
+		return obj.Edges, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6531,64 +6860,32 @@ func (ec *executionContext) _CommentTree_comment(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.Comment)
+	res := resTmp.([]*models.CommentEdge)
 	fc.Result = res
-	return ec.marshalNComment2ᚖstormlinkᚋserverᚋentᚐComment(ctx, field.Selections, res)
+	return ec.marshalNCommentEdge2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentEdgeᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommentTree_comment(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommentsConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommentTree",
+		Object:     "CommentsConnection",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Comment_id(ctx, field)
-			case "authorID":
-				return ec.fieldContext_Comment_authorID(ctx, field)
-			case "postID":
-				return ec.fieldContext_Comment_postID(ctx, field)
-			case "communityID":
-				return ec.fieldContext_Comment_communityID(ctx, field)
-			case "parentCommentID":
-				return ec.fieldContext_Comment_parentCommentID(ctx, field)
-			case "mediaID":
-				return ec.fieldContext_Comment_mediaID(ctx, field)
-			case "hasDeleted":
-				return ec.fieldContext_Comment_hasDeleted(ctx, field)
-			case "hasUpdated":
-				return ec.fieldContext_Comment_hasUpdated(ctx, field)
-			case "content":
-				return ec.fieldContext_Comment_content(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Comment_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Comment_updatedAt(ctx, field)
-			case "author":
-				return ec.fieldContext_Comment_author(ctx, field)
-			case "post":
-				return ec.fieldContext_Comment_post(ctx, field)
-			case "community":
-				return ec.fieldContext_Comment_community(ctx, field)
-			case "media":
-				return ec.fieldContext_Comment_media(ctx, field)
-			case "parentComment":
-				return ec.fieldContext_Comment_parentComment(ctx, field)
-			case "childrenComment":
-				return ec.fieldContext_Comment_childrenComment(ctx, field)
-			case "likes":
-				return ec.fieldContext_Comment_likes(ctx, field)
+			case "cursor":
+				return ec.fieldContext_CommentEdge_cursor(ctx, field)
+			case "node":
+				return ec.fieldContext_CommentEdge_node(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type CommentEdge", field.Name)
 		},
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _CommentTree_children(ctx context.Context, field graphql.CollectedField, obj *models.CommentTree) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommentTree_children(ctx, field)
+func (ec *executionContext) _CommentsConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *models.CommentsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CommentsConnection_pageInfo(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -6601,7 +6898,7 @@ func (ec *executionContext) _CommentTree_children(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Children, nil
+		return obj.PageInfo, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6613,25 +6910,29 @@ func (ec *executionContext) _CommentTree_children(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*models.CommentTree)
+	res := resTmp.(*models.PageInfo)
 	fc.Result = res
-	return ec.marshalNCommentTree2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentTreeᚄ(ctx, field.Selections, res)
+	return ec.marshalNPageInfo2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPageInfo(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_CommentTree_children(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CommentsConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CommentTree",
+		Object:     "CommentsConnection",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "comment":
-				return ec.fieldContext_CommentTree_comment(ctx, field)
-			case "children":
-				return ec.fieldContext_CommentTree_children(ctx, field)
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommentTree", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
 	}
 	return fc, nil
@@ -21416,8 +21717,8 @@ func (ec *executionContext) fieldContext_Query_commentsByPostId(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_commentsTree(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_commentsTree(ctx, field)
+func (ec *executionContext) _Query_commentsByPostIdPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_commentsByPostIdPage(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -21430,7 +21731,7 @@ func (ec *executionContext) _Query_commentsTree(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CommentsTree(rctx, fc.Args["postId"].(string), fc.Args["hasDeleted"].(*bool))
+		return ec.resolvers.Query().CommentsByPostIDPage(rctx, fc.Args["id"].(string), fc.Args["hasDeleted"].(*bool), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -21442,12 +21743,12 @@ func (ec *executionContext) _Query_commentsTree(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*models.CommentTree)
+	res := resTmp.([]*ent.Comment)
 	fc.Result = res
-	return ec.marshalNCommentTree2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentTreeᚄ(ctx, field.Selections, res)
+	return ec.marshalNComment2ᚕᚖstormlinkᚋserverᚋentᚐCommentᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_commentsTree(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_commentsByPostIdPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -21455,12 +21756,44 @@ func (ec *executionContext) fieldContext_Query_commentsTree(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "comment":
-				return ec.fieldContext_CommentTree_comment(ctx, field)
-			case "children":
-				return ec.fieldContext_CommentTree_children(ctx, field)
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Comment_authorID(ctx, field)
+			case "postID":
+				return ec.fieldContext_Comment_postID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Comment_communityID(ctx, field)
+			case "parentCommentID":
+				return ec.fieldContext_Comment_parentCommentID(ctx, field)
+			case "mediaID":
+				return ec.fieldContext_Comment_mediaID(ctx, field)
+			case "hasDeleted":
+				return ec.fieldContext_Comment_hasDeleted(ctx, field)
+			case "hasUpdated":
+				return ec.fieldContext_Comment_hasUpdated(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Comment_updatedAt(ctx, field)
+			case "author":
+				return ec.fieldContext_Comment_author(ctx, field)
+			case "post":
+				return ec.fieldContext_Comment_post(ctx, field)
+			case "community":
+				return ec.fieldContext_Comment_community(ctx, field)
+			case "media":
+				return ec.fieldContext_Comment_media(ctx, field)
+			case "parentComment":
+				return ec.fieldContext_Comment_parentComment(ctx, field)
+			case "childrenComment":
+				return ec.fieldContext_Comment_childrenComment(ctx, field)
+			case "likes":
+				return ec.fieldContext_Comment_likes(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type CommentTree", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
 		},
 	}
 	defer func() {
@@ -21470,7 +21803,219 @@ func (ec *executionContext) fieldContext_Query_commentsTree(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_commentsTree_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_commentsByPostIdPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_commentsByPostConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_commentsByPostConnection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommentsByPostConnection(rctx, fc.Args["postId"].(string), fc.Args["first"].(*int32), fc.Args["after"].(*string), fc.Args["last"].(*int32), fc.Args["before"].(*string), fc.Args["hasDeleted"].(*bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.CommentsConnection)
+	fc.Result = res
+	return ec.marshalNCommentsConnection2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentsConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_commentsByPostConnection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_CommentsConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CommentsConnection_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommentsConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_commentsByPostConnection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_commentsWindow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_commentsWindow(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommentsWindow(rctx, fc.Args["postId"].(string), fc.Args["anchorId"].(string), fc.Args["before"].(*int32), fc.Args["after"].(*int32), fc.Args["hasDeleted"].(*bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.CommentsConnection)
+	fc.Result = res
+	return ec.marshalNCommentsConnection2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentsConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_commentsWindow(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_CommentsConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CommentsConnection_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommentsConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_commentsWindow_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_commentById(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_commentById(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommentByID(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Comment)
+	fc.Result = res
+	return ec.marshalOComment2ᚖstormlinkᚋserverᚋentᚐComment(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_commentById(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Comment_authorID(ctx, field)
+			case "postID":
+				return ec.fieldContext_Comment_postID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Comment_communityID(ctx, field)
+			case "parentCommentID":
+				return ec.fieldContext_Comment_parentCommentID(ctx, field)
+			case "mediaID":
+				return ec.fieldContext_Comment_mediaID(ctx, field)
+			case "hasDeleted":
+				return ec.fieldContext_Comment_hasDeleted(ctx, field)
+			case "hasUpdated":
+				return ec.fieldContext_Comment_hasUpdated(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Comment_updatedAt(ctx, field)
+			case "author":
+				return ec.fieldContext_Comment_author(ctx, field)
+			case "post":
+				return ec.fieldContext_Comment_post(ctx, field)
+			case "community":
+				return ec.fieldContext_Comment_community(ctx, field)
+			case "media":
+				return ec.fieldContext_Comment_media(ctx, field)
+			case "parentComment":
+				return ec.fieldContext_Comment_parentComment(ctx, field)
+			case "childrenComment":
+				return ec.fieldContext_Comment_childrenComment(ctx, field)
+			case "likes":
+				return ec.fieldContext_Comment_likes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_commentById_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -21564,6 +22109,67 @@ func (ec *executionContext) fieldContext_Query_commentsFeed(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_commentsFeed_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_commentsFeedConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_commentsFeedConnection(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommentsFeedConnection(rctx, fc.Args["first"].(*int32), fc.Args["after"].(*string), fc.Args["last"].(*int32), fc.Args["before"].(*string), fc.Args["hasDeleted"].(*bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.CommentsConnection)
+	fc.Result = res
+	return ec.marshalNCommentsConnection2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentsConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_commentsFeedConnection(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_CommentsConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CommentsConnection_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommentsConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_commentsFeedConnection_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -23607,6 +24213,102 @@ func (ec *executionContext) fieldContext_Subscription_commentUpdated(ctx context
 	if fc.Args, err = ec.field_Subscription_commentUpdated_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_commentAddedGlobal(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_commentAddedGlobal(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().CommentAddedGlobal(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *ent.Comment):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNComment2ᚖstormlinkᚋserverᚋentᚐComment(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_commentAddedGlobal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Comment_id(ctx, field)
+			case "authorID":
+				return ec.fieldContext_Comment_authorID(ctx, field)
+			case "postID":
+				return ec.fieldContext_Comment_postID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Comment_communityID(ctx, field)
+			case "parentCommentID":
+				return ec.fieldContext_Comment_parentCommentID(ctx, field)
+			case "mediaID":
+				return ec.fieldContext_Comment_mediaID(ctx, field)
+			case "hasDeleted":
+				return ec.fieldContext_Comment_hasDeleted(ctx, field)
+			case "hasUpdated":
+				return ec.fieldContext_Comment_hasUpdated(ctx, field)
+			case "content":
+				return ec.fieldContext_Comment_content(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Comment_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Comment_updatedAt(ctx, field)
+			case "author":
+				return ec.fieldContext_Comment_author(ctx, field)
+			case "post":
+				return ec.fieldContext_Comment_post(ctx, field)
+			case "community":
+				return ec.fieldContext_Comment_community(ctx, field)
+			case "media":
+				return ec.fieldContext_Comment_media(ctx, field)
+			case "parentComment":
+				return ec.fieldContext_Comment_parentComment(ctx, field)
+			case "childrenComment":
+				return ec.fieldContext_Comment_childrenComment(ctx, field)
+			case "likes":
+				return ec.fieldContext_Comment_likes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Comment", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -43371,6 +44073,50 @@ func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var commentEdgeImplementors = []string{"CommentEdge"}
+
+func (ec *executionContext) _CommentEdge(ctx context.Context, sel ast.SelectionSet, obj *models.CommentEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, commentEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CommentEdge")
+		case "cursor":
+			out.Values[i] = ec._CommentEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "node":
+			out.Values[i] = ec._CommentEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var commentLikeImplementors = []string{"CommentLike", "Node"}
 
 func (ec *executionContext) _CommentLike(ctx context.Context, sel ast.SelectionSet, obj *models.CommentLike) graphql.Marshaler {
@@ -43440,24 +44186,24 @@ func (ec *executionContext) _CommentLike(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var commentTreeImplementors = []string{"CommentTree"}
+var commentsConnectionImplementors = []string{"CommentsConnection"}
 
-func (ec *executionContext) _CommentTree(ctx context.Context, sel ast.SelectionSet, obj *models.CommentTree) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, commentTreeImplementors)
+func (ec *executionContext) _CommentsConnection(ctx context.Context, sel ast.SelectionSet, obj *models.CommentsConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, commentsConnectionImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("CommentTree")
-		case "comment":
-			out.Values[i] = ec._CommentTree_comment(ctx, field, obj)
+			out.Values[i] = graphql.MarshalString("CommentsConnection")
+		case "edges":
+			out.Values[i] = ec._CommentsConnection_edges(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "children":
-			out.Values[i] = ec._CommentTree_children(ctx, field, obj)
+		case "pageInfo":
+			out.Values[i] = ec._CommentsConnection_pageInfo(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -47256,7 +48002,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "commentsTree":
+		case "commentsByPostIdPage":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -47265,10 +48011,73 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_commentsTree(ctx, field)
+				res = ec._Query_commentsByPostIdPage(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "commentsByPostConnection":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_commentsByPostConnection(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "commentsWindow":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_commentsWindow(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "commentById":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_commentById(ctx, field)
 				return res
 			}
 
@@ -47288,6 +48097,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_commentsFeed(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "commentsFeedConnection":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_commentsFeedConnection(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -47867,6 +48698,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_commentAdded(ctx, fields[0])
 	case "commentUpdated":
 		return ec._Subscription_commentUpdated(ctx, fields[0])
+	case "commentAddedGlobal":
+		return ec._Subscription_commentAddedGlobal(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -49530,22 +50363,7 @@ func (ec *executionContext) marshalNComment2ᚖstormlinkᚋserverᚋentᚐCommen
 	return ec._Comment(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLike(ctx context.Context, sel ast.SelectionSet, v *models.CommentLike) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._CommentLike(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx context.Context, v any) (*models.CommentLikeWhereInput, error) {
-	res, err := ec.unmarshalInputCommentLikeWhereInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNCommentTree2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentTreeᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommentTree) graphql.Marshaler {
+func (ec *executionContext) marshalNCommentEdge2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.CommentEdge) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -49569,7 +50387,7 @@ func (ec *executionContext) marshalNCommentTree2ᚕᚖstormlinkᚋserverᚋgraph
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCommentTree2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentTree(ctx, sel, v[i])
+			ret[i] = ec.marshalNCommentEdge2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentEdge(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -49589,19 +50407,48 @@ func (ec *executionContext) marshalNCommentTree2ᚕᚖstormlinkᚋserverᚋgraph
 	return ret
 }
 
-func (ec *executionContext) marshalNCommentTree2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentTree(ctx context.Context, sel ast.SelectionSet, v *models.CommentTree) graphql.Marshaler {
+func (ec *executionContext) marshalNCommentEdge2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentEdge(ctx context.Context, sel ast.SelectionSet, v *models.CommentEdge) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._CommentTree(ctx, sel, v)
+	return ec._CommentEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCommentLike2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLike(ctx context.Context, sel ast.SelectionSet, v *models.CommentLike) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CommentLike(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNCommentLikeWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentLikeWhereInput(ctx context.Context, v any) (*models.CommentLikeWhereInput, error) {
+	res, err := ec.unmarshalInputCommentLikeWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCommentWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentWhereInput(ctx context.Context, v any) (*models.CommentWhereInput, error) {
 	res, err := ec.unmarshalInputCommentWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCommentsConnection2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentsConnection(ctx context.Context, sel ast.SelectionSet, v models.CommentsConnection) graphql.Marshaler {
+	return ec._CommentsConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCommentsConnection2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommentsConnection(ctx context.Context, sel ast.SelectionSet, v *models.CommentsConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CommentsConnection(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCommunity2stormlinkᚋserverᚋentᚐCommunity(ctx context.Context, sel ast.SelectionSet, v ent.Community) graphql.Marshaler {
@@ -50254,6 +51101,16 @@ func (ec *executionContext) marshalNNode2ᚕstormlinkᚋserverᚋentᚐNoder(ctx
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) marshalNPageInfo2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *models.PageInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PageInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPost2stormlinkᚋserverᚋentᚐPost(ctx context.Context, sel ast.SelectionSet, v ent.Post) graphql.Marshaler {

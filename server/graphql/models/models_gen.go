@@ -80,6 +80,11 @@ type BookmarkWhereInput struct {
 	HasPostWith []*PostWhereInput `json:"hasPostWith,omitempty"`
 }
 
+type CommentEdge struct {
+	Cursor string       `json:"cursor"`
+	Node   *ent.Comment `json:"node"`
+}
+
 type CommentLike struct {
 	ID        string       `json:"id"`
 	UserID    string       `json:"userID"`
@@ -141,11 +146,6 @@ type CommentLikeWhereInput struct {
 	// comment edge predicates
 	HasComment     *bool                `json:"hasComment,omitempty"`
 	HasCommentWith []*CommentWhereInput `json:"hasCommentWith,omitempty"`
-}
-
-type CommentTree struct {
-	Comment  *ent.Comment   `json:"comment"`
-	Children []*CommentTree `json:"children"`
 }
 
 // CommentWhereInput is used for filtering Comment objects.
@@ -251,6 +251,11 @@ type CommentWhereInput struct {
 	// likes edge predicates
 	HasLikes     *bool                    `json:"hasLikes,omitempty"`
 	HasLikesWith []*CommentLikeWhereInput `json:"hasLikesWith,omitempty"`
+}
+
+type CommentsConnection struct {
+	Edges    []*CommentEdge `json:"edges"`
+	PageInfo *PageInfo      `json:"pageInfo"`
 }
 
 type CommunityFollow struct {

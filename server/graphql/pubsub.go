@@ -10,6 +10,8 @@ import (
 var (
   commentAddedSubs   = map[int]map[string]chan *ent.Comment{}
   commentUpdatedSubs = map[int]map[string]chan *ent.Comment{}
+  // глобальный канал для общей ленты
+  commentAddedGlobalSubs = map[string]chan *ent.Comment{}
   subsMu             = sync.RWMutex{}
   nextSubID          = 0
 )
@@ -42,6 +44,30 @@ func publishCommentAdded(postID int, comment *ent.Comment) {
     default:
     }
   }
+  // также оповещаем глобальных подписчиков
+  for _, ch := range commentAddedGlobalSubs {
+    select {
+    case ch <- comment:
+    default:
+    }
+  }
+}
+
+// Глобальная подписка
+func subscribeCommentAddedGlobal() (string, <-chan *ent.Comment) {
+  subsMu.Lock()
+  defer subsMu.Unlock()
+  id := fmt.Sprintf("global-%d", nextSubID)
+  nextSubID++
+  ch := make(chan *ent.Comment, 1)
+  commentAddedGlobalSubs[id] = ch
+  return id, ch
+}
+
+func unsubscribeCommentAddedGlobal(subID string) {
+  subsMu.Lock()
+  defer subsMu.Unlock()
+  delete(commentAddedGlobalSubs, subID)
 }
 
 // Аналогично для commentUpdated:

@@ -31,6 +31,7 @@ import (
 	mediapb "stormlink/server/grpc/media/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/middleware"
+	commentuc "stormlink/server/usecase/comment"
 	communityuc "stormlink/server/usecase/community"
 	postuc "stormlink/server/usecase/post"
 	useruc "stormlink/server/usecase/user"
@@ -78,6 +79,7 @@ func StartGraphQLServer(client *ent.Client) {
     uUC := useruc.NewUserUsecase(client)
     cUC := communityuc.NewCommunityUsecase(client)
     pUC := postuc.NewPostUsecase(client)
+    commentUC := commentuc.NewCommentUsecase(client)
 
     // gRPC-клиенты к микросервисам (адреса из ENV)
     get := func(key, def string) string { v := os.Getenv(key); if v == "" { return def }; return v }
@@ -113,7 +115,8 @@ func StartGraphQLServer(client *ent.Client) {
         Client:      client,
         UserUC:      uUC,
         CommunityUC: cUC,
-        PostUC: pUC,
+        PostUC:      pUC,
+        CommentUC:   commentUC,
         AuthClient:  authClient,
         UserClient:  userClient,
         MailClient:  mailClient,

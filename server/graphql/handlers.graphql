@@ -41,10 +41,14 @@ type CommunityPermissions {
 	hostOwner: Boolean!
 }
 
-# Древовидная структура комментариев
-type CommentTree {
-	comment: Comment!
-	children: [CommentTree!]!
+type CommentEdge {
+	cursor: String!
+	node: Comment!
+}
+
+type CommentsConnection {
+	edges: [CommentEdge!]!
+	pageInfo: PageInfo!
 }
 
 # Запросы авторизации и аутентификации
@@ -189,11 +193,47 @@ extend type Query {
 	# Плоский список комментариев к посту (устаревший)
 	commentsByPostId(id: ID!, hasDeleted: Boolean = false): [Comment!]!
 
-	# Древовидная структура комментариев к посту
-	commentsTree(postId: ID!, hasDeleted: Boolean = false): [CommentTree!]!
+	# Плоский список комментариев к посту постранично
+	commentsByPostIdPage(
+		id: ID!
+		hasDeleted: Boolean = false
+		limit: Int = 40
+		offset: Int = 0
+	): [Comment!]!
+
+	# Двунаправленная пагинация по комментариям поста через курсоры
+	commentsByPostConnection(
+		postId: ID!
+		first: Int
+		after: String
+		last: Int
+		before: String
+		hasDeleted: Boolean = false
+	): CommentsConnection!
+
+	# Окно комментариев вокруг якоря (включая сам якорь)
+	commentsWindow(
+		postId: ID!
+		anchorId: ID!
+		before: Int = 20
+		after: Int = 20
+		hasDeleted: Boolean = false
+	): CommentsConnection!
+
+	# Получить комментарий по ID (удобно для быстрого доступа к якорю)
+	commentById(id: ID!): Comment
 
 	# Лента всех комментариев в реальном времени (плоский список)
 	commentsFeed(limit: Int = 50): [Comment!]!
+
+	# Курсорная лента всех комментариев (двунаправленная)
+	commentsFeedConnection(
+		first: Int
+		after: String
+		last: Int
+		before: String
+		hasDeleted: Boolean = false
+	): CommentsConnection!
 
 	role(id: ID!): Role
 	roles(id: ID!): [Role!]!
@@ -250,6 +290,9 @@ extend type Mutation {
 extend type Subscription {
 	commentAdded(postId: ID!): Comment!
 	commentUpdated(postId: ID!): Comment!
+
+	# Глобальная подписка для общей ленты комментариев (только к опубликованным постам)
+	commentAddedGlobal: Comment!
 }
 
 # Входные типы обновления настроек платформы
