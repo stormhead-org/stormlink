@@ -21,6 +21,7 @@
 		"amqp",
 		"authpb",
 		"autobind",
+		"commentlike",
 		"communityfollow",
 		"communityuc",
 		"communityuserban",

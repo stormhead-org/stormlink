@@ -16,6 +16,7 @@ import (
 	"os"
 	"stormlink/server/ent"
 	"stormlink/server/ent/bookmark"
+	"stormlink/server/ent/commentlike"
 	"stormlink/server/ent/community"
 	"stormlink/server/ent/communityfollow"
 	"stormlink/server/ent/communityuserban"
@@ -48,6 +49,16 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+// CommentStatus is the resolver for the commentStatus field.
+func (r *commentResolver) CommentStatus(ctx context.Context, obj *ent.Comment) (*models.CommentStatus, error) {
+	// Берём текущего пользователя из контекста, для корректного isLiked
+	uid := 0
+	if id, err := auth.UserIDFromContext(ctx); err == nil {
+		uid = id
+	}
+	return r.CommentUC.GetCommentStatus(ctx, uid, obj.ID)
+}
 
 // ViewerPermissions для запроса сообществ.
 func (r *communityResolver) ViewerPermissions(ctx context.Context, obj *ent.Community) (*model.CommunityPermissions, error) {
@@ -300,11 +311,11 @@ func (r *mutationResolver) UpdateComment(ctx context.Context, input models.Updat
 	update := r.Client.Comment.
 		UpdateOneID(cid)
 
-	// 3) Если клиент передал hasDeleted = true
+	// 3) Если клиент передал hasDeleted = true (удаление комментария)
 	if input.HasDeleted != nil && *input.HasDeleted {
 		update = update.
 			SetHasDeleted(true).
-			SetContent("Комментарий удален...").
+			SetContent("Комментарий был удален").
 			// очищаем любое ранее прикреплённое медиа
 			ClearMediaID()
 	} else {
@@ -329,6 +340,10 @@ func (r *mutationResolver) UpdateComment(ctx context.Context, input models.Updat
 	if err != nil {
 		return nil, fmt.Errorf("failed to update comment %d: %w", cid, err)
 	}
+
+	// 7) Публикуем обновление для подписчиков
+	publishCommentUpdated(comment.PostID, comment)
+
 	return comment, nil
 }
 
@@ -688,6 +703,45 @@ func (r *mutationResolver) UnlikePost(ctx context.Context, input models.UnlikePo
 		return nil, fmt.Errorf("like delete: %w", err)
 	}
 	return r.PostUC.GetPostStatus(ctx, userID, pid)
+}
+
+// LikeComment is the resolver for the likeComment field.
+func (r *mutationResolver) LikeComment(ctx context.Context, input models.LikeCommentInput) (*models.CommentStatus, error) {
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	cid, err := strconv.Atoi(input.CommentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid commentID: %w", err)
+	}
+	// idempotent: если уже лайкнул — не дублируем
+	exists, err := r.Client.CommentLike.Query().Where(commentlike.UserIDEQ(userID), commentlike.CommentIDEQ(cid)).Exist(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("like exists: %w", err)
+	}
+	if !exists {
+		if _, err := r.Client.CommentLike.Create().SetUserID(userID).SetCommentID(cid).Save(ctx); err != nil {
+			return nil, fmt.Errorf("like create: %w", err)
+		}
+	}
+	return r.CommentUC.GetCommentStatus(ctx, userID, cid)
+}
+
+// UnlikeComment is the resolver for the unlikeComment field.
+func (r *mutationResolver) UnlikeComment(ctx context.Context, input models.UnlikeCommentInput) (*models.CommentStatus, error) {
+	userID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthorized")
+	}
+	cid, err := strconv.Atoi(input.CommentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid commentID: %w", err)
+	}
+	if _, err := r.Client.CommentLike.Delete().Where(commentlike.UserIDEQ(userID), commentlike.CommentIDEQ(cid)).Exec(ctx); err != nil {
+		return nil, fmt.Errorf("like delete: %w", err)
+	}
+	return r.CommentUC.GetCommentStatus(ctx, userID, cid)
 }
 
 // AddBookmarkPost is the resolver for the addBookmarkPost field.
@@ -1299,9 +1353,21 @@ func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) 
 	return ch, nil
 }
 
-// CommentUpdated is the resolver for the commentUpdated field.
+// CommentUpdated подписка на обновления комментариев.
 func (r *subscriptionResolver) CommentUpdated(ctx context.Context, postID string) (<-chan *ent.Comment, error) {
-	panic(fmt.Errorf("not implemented: CommentUpdated - commentUpdated"))
+	pid, err := strconv.Atoi(postID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid postID: %w", err)
+	}
+	subID, ch := subscribeCommentUpdated(pid)
+
+	// отписка при закрытии клиента
+	go func() {
+		<-ctx.Done()
+		unsubscribeCommentUpdated(pid, subID)
+	}()
+
+	return ch, nil
 }
 
 // CommentAddedGlobal — глобальная подписка для общей ленты (только опубликованные посты)
@@ -1311,6 +1377,17 @@ func (r *subscriptionResolver) CommentAddedGlobal(ctx context.Context) (<-chan *
 	go func() {
 		<-ctx.Done()
 		unsubscribeCommentAddedGlobal(subID)
+	}()
+	return ch, nil
+}
+
+// CommentUpdatedGlobal — глобальная подписка на обновления комментариев для общей ленты
+func (r *subscriptionResolver) CommentUpdatedGlobal(ctx context.Context) (<-chan *ent.Comment, error) {
+	subID, ch := subscribeCommentUpdatedGlobal()
+	// отписка при закрытии клиента
+	go func() {
+		<-ctx.Done()
+		unsubscribeCommentUpdatedGlobal(subID)
 	}()
 	return ch, nil
 }

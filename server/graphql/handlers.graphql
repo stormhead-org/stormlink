@@ -29,6 +29,13 @@ type PostStatus {
 	authorHostOwner: Boolean!
 }
 
+type CommentStatus {
+	likesCount: String!
+	isLiked: Boolean!
+	authorCommunityOwner: Boolean!
+	authorHostOwner: Boolean!
+}
+
 # Тип прав пользователей
 type CommunityPermissions {
 	communityRolesManagement: Boolean!
@@ -131,9 +138,9 @@ type UserResponse {
 }
 #------------------------
 
-# Расширение модели Post
-extend type Post {
-	postStatus: PostStatus!
+# Расширение модели User
+extend type User {
+	userStatus: UserStatus!
 }
 
 # Расширение модели Community
@@ -142,9 +149,14 @@ extend type Community {
 	communityStatus: CommunityStatus!
 }
 
-# Расширение модели User
-extend type User {
-	userStatus: UserStatus!
+# Расширение модели Post
+extend type Post {
+	postStatus: PostStatus!
+}
+
+# Расширение модели Comment
+extend type Comment {
+	commentStatus: CommentStatus!
 }
 
 extend type Query {
@@ -280,6 +292,9 @@ extend type Mutation {
 	likePost(input: LikePostInput!): PostStatus!
 	unlikePost(input: UnlikePostInput!): PostStatus!
 
+	likeComment(input: LikeCommentInput!): CommentStatus!
+	unlikeComment(input: UnlikeCommentInput!): CommentStatus!
+
 	addBookmarkPost(input: BookmarkPostInput!): PostStatus!
 	deleteBookmarkPost(input: DeleteBookmarkPostInput!): PostStatus!
 
@@ -293,6 +308,8 @@ extend type Subscription {
 
 	# Глобальная подписка для общей ленты комментариев (только к опубликованным постам)
 	commentAddedGlobal: Comment!
+	# Глобальная подписка на обновления комментариев для общей ленты
+	commentUpdatedGlobal: Comment!
 }
 
 # Входные типы обновления настроек платформы
@@ -345,6 +362,16 @@ input BookmarkPostInput {
 # Входные типы снятия закладки с поста
 input DeleteBookmarkPostInput {
 	postID: ID!
+}
+
+# Входные типы лайка комментария
+input LikeCommentInput {
+	commentID: ID!
+}
+
+# Входные типы снятия лайка с комментария
+input UnlikeCommentInput {
+	commentID: ID!
 }
 
 # Входные типы обновления поста

@@ -14,11 +14,11 @@ import (
 )
 
 type Resolver struct {
-	Client *ent.Client
+		Client *ent.Client
     UserUC      user.UserUsecase
     CommunityUC community.CommunityUsecase
-	PostUC      post.PostUsecase
-	CommentUC   comment.CommentUsecase
+		PostUC      post.PostUsecase
+		CommentUC   comment.CommentUsecase
     AuthClient  authpb.AuthServiceClient
     UserClient  userpb.UserServiceClient
     MailClient  mailpb.MailServiceClient

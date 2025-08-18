@@ -28,6 +28,8 @@ type CommentUsecase interface {
 	CommentsWindow(ctx context.Context, postID int, anchorID int, beforeN int, afterN int, hasDeleted *bool) (*models.CommentsConnection, error)
 	// Утилита для получения одного комментария
 	CommentByID(ctx context.Context, id int) (*ent.Comment, error)
+	// Получение статуса комментария для текущего пользователя
+	GetCommentStatus(ctx context.Context, userID int, commentID int) (*models.CommentStatus, error)
 }
 
 type commentUsecase struct {
