@@ -39,6 +39,7 @@ import (
 	sharedmapper "stormlink/shared/mapper"
 	redisx "stormlink/shared/redis"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -806,6 +807,604 @@ func (r *mutationResolver) IncrementPostViews(ctx context.Context, postID string
 	return p, nil
 }
 
+// Community is the resolver for the community field.
+func (r *mutationResolver) Community(ctx context.Context, input models.UpdateCommunityInput) (*ent.Community, error) {
+	// Авторизация: владелец сообщества или менеджер ролей сообщества
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+
+	cid, err := strconv.Atoi(input.ID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid community ID %q: %w", input.ID, err)
+	}
+
+	cm, err := r.Client.Community.Get(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{cid})
+		if err != nil {
+			return nil, fmt.Errorf("permissions: %w", err)
+		}
+		perms := permsMap[cid]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden")
+		}
+	}
+
+	upd := r.Client.Community.UpdateOneID(cid)
+	if input.Title != nil {
+		upd = upd.SetTitle(*input.Title)
+	}
+	if input.Description != nil {
+		upd = upd.SetDescription(*input.Description)
+	}
+	if input.LogoID != nil {
+		lid, err := strconv.Atoi(*input.LogoID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid logoID: %w", err)
+		}
+		upd = upd.SetLogoID(lid)
+	}
+	if input.BannerID != nil {
+		bid, err := strconv.Atoi(*input.BannerID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid bannerID: %w", err)
+		}
+		upd = upd.SetBannerID(bid)
+	}
+	if input.Slug != nil {
+		if cm.OwnerID != currentUserID {
+			return nil, fmt.Errorf("forbidden: only owner can change slug")
+		}
+		newSlug := slug.Make(*input.Slug)
+		if newSlug == "" {
+			return nil, fmt.Errorf("bad_request: empty slug")
+		}
+		exists, err := r.Client.Community.Query().Where(community.SlugEQ(newSlug), community.IDNEQ(cid)).Exist(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, fmt.Errorf("bad_request: slug already taken")
+		}
+		upd = upd.SetSlug(newSlug)
+	}
+	return upd.Save(ctx)
+}
+
+// UpdateUser is the resolver for the updateUser field.
+func (r *mutationResolver) UpdateUser(ctx context.Context, input models.UpdateUserInput) (*models.UserResponse, error) {
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	uid, err := strconv.Atoi(input.ID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID %q: %w", input.ID, err)
+	}
+	if uid != currentUserID {
+		return nil, fmt.Errorf("forbidden")
+	}
+
+	upd := r.Client.User.UpdateOneID(uid)
+	if input.Name != nil {
+		upd = upd.SetName(*input.Name)
+	}
+	if input.Description != nil {
+		upd = upd.SetDescription(*input.Description)
+	}
+	if input.AvatarID != nil {
+		aid, err := strconv.Atoi(*input.AvatarID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid avatarID: %w", err)
+		}
+		upd = upd.SetAvatarID(aid)
+	}
+	if input.Slug != nil {
+		newSlug := slug.Make(*input.Slug)
+		if newSlug == "" {
+			return nil, fmt.Errorf("bad_request: empty slug")
+		}
+		exists, err := r.Client.User.Query().Where(user.SlugEQ(newSlug), user.IDNEQ(uid)).Exist(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, fmt.Errorf("bad_request: slug already taken")
+		}
+		upd = upd.SetSlug(newSlug)
+	}
+	if _, err := upd.Save(ctx); err != nil {
+		return nil, err
+	}
+
+	// Upsert произвольных info
+	if input.Info != nil {
+		for _, kv := range input.Info {
+			if kv == nil {
+				continue
+			}
+			ex, err := r.Client.ProfileTableInfoItem.Query().
+				Where(
+					profiletableinfoitem.UserIDEQ(uid),
+					profiletableinfoitem.KeyEQ(kv.Key),
+					profiletableinfoitem.TypeEQ(profiletableinfoitem.TypeUser),
+				).Only(ctx)
+			if ent.IsNotFound(err) {
+				if _, err := r.Client.ProfileTableInfoItem.Create().SetUserID(uid).SetType(profiletableinfoitem.TypeUser).SetKey(kv.Key).SetValue(kv.Value).Save(ctx); err != nil {
+					return nil, err
+				}
+			} else if err == nil {
+				if _, err := r.Client.ProfileTableInfoItem.UpdateOneID(ex.ID).SetValue(kv.Value).Save(ctx); err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	if authHeader, ok := ctx.Value("authorization").(string); ok && authHeader != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authHeader)
+	}
+	resp, err := r.AuthClient.GetMe(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	mapped, err := sharedmapper.ProtoToGraphQLUser(resp.User)
+	if err != nil {
+		return nil, err
+	}
+	return mapped, nil
+}
+
+// UpdateHostSocialNavigation is the resolver for the updateHostSocialNavigation field.
+func (r *mutationResolver) UpdateHostSocialNavigation(ctx context.Context, input models.UpdateHostSocialNavigationInput) (*ent.HostSocialNavigation, error) {
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil {
+		return nil, err
+	}
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		return nil, fmt.Errorf("forbidden")
+	}
+
+	upd := r.Client.HostSocialNavigation.UpdateOneID(1)
+	if input.Github != nil {
+		upd = upd.SetGithub(*input.Github)
+	}
+	if input.Site != nil {
+		upd = upd.SetSite(*input.Site)
+	}
+	if input.Telegram != nil {
+		upd = upd.SetTelegram(*input.Telegram)
+	}
+	if input.Instagram != nil {
+		upd = upd.SetInstagram(*input.Instagram)
+	}
+	if input.Twitter != nil {
+		upd = upd.SetTwitter(*input.Twitter)
+	}
+	if input.Mastodon != nil {
+		upd = upd.SetMastodon(*input.Mastodon)
+	}
+	return upd.Save(ctx)
+}
+
+// CreateHostRole is the resolver for the createHostRole field.
+func (r *mutationResolver) CreateHostRole(ctx context.Context, input models.CreateHostRoleInput) (*ent.HostRole, error) {
+	// Проверяем права: только владелец платформы
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID { 
+		return nil, fmt.Errorf("forbidden: only host owner can create roles") 
+	}
+
+	return r.HostRoleUC.CreateHostRole(ctx, &input)
+}
+
+// UpdateHostRole is the resolver for the updateHostRole field.
+func (r *mutationResolver) UpdateHostRole(ctx context.Context, input models.UpdateHostRoleInput) (*ent.HostRole, error) {
+	// Проверяем права: только владелец платформы
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID { 
+		return nil, fmt.Errorf("forbidden: only host owner can update roles") 
+	}
+
+	return r.HostRoleUC.UpdateHostRole(ctx, &input)
+}
+
+// DeleteHostRole is the resolver for the deleteHostRole field.
+func (r *mutationResolver) DeleteHostRole(ctx context.Context, id string) (bool, error) {
+	// Проверяем права: только владелец платформы
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return false, err }
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID { 
+		return false, fmt.Errorf("forbidden: only host owner can delete roles") 
+	}
+
+	roleID, err := strconv.Atoi(id)
+	if err != nil { return false, fmt.Errorf("invalid role ID: %w", err) }
+
+	err = r.HostRoleUC.DeleteHostRole(ctx, roleID)
+	if err != nil { return false, err }
+	return true, nil
+}
+
+// CreateCommunityRole is the resolver for the createCommunityRole field.
+func (r *mutationResolver) CreateCommunityRole(ctx context.Context, input models.CreateCommunityRoleInput) (*ent.Role, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	communityID, err := strconv.Atoi(input.CommunityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, communityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{communityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[communityID]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden: only owner or role manager can create roles")
+		}
+	}
+
+	return r.CommunityRoleUC.CreateCommunityRole(ctx, &input)
+}
+
+// UpdateCommunityRole is the resolver for the updateCommunityRole field.
+func (r *mutationResolver) UpdateCommunityRole(ctx context.Context, input models.UpdateCommunityRoleInput) (*ent.Role, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	roleID, err := strconv.Atoi(input.ID)
+	if err != nil { return nil, fmt.Errorf("invalid role ID: %w", err) }
+
+	// Получаем роль для проверки сообщества
+	role, err := r.Client.Role.Get(ctx, roleID)
+	if err != nil { return nil, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, role.CommunityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{role.CommunityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[role.CommunityID]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden: only owner or role manager can update roles")
+		}
+	}
+
+	return r.CommunityRoleUC.UpdateCommunityRole(ctx, &input)
+}
+
+// DeleteCommunityRole is the resolver for the deleteCommunityRole field.
+func (r *mutationResolver) DeleteCommunityRole(ctx context.Context, id string) (bool, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+
+	roleID, err := strconv.Atoi(id)
+	if err != nil { return false, fmt.Errorf("invalid role ID: %w", err) }
+
+	// Получаем роль для проверки сообщества
+	role, err := r.Client.Role.Get(ctx, roleID)
+	if err != nil { return false, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, role.CommunityID)
+	if err != nil { return false, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{role.CommunityID})
+		if err != nil { return false, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[role.CommunityID]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return false, fmt.Errorf("forbidden: only owner or role manager can delete roles")
+		}
+	}
+
+	err = r.CommunityRoleUC.DeleteCommunityRole(ctx, roleID)
+	if err != nil { return false, err }
+	return true, nil
+}
+
+// BanUserFromHost is the resolver for the banUserFromHost field.
+func (r *mutationResolver) BanUserFromHost(ctx context.Context, input models.BanUserInput) (*ent.HostUserBan, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostUserBan
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return nil, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostUserBan {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return nil, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	userID, err := strconv.Atoi(input.UserID)
+	if err != nil { return nil, fmt.Errorf("invalid userID: %w", err) }
+
+	return r.BanUC.BanUserFromHost(ctx, userID, 1) // hostID всегда 1
+}
+
+// UnbanUserFromHost is the resolver for the unbanUserFromHost field.
+func (r *mutationResolver) UnbanUserFromHost(ctx context.Context, banID string) (bool, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostUserBan
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return false, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return false, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostUserBan {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return false, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	id, err := strconv.Atoi(banID)
+	if err != nil { return false, fmt.Errorf("invalid banID: %w", err) }
+
+	err = r.BanUC.UnbanUserFromHost(ctx, id)
+	if err != nil { return false, err }
+	return true, nil
+}
+
+// BanCommunityFromHost is the resolver for the banCommunityFromHost field.
+func (r *mutationResolver) BanCommunityFromHost(ctx context.Context, input models.BanCommunityInput) (*models.HostCommunityBan, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostCommunityDeletePost
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return nil, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostCommunityDeletePost {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return nil, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	communityID, err := strconv.Atoi(input.CommunityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	ban, err := r.BanUC.BanCommunityFromHost(ctx, communityID, 1) // hostID всегда 1
+	if err != nil { return nil, err }
+
+	// Маппинг ent -> models
+	return &models.HostCommunityBan{
+		ID:          strconv.Itoa(ban.ID),
+		CommunityID: strconv.Itoa(ban.CommunityID),
+		CreatedAt:   ban.CreatedAt,
+		UpdatedAt:   ban.UpdatedAt,
+	}, nil
+}
+
+// UnbanCommunityFromHost is the resolver for the unbanCommunityFromHost field.
+func (r *mutationResolver) UnbanCommunityFromHost(ctx context.Context, banID string) (bool, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostCommunityDeletePost
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return false, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return false, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostCommunityDeletePost {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return false, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	id, err := strconv.Atoi(banID)
+	if err != nil { return false, fmt.Errorf("invalid banID: %w", err) }
+
+	err = r.BanUC.UnbanCommunityFromHost(ctx, id)
+	if err != nil { return false, err }
+	return true, nil
+}
+
+// BanUserFromCommunity is the resolver for the banUserFromCommunity field.
+func (r *mutationResolver) BanUserFromCommunity(ctx context.Context, input models.BanUserInput) (*ent.CommunityUserBan, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserBan
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	if input.CommunityID == nil {
+		return nil, fmt.Errorf("communityID is required")
+	}
+
+	communityID, err := strconv.Atoi(*input.CommunityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, communityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{communityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[communityID]
+		if perms == nil || !perms.CommunityUserBan {
+			return nil, fmt.Errorf("forbidden: only owner or users with ban permission can ban users")
+		}
+	}
+
+	userID, err := strconv.Atoi(input.UserID)
+	if err != nil { return nil, fmt.Errorf("invalid userID: %w", err) }
+
+	return r.BanUC.BanUserFromCommunity(ctx, userID, communityID)
+}
+
+// UnbanUserFromCommunity is the resolver for the unbanUserFromCommunity field.
+func (r *mutationResolver) UnbanUserFromCommunity(ctx context.Context, banID string) (bool, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserBan
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+
+	id, err := strconv.Atoi(banID)
+	if err != nil { return false, fmt.Errorf("invalid banID: %w", err) }
+
+	// Получаем бан для проверки сообщества
+	ban, err := r.Client.CommunityUserBan.Get(ctx, id)
+	if err != nil { return false, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, ban.CommunityID)
+	if err != nil { return false, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{ban.CommunityID})
+		if err != nil { return false, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[ban.CommunityID]
+		if perms == nil || !perms.CommunityUserBan {
+			return false, fmt.Errorf("forbidden: only owner or users with ban permission can unban users")
+		}
+	}
+
+	err = r.BanUC.UnbanUserFromCommunity(ctx, id)
+	if err != nil { return false, err }
+	return true, nil
+}
+
+// MuteUserInCommunity is the resolver for the muteUserInCommunity field.
+func (r *mutationResolver) MuteUserInCommunity(ctx context.Context, input models.MuteUserInput) (*ent.CommunityUserMute, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserMute
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	communityID, err := strconv.Atoi(input.CommunityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, communityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{communityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[communityID]
+		if perms == nil || !perms.CommunityUserMute {
+			return nil, fmt.Errorf("forbidden: only owner or users with mute permission can mute users")
+		}
+	}
+
+	userID, err := strconv.Atoi(input.UserID)
+	if err != nil { return nil, fmt.Errorf("invalid userID: %w", err) }
+
+	return r.BanUC.MuteUserInCommunity(ctx, userID, communityID)
+}
+
+// UnmuteUserInCommunity is the resolver for the unmuteUserInCommunity field.
+func (r *mutationResolver) UnmuteUserInCommunity(ctx context.Context, muteID string) (bool, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserMute
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return false, fmt.Errorf("unauthenticated") }
+
+	id, err := strconv.Atoi(muteID)
+	if err != nil { return false, fmt.Errorf("invalid muteID: %w", err) }
+
+	// Получаем мут для проверки сообщества
+	mute, err := r.Client.CommunityUserMute.Get(ctx, id)
+	if err != nil { return false, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, mute.CommunityID)
+	if err != nil { return false, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{mute.CommunityID})
+		if err != nil { return false, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[mute.CommunityID]
+		if perms == nil || !perms.CommunityUserMute {
+			return false, fmt.Errorf("forbidden: only owner or users with mute permission can unmute users")
+		}
+	}
+
+	err = r.BanUC.UnmuteUserInCommunity(ctx, id)
+	if err != nil { return false, err }
+	return true, nil
+}
+
 // PostStatus is the resolver for the postStatus field.
 func (r *postResolver) PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error) {
 	// Берём текущего пользователя из контекста, для корректного isLiked/hasBookmark
@@ -1334,6 +1933,309 @@ func (r *queryResolver) HostSocialNavigation(ctx context.Context) (*ent.HostSoci
 // Host всегда отдаёт хост с ID 1.
 func (r *queryResolver) Host(ctx context.Context) (*ent.Host, error) {
 	return r.Client.Host.Get(ctx, 1)
+}
+
+// CommunityRoles is the resolver for the communityRoles field.
+func (r *queryResolver) CommunityRoles(ctx context.Context, communityID string) ([]*ent.Role, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { 
+		fmt.Printf("❌ CommunityRoles: unauthenticated - %v\n", err)
+		return nil, fmt.Errorf("unauthenticated") 
+	}
+
+	fmt.Printf("🔍 CommunityRoles: userID=%d, communityID=%s\n", currentUserID, communityID)
+
+	cid, err := strconv.Atoi(communityID)
+	if err != nil { 
+		fmt.Printf("❌ CommunityRoles: invalid communityID - %v\n", err)
+		return nil, fmt.Errorf("invalid communityID: %w", err) 
+	}
+
+	// Проверяем существование сообщества
+	cm, err := r.Client.Community.Get(ctx, cid)
+	if err != nil { 
+		fmt.Printf("❌ CommunityRoles: community not found - %v\n", err)
+		return nil, fmt.Errorf("community not found: %w", err) 
+	}
+
+	fmt.Printf("✅ CommunityRoles: found community ID=%d, OwnerID=%d\n", cm.ID, cm.OwnerID)
+
+	// Проверяем владельца/права
+	if cm.OwnerID != currentUserID {
+		fmt.Printf("🔍 CommunityRoles: user is not owner, checking permissions...\n")
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{cid})
+		if err != nil { 
+			fmt.Printf("❌ CommunityRoles: failed to get permissions - %v\n", err)
+			return nil, fmt.Errorf("permissions: %w", err) 
+		}
+		perms := permsMap[cid]
+		if perms == nil {
+			fmt.Printf("❌ CommunityRoles: no permissions found for user\n")
+			return nil, fmt.Errorf("forbidden: no permissions found")
+		}
+		if !perms.CommunityRolesManagement {
+			fmt.Printf("❌ CommunityRoles: user lacks CommunityRolesManagement permission\n")
+			return nil, fmt.Errorf("forbidden: only owner or role manager can view roles")
+		}
+		fmt.Printf("✅ CommunityRoles: user has CommunityRolesManagement permission\n")
+	} else {
+		fmt.Printf("✅ CommunityRoles: user is owner\n")
+	}
+
+	roles, err := r.CommunityRoleUC.GetCommunityRoles(ctx, cid)
+	if err != nil { 
+		fmt.Printf("❌ CommunityRoles: failed to get roles - %v\n", err)
+		return nil, err 
+	}
+
+	fmt.Printf("✅ CommunityRoles: found %d roles\n", len(roles))
+	return roles, nil
+}
+
+// CommunityRole is the resolver for the communityRole field.
+func (r *queryResolver) CommunityRole(ctx context.Context, id string) (*ent.Role, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	roleID, err := strconv.Atoi(id)
+	if err != nil { return nil, fmt.Errorf("invalid role ID: %w", err) }
+
+	// Получаем роль для проверки сообщества
+	role, err := r.Client.Role.Get(ctx, roleID)
+	if err != nil { return nil, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, role.CommunityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{role.CommunityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[role.CommunityID]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden: only owner or role manager can view role")
+		}
+	}
+
+	return r.CommunityRoleUC.GetCommunityRole(ctx, roleID)
+}
+
+// HostCommunityBans is the resolver for the hostCommunityBans field.
+func (r *queryResolver) HostCommunityBans(ctx context.Context) ([]*models.HostCommunityBan, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostCommunityDeletePost
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return nil, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostCommunityDeletePost {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return nil, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	bans, err := r.BanUC.GetHostCommunityBans(ctx)
+	if err != nil { return nil, err }
+
+	// Маппинг ent -> models
+	result := make([]*models.HostCommunityBan, len(bans))
+	for i, ban := range bans {
+		result[i] = &models.HostCommunityBan{
+			ID:          strconv.Itoa(ban.ID),
+			CommunityID: strconv.Itoa(ban.CommunityID),
+			CreatedAt:   ban.CreatedAt,
+			UpdatedAt:   ban.UpdatedAt,
+		}
+	}
+
+	return result, nil
+}
+
+// HostCommunityBan is the resolver for the hostCommunityBan field.
+func (r *queryResolver) HostCommunityBan(ctx context.Context, id string) (*models.HostCommunityBan, error) {
+	// Проверяем права: только владелец платформы или пользователи с hostCommunityDeletePost
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+	
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil { return nil, err }
+	
+	// Проверяем владельца или роли
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		// Проверяем роли пользователя
+		roles, err := r.Client.User.Query().
+			Where(user.IDEQ(currentUserID)).
+			QueryHostRoles().
+			All(ctx)
+		if err != nil { return nil, err }
+		
+		hasPermission := false
+		for _, role := range roles {
+			if role.HostCommunityDeletePost {
+				hasPermission = true
+				break
+			}
+		}
+		if !hasPermission {
+			return nil, fmt.Errorf("forbidden: insufficient permissions")
+		}
+	}
+
+	banID, err := strconv.Atoi(id)
+	if err != nil { return nil, fmt.Errorf("invalid banID: %w", err) }
+
+	ban, err := r.Client.HostCommunityBan.Get(ctx, banID)
+	if err != nil { return nil, err }
+
+	// Маппинг ent -> models
+	return &models.HostCommunityBan{
+		ID:          strconv.Itoa(ban.ID),
+		CommunityID: strconv.Itoa(ban.CommunityID),
+		CreatedAt:   ban.CreatedAt,
+		UpdatedAt:   ban.UpdatedAt,
+	}, nil
+}
+
+// CommunityUserBans is the resolver for the communityUserBans field.
+func (r *queryResolver) CommunityUserBans(ctx context.Context, communityID string) ([]*ent.CommunityUserBan, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserBan
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	cid, err := strconv.Atoi(communityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, cid)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{cid})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[cid]
+		if perms == nil || !perms.CommunityUserBan {
+			return nil, fmt.Errorf("forbidden: only owner or users with ban permission can view bans")
+		}
+	}
+
+	return r.BanUC.GetCommunityUserBans(ctx, cid)
+}
+
+// CommunityUserMutes is the resolver for the communityUserMutes field.
+func (r *queryResolver) CommunityUserMutes(ctx context.Context, communityID string) ([]*ent.CommunityUserMute, error) {
+	// Проверяем права: владелец сообщества или пользователи с communityUserMute
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	cid, err := strconv.Atoi(communityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, cid)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{cid})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[cid]
+		if perms == nil || !perms.CommunityUserMute {
+			return nil, fmt.Errorf("forbidden: only owner or users with mute permission can view mutes")
+		}
+	}
+
+	return r.BanUC.GetCommunityUserMutes(ctx, cid)
+}
+
+// UsersForRole is the resolver for the usersForRole field.
+func (r *queryResolver) UsersForRole(ctx context.Context, roleID string, search *string) ([]*ent.User, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	rid, err := strconv.Atoi(roleID)
+	if err != nil { return nil, fmt.Errorf("invalid roleID: %w", err) }
+
+	// Получаем роль для проверки сообщества
+	role, err := r.Client.Role.Get(ctx, rid)
+	if err != nil { return nil, err }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, role.CommunityID)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{role.CommunityID})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[role.CommunityID]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden: only owner or role manager can view users for role")
+		}
+	}
+
+	// Получаем пользователей роли
+	roleEntity, err := r.Client.Role.Get(ctx, rid)
+	if err != nil { return nil, err }
+	users, err := roleEntity.QueryUsers().All(ctx)
+	if err != nil { return nil, err }
+
+	// Фильтруем по поиску если есть
+	if search != nil && *search != "" {
+		filtered := make([]*ent.User, 0)
+		for _, user := range users {
+			if strings.Contains(strings.ToLower(user.Name), strings.ToLower(*search)) ||
+				strings.Contains(strings.ToLower(user.Slug), strings.ToLower(*search)) {
+				filtered = append(filtered, user)
+			}
+		}
+		return filtered, nil
+	}
+
+	return users, nil
+}
+
+// CommunityUsers is the resolver for the communityUsers field.
+func (r *queryResolver) CommunityUsers(ctx context.Context, communityID string) ([]*ent.User, error) {
+	// Проверяем права: владелец сообщества или менеджер ролей
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil { return nil, fmt.Errorf("unauthenticated") }
+
+	cid, err := strconv.Atoi(communityID)
+	if err != nil { return nil, fmt.Errorf("invalid communityID: %w", err) }
+
+	// Проверяем владельца/права
+	cm, err := r.Client.Community.Get(ctx, cid)
+	if err != nil { return nil, err }
+	if cm.OwnerID != currentUserID {
+		permsMap, err := r.UserUC.GetPermissionsByCommunities(ctx, currentUserID, []int{cid})
+		if err != nil { return nil, fmt.Errorf("permissions: %w", err) }
+		perms := permsMap[cid]
+		if perms == nil || !perms.CommunityRolesManagement {
+			return nil, fmt.Errorf("forbidden: only owner or role manager can view community users")
+		}
+	}
+
+	// Получаем пользователей сообщества через роли
+	users, err := r.Client.Role.Query().
+		Where(role.CommunityIDEQ(cid)).
+		QueryUsers().
+		All(ctx)
+	if err != nil { return nil, err }
+
+	return users, nil
 }
 
 // CommentAdded подписка на новые комментарии.

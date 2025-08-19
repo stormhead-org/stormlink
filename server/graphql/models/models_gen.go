@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+type BanCommunityInput struct {
+	CommunityID string `json:"communityID"`
+}
+
+type BanUserInput struct {
+	UserID      string  `json:"userID"`
+	CommunityID *string `json:"communityID,omitempty"`
+}
+
 type Bookmark struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"userID"`
@@ -733,6 +742,33 @@ type CreateCommunityInput struct {
 	Slug        string  `json:"slug"`
 	Description *string `json:"description,omitempty"`
 	OwnerID     string  `json:"ownerID"`
+}
+
+type CreateCommunityRoleInput struct {
+	Title                              string   `json:"title"`
+	Color                              *string  `json:"color,omitempty"`
+	BadgeID                            *string  `json:"badgeID,omitempty"`
+	CommunityID                        string   `json:"communityID"`
+	CommunityRolesManagement           *bool    `json:"communityRolesManagement,omitempty"`
+	CommunityUserBan                   *bool    `json:"communityUserBan,omitempty"`
+	CommunityUserMute                  *bool    `json:"communityUserMute,omitempty"`
+	CommunityDeletePost                *bool    `json:"communityDeletePost,omitempty"`
+	CommunityDeleteComments            *bool    `json:"communityDeleteComments,omitempty"`
+	CommunityRemovePostFromPublication *bool    `json:"communityRemovePostFromPublication,omitempty"`
+	UserIDs                            []string `json:"userIDs,omitempty"`
+}
+
+type CreateHostRoleInput struct {
+	Title                                  string   `json:"title"`
+	Color                                  *string  `json:"color,omitempty"`
+	BadgeID                                *string  `json:"badgeID,omitempty"`
+	CommunityRolesManagement               *bool    `json:"communityRolesManagement,omitempty"`
+	HostUserBan                            *bool    `json:"hostUserBan,omitempty"`
+	HostUserMute                           *bool    `json:"hostUserMute,omitempty"`
+	HostCommunityDeletePost                *bool    `json:"hostCommunityDeletePost,omitempty"`
+	HostCommunityRemovePostFromPublication *bool    `json:"hostCommunityRemovePostFromPublication,omitempty"`
+	HostCommunityDeleteComments            *bool    `json:"hostCommunityDeleteComments,omitempty"`
+	UserIDs                                []string `json:"userIDs,omitempty"`
 }
 
 type CreatePostInput struct {
@@ -1685,6 +1721,11 @@ type MediaWhereInput struct {
 type Mutation struct {
 }
 
+type MuteUserInput struct {
+	UserID      string `json:"userID"`
+	CommunityID string `json:"communityID"`
+}
+
 // Information about pagination in a connection.
 // https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo
 type PageInfo struct {
@@ -2141,6 +2182,29 @@ type UpdateCommentInput struct {
 	HasDeleted *bool   `json:"hasDeleted,omitempty"`
 }
 
+type UpdateCommunityInput struct {
+	ID          string  `json:"id"`
+	Title       *string `json:"title,omitempty"`
+	Slug        *string `json:"slug,omitempty"`
+	Description *string `json:"description,omitempty"`
+	LogoID      *string `json:"logoID,omitempty"`
+	BannerID    *string `json:"bannerID,omitempty"`
+}
+
+type UpdateCommunityRoleInput struct {
+	ID                                 string   `json:"id"`
+	Title                              *string  `json:"title,omitempty"`
+	Color                              *string  `json:"color,omitempty"`
+	BadgeID                            *string  `json:"badgeID,omitempty"`
+	CommunityRolesManagement           *bool    `json:"communityRolesManagement,omitempty"`
+	CommunityUserBan                   *bool    `json:"communityUserBan,omitempty"`
+	CommunityUserMute                  *bool    `json:"communityUserMute,omitempty"`
+	CommunityDeletePost                *bool    `json:"communityDeletePost,omitempty"`
+	CommunityDeleteComments            *bool    `json:"communityDeleteComments,omitempty"`
+	CommunityRemovePostFromPublication *bool    `json:"communityRemovePostFromPublication,omitempty"`
+	UserIDs                            []string `json:"userIDs,omitempty"`
+}
+
 type UpdateHostInput struct {
 	Title         *string `json:"title,omitempty"`
 	Slogan        *string `json:"slogan,omitempty"`
@@ -2152,6 +2216,29 @@ type UpdateHostInput struct {
 	FirstSettings *bool   `json:"firstSettings,omitempty"`
 }
 
+type UpdateHostRoleInput struct {
+	ID                                     string   `json:"id"`
+	Title                                  *string  `json:"title,omitempty"`
+	Color                                  *string  `json:"color,omitempty"`
+	BadgeID                                *string  `json:"badgeID,omitempty"`
+	CommunityRolesManagement               *bool    `json:"communityRolesManagement,omitempty"`
+	HostUserBan                            *bool    `json:"hostUserBan,omitempty"`
+	HostUserMute                           *bool    `json:"hostUserMute,omitempty"`
+	HostCommunityDeletePost                *bool    `json:"hostCommunityDeletePost,omitempty"`
+	HostCommunityRemovePostFromPublication *bool    `json:"hostCommunityRemovePostFromPublication,omitempty"`
+	HostCommunityDeleteComments            *bool    `json:"hostCommunityDeleteComments,omitempty"`
+	UserIDs                                []string `json:"userIDs,omitempty"`
+}
+
+type UpdateHostSocialNavigationInput struct {
+	Github    *string `json:"github,omitempty"`
+	Site      *string `json:"site,omitempty"`
+	Telegram  *string `json:"telegram,omitempty"`
+	Instagram *string `json:"instagram,omitempty"`
+	Twitter   *string `json:"twitter,omitempty"`
+	Mastodon  *string `json:"mastodon,omitempty"`
+}
+
 type UpdatePostInput struct {
 	ID          string           `json:"id"`
 	Title       *string          `json:"title,omitempty"`
@@ -2161,6 +2248,15 @@ type UpdatePostInput struct {
 	HeroImageID *string          `json:"heroImageID,omitempty"`
 	Visibility  *post.Visibility `json:"visibility,omitempty"`
 	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
+}
+
+type UpdateUserInput struct {
+	ID          string                `json:"id"`
+	Name        *string               `json:"name,omitempty"`
+	Slug        *string               `json:"slug,omitempty"`
+	Description *string               `json:"description,omitempty"`
+	AvatarID    *string               `json:"avatarID,omitempty"`
+	Info        []*UserInfoPatchInput `json:"info,omitempty"`
 }
 
 type UserAvatarResponse struct {
@@ -2253,6 +2349,11 @@ type UserHostRoleResponse struct {
 	HostCommunityDeletePost                bool   `json:"hostCommunityDeletePost"`
 	HostCommunityDeleteComments            bool   `json:"hostCommunityDeleteComments"`
 	HostCommunityRemovePostFromPublication bool   `json:"hostCommunityRemovePostFromPublication"`
+}
+
+type UserInfoPatchInput struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type UserInfoResponse struct {

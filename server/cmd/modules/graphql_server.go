@@ -31,8 +31,11 @@ import (
 	mediapb "stormlink/server/grpc/media/protobuf"
 	userpb "stormlink/server/grpc/user/protobuf"
 	"stormlink/server/middleware"
+	banuc "stormlink/server/usecase/ban"
 	commentuc "stormlink/server/usecase/comment"
 	communityuc "stormlink/server/usecase/community"
+	communityroleuc "stormlink/server/usecase/communityrole"
+	hostroleuc "stormlink/server/usecase/hostrole"
 	postuc "stormlink/server/usecase/post"
 	useruc "stormlink/server/usecase/user"
 	errorsx "stormlink/shared/errors"
@@ -80,6 +83,9 @@ func StartGraphQLServer(client *ent.Client) {
     cUC := communityuc.NewCommunityUsecase(client)
     pUC := postuc.NewPostUsecase(client)
     commentUC := commentuc.NewCommentUsecase(client)
+    hostRoleUC := hostroleuc.NewHostRoleUsecase(client)
+    communityRoleUC := communityroleuc.NewCommunityRoleUsecase(client)
+    banUC := banuc.NewBanUsecase(client)
 
     // gRPC-клиенты к микросервисам (адреса из ENV)
     get := func(key, def string) string { v := os.Getenv(key); if v == "" { return def }; return v }
@@ -112,15 +118,18 @@ func StartGraphQLServer(client *ent.Client) {
 
     // Резолверы
     resolver := &graphql.Resolver{
-        Client:      client,
-        UserUC:      uUC,
-        CommunityUC: cUC,
-        PostUC:      pUC,
-        CommentUC:   commentUC,
-        AuthClient:  authClient,
-        UserClient:  userClient,
-        MailClient:  mailClient,
-        MediaClient: mediaClient,
+        Client:          client,
+        UserUC:          uUC,
+        CommunityUC:     cUC,
+        PostUC:          pUC,
+        CommentUC:       commentUC,
+        HostRoleUC:      hostRoleUC,
+        CommunityRoleUC: communityRoleUC,
+        BanUC:           banUC,
+        AuthClient:      authClient,
+        UserClient:      userClient,
+        MailClient:      mailClient,
+        MediaClient:     mediaClient,
     }
 
     // 5) Конфигурируем gqlgen‑сервер вручную (не NewDefaultServer)

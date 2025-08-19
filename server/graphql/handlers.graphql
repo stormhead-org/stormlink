@@ -262,6 +262,20 @@ extend type Query {
 	hostSocialNavigation: HostSocialNavigation
 
 	host: Host
+
+	# Новые Query для ролей и банов
+	communityRoles(communityID: ID!): [Role!]!
+	communityRole(id: ID!): Role
+
+	hostCommunityBans: [HostCommunityBan!]!
+	hostCommunityBan(id: ID!): HostCommunityBan
+
+	communityUserBans(communityID: ID!): [CommunityUserBan!]!
+	communityUserMutes(communityID: ID!): [CommunityUserMute!]!
+
+	# Пользователи для добавления в роли
+	usersForRole(roleID: ID!, search: String): [User!]!
+	communityUsers(communityID: ID!): [User!]!
 }
 
 extend type Mutation {
@@ -300,6 +314,35 @@ extend type Mutation {
 
 	# Атомарное увеличение счётчика просмотров
 	incrementPostViews(postID: ID!): Post!
+
+	# Новые мутации настроек
+	community(input: UpdateCommunityInput!): Community!
+	updateUser(input: UpdateUserInput!): UserResponse!
+	updateHostSocialNavigation(
+		input: UpdateHostSocialNavigationInput!
+	): HostSocialNavigation!
+
+	# Мутации для управления ролями хоста
+	createHostRole(input: CreateHostRoleInput!): HostRole!
+	updateHostRole(input: UpdateHostRoleInput!): HostRole!
+	deleteHostRole(id: ID!): Boolean!
+
+	# Мутации для управления ролями сообщества
+	createCommunityRole(input: CreateCommunityRoleInput!): Role!
+	updateCommunityRole(input: UpdateCommunityRoleInput!): Role!
+	deleteCommunityRole(id: ID!): Boolean!
+
+	# Мутации для банов хоста
+	banUserFromHost(input: BanUserInput!): HostUserBan!
+	unbanUserFromHost(banID: ID!): Boolean!
+	banCommunityFromHost(input: BanCommunityInput!): HostCommunityBan!
+	unbanCommunityFromHost(banID: ID!): Boolean!
+
+	# Мутации для банов/мутов сообщества
+	banUserFromCommunity(input: BanUserInput!): CommunityUserBan!
+	unbanUserFromCommunity(banID: ID!): Boolean!
+	muteUserInCommunity(input: MuteUserInput!): CommunityUserMute!
+	unmuteUserInCommunity(muteID: ID!): Boolean!
 }
 
 extend type Subscription {
@@ -322,6 +365,39 @@ input UpdateHostInput {
 	bannerID: ID
 	authBannerID: ID
 	firstSettings: Boolean
+}
+
+# Новые входные типы настроек
+input UpdateCommunityInput {
+	id: ID!
+	title: String
+	slug: String
+	description: String
+	logoID: ID
+	bannerID: ID
+}
+
+input UserInfoPatchInput {
+	key: String!
+	value: String!
+}
+
+input UpdateUserInput {
+	id: ID!
+	name: String
+	slug: String
+	description: String
+	avatarID: ID
+	info: [UserInfoPatchInput!]
+}
+
+input UpdateHostSocialNavigationInput {
+	github: String
+	site: String
+	telegram: String
+	instagram: String
+	twitter: String
+	mastodon: String
 }
 
 # Входные типы подписки на юзера
@@ -441,4 +517,77 @@ input VerifyEmailInput {
 
 input ResendVerifyEmailInput {
 	email: String!
+}
+
+# Расширения типов ролей и банов (дополняют ent.graphql)
+
+# Входные типы для ролей
+input CreateHostRoleInput {
+	title: String!
+	color: String
+	badgeID: ID
+	communityRolesManagement: Boolean
+	hostUserBan: Boolean
+	hostUserMute: Boolean
+	hostCommunityDeletePost: Boolean
+	hostCommunityRemovePostFromPublication: Boolean
+	hostCommunityDeleteComments: Boolean
+	userIDs: [ID!]
+}
+
+input UpdateHostRoleInput {
+	id: ID!
+	title: String
+	color: String
+	badgeID: ID
+	communityRolesManagement: Boolean
+	hostUserBan: Boolean
+	hostUserMute: Boolean
+	hostCommunityDeletePost: Boolean
+	hostCommunityRemovePostFromPublication: Boolean
+	hostCommunityDeleteComments: Boolean
+	userIDs: [ID!]
+}
+
+input CreateCommunityRoleInput {
+	title: String!
+	color: String
+	badgeID: ID
+	communityID: ID!
+	communityRolesManagement: Boolean
+	communityUserBan: Boolean
+	communityUserMute: Boolean
+	communityDeletePost: Boolean
+	communityDeleteComments: Boolean
+	communityRemovePostFromPublication: Boolean
+	userIDs: [ID!]
+}
+
+input UpdateCommunityRoleInput {
+	id: ID!
+	title: String
+	color: String
+	badgeID: ID
+	communityRolesManagement: Boolean
+	communityUserBan: Boolean
+	communityUserMute: Boolean
+	communityDeletePost: Boolean
+	communityDeleteComments: Boolean
+	communityRemovePostFromPublication: Boolean
+	userIDs: [ID!]
+}
+
+# Входные типы для банов/мутов
+input BanUserInput {
+	userID: ID!
+	communityID: ID
+}
+
+input BanCommunityInput {
+	communityID: ID!
+}
+
+input MuteUserInput {
+	userID: ID!
+	communityID: ID!
 }

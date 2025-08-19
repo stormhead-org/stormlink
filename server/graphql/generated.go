@@ -350,30 +350,47 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddBookmarkPost       func(childComplexity int, input models.BookmarkPostInput) int
-		CreateComment         func(childComplexity int, input models.CreateCommentInput) int
-		CreateCommunity       func(childComplexity int, input models.CreateCommunityInput) int
-		CreatePost            func(childComplexity int, input models.CreatePostInput) int
-		DeleteBookmarkPost    func(childComplexity int, input models.DeleteBookmarkPostInput) int
-		FollowCommunity       func(childComplexity int, input models.FollowCommunityInput) int
-		FollowUser            func(childComplexity int, input models.FollowUserInput) int
-		Host                  func(childComplexity int, input models.UpdateHostInput) int
-		IncrementPostViews    func(childComplexity int, postID string) int
-		LikeComment           func(childComplexity int, input models.LikeCommentInput) int
-		LikePost              func(childComplexity int, input models.LikePostInput) int
-		LoginUser             func(childComplexity int, input models.LoginUserInput) int
-		LogoutUser            func(childComplexity int) int
-		Post                  func(childComplexity int, input models.UpdatePostInput) int
-		RegisterUser          func(childComplexity int, input models.RegisterUserInput) int
-		ResendUserVerifyEmail func(childComplexity int, input models.ResendVerifyEmailInput) int
-		UnfollowCommunity     func(childComplexity int, input models.UnfollowCommunityInput) int
-		UnfollowUser          func(childComplexity int, input models.UnfollowUserInput) int
-		UnlikeComment         func(childComplexity int, input models.UnlikeCommentInput) int
-		UnlikePost            func(childComplexity int, input models.UnlikePostInput) int
-		UpdateComment         func(childComplexity int, input models.UpdateCommentInput) int
-		UploadMedia           func(childComplexity int, file graphql.Upload, dir *string) int
-		UserRefreshToken      func(childComplexity int) int
-		UserVerifyEmail       func(childComplexity int, input models.VerifyEmailInput) int
+		AddBookmarkPost            func(childComplexity int, input models.BookmarkPostInput) int
+		BanCommunityFromHost       func(childComplexity int, input models.BanCommunityInput) int
+		BanUserFromCommunity       func(childComplexity int, input models.BanUserInput) int
+		BanUserFromHost            func(childComplexity int, input models.BanUserInput) int
+		Community                  func(childComplexity int, input models.UpdateCommunityInput) int
+		CreateComment              func(childComplexity int, input models.CreateCommentInput) int
+		CreateCommunity            func(childComplexity int, input models.CreateCommunityInput) int
+		CreateCommunityRole        func(childComplexity int, input models.CreateCommunityRoleInput) int
+		CreateHostRole             func(childComplexity int, input models.CreateHostRoleInput) int
+		CreatePost                 func(childComplexity int, input models.CreatePostInput) int
+		DeleteBookmarkPost         func(childComplexity int, input models.DeleteBookmarkPostInput) int
+		DeleteCommunityRole        func(childComplexity int, id string) int
+		DeleteHostRole             func(childComplexity int, id string) int
+		FollowCommunity            func(childComplexity int, input models.FollowCommunityInput) int
+		FollowUser                 func(childComplexity int, input models.FollowUserInput) int
+		Host                       func(childComplexity int, input models.UpdateHostInput) int
+		IncrementPostViews         func(childComplexity int, postID string) int
+		LikeComment                func(childComplexity int, input models.LikeCommentInput) int
+		LikePost                   func(childComplexity int, input models.LikePostInput) int
+		LoginUser                  func(childComplexity int, input models.LoginUserInput) int
+		LogoutUser                 func(childComplexity int) int
+		MuteUserInCommunity        func(childComplexity int, input models.MuteUserInput) int
+		Post                       func(childComplexity int, input models.UpdatePostInput) int
+		RegisterUser               func(childComplexity int, input models.RegisterUserInput) int
+		ResendUserVerifyEmail      func(childComplexity int, input models.ResendVerifyEmailInput) int
+		UnbanCommunityFromHost     func(childComplexity int, banID string) int
+		UnbanUserFromCommunity     func(childComplexity int, banID string) int
+		UnbanUserFromHost          func(childComplexity int, banID string) int
+		UnfollowCommunity          func(childComplexity int, input models.UnfollowCommunityInput) int
+		UnfollowUser               func(childComplexity int, input models.UnfollowUserInput) int
+		UnlikeComment              func(childComplexity int, input models.UnlikeCommentInput) int
+		UnlikePost                 func(childComplexity int, input models.UnlikePostInput) int
+		UnmuteUserInCommunity      func(childComplexity int, muteID string) int
+		UpdateComment              func(childComplexity int, input models.UpdateCommentInput) int
+		UpdateCommunityRole        func(childComplexity int, input models.UpdateCommunityRoleInput) int
+		UpdateHostRole             func(childComplexity int, input models.UpdateHostRoleInput) int
+		UpdateHostSocialNavigation func(childComplexity int, input models.UpdateHostSocialNavigationInput) int
+		UpdateUser                 func(childComplexity int, input models.UpdateUserInput) int
+		UploadMedia                func(childComplexity int, file graphql.Upload, dir *string) int
+		UserRefreshToken           func(childComplexity int) int
+		UserVerifyEmail            func(childComplexity int, input models.VerifyEmailInput) int
 	}
 
 	PageInfo struct {
@@ -453,12 +470,19 @@ type ComplexityRoot struct {
 		Community                  func(childComplexity int, id string) int
 		CommunityBySlug            func(childComplexity int, slug string) int
 		CommunityModerator         func(childComplexity int, communityID string, userID string) int
+		CommunityRole              func(childComplexity int, id string) int
+		CommunityRoles             func(childComplexity int, communityID string) int
 		CommunityRule              func(childComplexity int, id string) int
 		CommunityUserBan           func(childComplexity int, communityID string, userID string) int
+		CommunityUserBans          func(childComplexity int, communityID string) int
 		CommunityUserMute          func(childComplexity int, communityID string, userID string) int
+		CommunityUserMutes         func(childComplexity int, communityID string) int
+		CommunityUsers             func(childComplexity int, communityID string) int
 		FeedPosts                  func(childComplexity int, visibility *post.Visibility) int
 		GetMe                      func(childComplexity int) int
 		Host                       func(childComplexity int) int
+		HostCommunityBan           func(childComplexity int, id string) int
+		HostCommunityBans          func(childComplexity int) int
 		HostRole                   func(childComplexity int, id string) int
 		HostRoles                  func(childComplexity int) int
 		HostSidebarNavigation      func(childComplexity int) int
@@ -479,6 +503,7 @@ type ComplexityRoot struct {
 		User                       func(childComplexity int, id string) int
 		UserBySlug                 func(childComplexity int, slug string) int
 		Users                      func(childComplexity int) int
+		UsersForRole               func(childComplexity int, roleID string, search *string) int
 	}
 
 	RefreshTokenResponse struct {
@@ -666,6 +691,23 @@ type MutationResolver interface {
 	AddBookmarkPost(ctx context.Context, input models.BookmarkPostInput) (*models.PostStatus, error)
 	DeleteBookmarkPost(ctx context.Context, input models.DeleteBookmarkPostInput) (*models.PostStatus, error)
 	IncrementPostViews(ctx context.Context, postID string) (*ent.Post, error)
+	Community(ctx context.Context, input models.UpdateCommunityInput) (*ent.Community, error)
+	UpdateUser(ctx context.Context, input models.UpdateUserInput) (*models.UserResponse, error)
+	UpdateHostSocialNavigation(ctx context.Context, input models.UpdateHostSocialNavigationInput) (*ent.HostSocialNavigation, error)
+	CreateHostRole(ctx context.Context, input models.CreateHostRoleInput) (*ent.HostRole, error)
+	UpdateHostRole(ctx context.Context, input models.UpdateHostRoleInput) (*ent.HostRole, error)
+	DeleteHostRole(ctx context.Context, id string) (bool, error)
+	CreateCommunityRole(ctx context.Context, input models.CreateCommunityRoleInput) (*ent.Role, error)
+	UpdateCommunityRole(ctx context.Context, input models.UpdateCommunityRoleInput) (*ent.Role, error)
+	DeleteCommunityRole(ctx context.Context, id string) (bool, error)
+	BanUserFromHost(ctx context.Context, input models.BanUserInput) (*ent.HostUserBan, error)
+	UnbanUserFromHost(ctx context.Context, banID string) (bool, error)
+	BanCommunityFromHost(ctx context.Context, input models.BanCommunityInput) (*models.HostCommunityBan, error)
+	UnbanCommunityFromHost(ctx context.Context, banID string) (bool, error)
+	BanUserFromCommunity(ctx context.Context, input models.BanUserInput) (*ent.CommunityUserBan, error)
+	UnbanUserFromCommunity(ctx context.Context, banID string) (bool, error)
+	MuteUserInCommunity(ctx context.Context, input models.MuteUserInput) (*ent.CommunityUserMute, error)
+	UnmuteUserInCommunity(ctx context.Context, muteID string) (bool, error)
 }
 type PostResolver interface {
 	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
@@ -712,6 +754,14 @@ type QueryResolver interface {
 	HostSidebarNavigation(ctx context.Context) (*ent.HostSidebarNavigation, error)
 	HostSocialNavigation(ctx context.Context) (*ent.HostSocialNavigation, error)
 	Host(ctx context.Context) (*ent.Host, error)
+	CommunityRoles(ctx context.Context, communityID string) ([]*ent.Role, error)
+	CommunityRole(ctx context.Context, id string) (*ent.Role, error)
+	HostCommunityBans(ctx context.Context) ([]*models.HostCommunityBan, error)
+	HostCommunityBan(ctx context.Context, id string) (*models.HostCommunityBan, error)
+	CommunityUserBans(ctx context.Context, communityID string) ([]*ent.CommunityUserBan, error)
+	CommunityUserMutes(ctx context.Context, communityID string) ([]*ent.CommunityUserMute, error)
+	UsersForRole(ctx context.Context, roleID string, search *string) ([]*ent.User, error)
+	CommunityUsers(ctx context.Context, communityID string) ([]*ent.User, error)
 }
 type SubscriptionResolver interface {
 	CommentAdded(ctx context.Context, postID string) (<-chan *ent.Comment, error)
@@ -2204,6 +2254,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddBookmarkPost(childComplexity, args["input"].(models.BookmarkPostInput)), true
 
+	case "Mutation.banCommunityFromHost":
+		if e.complexity.Mutation.BanCommunityFromHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_banCommunityFromHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BanCommunityFromHost(childComplexity, args["input"].(models.BanCommunityInput)), true
+
+	case "Mutation.banUserFromCommunity":
+		if e.complexity.Mutation.BanUserFromCommunity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_banUserFromCommunity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BanUserFromCommunity(childComplexity, args["input"].(models.BanUserInput)), true
+
+	case "Mutation.banUserFromHost":
+		if e.complexity.Mutation.BanUserFromHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_banUserFromHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BanUserFromHost(childComplexity, args["input"].(models.BanUserInput)), true
+
+	case "Mutation.community":
+		if e.complexity.Mutation.Community == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_community_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Community(childComplexity, args["input"].(models.UpdateCommunityInput)), true
+
 	case "Mutation.createComment":
 		if e.complexity.Mutation.CreateComment == nil {
 			break
@@ -2228,6 +2326,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateCommunity(childComplexity, args["input"].(models.CreateCommunityInput)), true
 
+	case "Mutation.createCommunityRole":
+		if e.complexity.Mutation.CreateCommunityRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createCommunityRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateCommunityRole(childComplexity, args["input"].(models.CreateCommunityRoleInput)), true
+
+	case "Mutation.createHostRole":
+		if e.complexity.Mutation.CreateHostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createHostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateHostRole(childComplexity, args["input"].(models.CreateHostRoleInput)), true
+
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
 			break
@@ -2251,6 +2373,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteBookmarkPost(childComplexity, args["input"].(models.DeleteBookmarkPostInput)), true
+
+	case "Mutation.deleteCommunityRole":
+		if e.complexity.Mutation.DeleteCommunityRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteCommunityRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteCommunityRole(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteHostRole":
+		if e.complexity.Mutation.DeleteHostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteHostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteHostRole(childComplexity, args["id"].(string)), true
 
 	case "Mutation.followCommunity":
 		if e.complexity.Mutation.FollowCommunity == nil {
@@ -2343,6 +2489,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.LogoutUser(childComplexity), true
 
+	case "Mutation.muteUserInCommunity":
+		if e.complexity.Mutation.MuteUserInCommunity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_muteUserInCommunity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MuteUserInCommunity(childComplexity, args["input"].(models.MuteUserInput)), true
+
 	case "Mutation.post":
 		if e.complexity.Mutation.Post == nil {
 			break
@@ -2378,6 +2536,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ResendUserVerifyEmail(childComplexity, args["input"].(models.ResendVerifyEmailInput)), true
+
+	case "Mutation.unbanCommunityFromHost":
+		if e.complexity.Mutation.UnbanCommunityFromHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unbanCommunityFromHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnbanCommunityFromHost(childComplexity, args["banID"].(string)), true
+
+	case "Mutation.unbanUserFromCommunity":
+		if e.complexity.Mutation.UnbanUserFromCommunity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unbanUserFromCommunity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnbanUserFromCommunity(childComplexity, args["banID"].(string)), true
+
+	case "Mutation.unbanUserFromHost":
+		if e.complexity.Mutation.UnbanUserFromHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unbanUserFromHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnbanUserFromHost(childComplexity, args["banID"].(string)), true
 
 	case "Mutation.unfollowCommunity":
 		if e.complexity.Mutation.UnfollowCommunity == nil {
@@ -2427,6 +2621,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UnlikePost(childComplexity, args["input"].(models.UnlikePostInput)), true
 
+	case "Mutation.unmuteUserInCommunity":
+		if e.complexity.Mutation.UnmuteUserInCommunity == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unmuteUserInCommunity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnmuteUserInCommunity(childComplexity, args["muteID"].(string)), true
+
 	case "Mutation.updateComment":
 		if e.complexity.Mutation.UpdateComment == nil {
 			break
@@ -2438,6 +2644,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateComment(childComplexity, args["input"].(models.UpdateCommentInput)), true
+
+	case "Mutation.updateCommunityRole":
+		if e.complexity.Mutation.UpdateCommunityRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateCommunityRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateCommunityRole(childComplexity, args["input"].(models.UpdateCommunityRoleInput)), true
+
+	case "Mutation.updateHostRole":
+		if e.complexity.Mutation.UpdateHostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateHostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateHostRole(childComplexity, args["input"].(models.UpdateHostRoleInput)), true
+
+	case "Mutation.updateHostSocialNavigation":
+		if e.complexity.Mutation.UpdateHostSocialNavigation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateHostSocialNavigation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateHostSocialNavigation(childComplexity, args["input"].(models.UpdateHostSocialNavigationInput)), true
+
+	case "Mutation.updateUser":
+		if e.complexity.Mutation.UpdateUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUser_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateUser(childComplexity, args["input"].(models.UpdateUserInput)), true
 
 	case "Mutation.uploadMedia":
 		if e.complexity.Mutation.UploadMedia == nil {
@@ -2962,6 +3216,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.CommunityModerator(childComplexity, args["communityId"].(string), args["userId"].(string)), true
 
+	case "Query.communityRole":
+		if e.complexity.Query.CommunityRole == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityRole(childComplexity, args["id"].(string)), true
+
+	case "Query.communityRoles":
+		if e.complexity.Query.CommunityRoles == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityRoles_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityRoles(childComplexity, args["communityID"].(string)), true
+
 	case "Query.communityRule":
 		if e.complexity.Query.CommunityRule == nil {
 			break
@@ -2986,6 +3264,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.CommunityUserBan(childComplexity, args["communityId"].(string), args["userId"].(string)), true
 
+	case "Query.communityUserBans":
+		if e.complexity.Query.CommunityUserBans == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityUserBans_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityUserBans(childComplexity, args["communityID"].(string)), true
+
 	case "Query.communityUserMute":
 		if e.complexity.Query.CommunityUserMute == nil {
 			break
@@ -2997,6 +3287,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.CommunityUserMute(childComplexity, args["communityId"].(string), args["userId"].(string)), true
+
+	case "Query.communityUserMutes":
+		if e.complexity.Query.CommunityUserMutes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityUserMutes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityUserMutes(childComplexity, args["communityID"].(string)), true
+
+	case "Query.communityUsers":
+		if e.complexity.Query.CommunityUsers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityUsers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityUsers(childComplexity, args["communityID"].(string)), true
 
 	case "Query.feedPosts":
 		if e.complexity.Query.FeedPosts == nil {
@@ -3023,6 +3337,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Host(childComplexity), true
+
+	case "Query.hostCommunityBan":
+		if e.complexity.Query.HostCommunityBan == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostCommunityBan_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostCommunityBan(childComplexity, args["id"].(string)), true
+
+	case "Query.hostCommunityBans":
+		if e.complexity.Query.HostCommunityBans == nil {
+			break
+		}
+
+		return e.complexity.Query.HostCommunityBans(childComplexity), true
 
 	case "Query.hostRole":
 		if e.complexity.Query.HostRole == nil {
@@ -3233,6 +3566,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Users(childComplexity), true
+
+	case "Query.usersForRole":
+		if e.complexity.Query.UsersForRole == nil {
+			break
+		}
+
+		args, err := ec.field_Query_usersForRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.UsersForRole(childComplexity, args["roleID"].(string), args["search"].(*string)), true
 
 	case "RefreshTokenResponse.accessToken":
 		if e.complexity.RefreshTokenResponse.AccessToken == nil {
@@ -3980,6 +4325,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputBanCommunityInput,
+		ec.unmarshalInputBanUserInput,
 		ec.unmarshalInputBookmarkPostInput,
 		ec.unmarshalInputBookmarkWhereInput,
 		ec.unmarshalInputCommentLikeWhereInput,
@@ -3992,6 +4339,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCommunityWhereInput,
 		ec.unmarshalInputCreateCommentInput,
 		ec.unmarshalInputCreateCommunityInput,
+		ec.unmarshalInputCreateCommunityRoleInput,
+		ec.unmarshalInputCreateHostRoleInput,
 		ec.unmarshalInputCreatePostInput,
 		ec.unmarshalInputDeleteBookmarkPostInput,
 		ec.unmarshalInputEmailVerificationWhereInput,
@@ -4011,6 +4360,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLikePostInput,
 		ec.unmarshalInputLoginUserInput,
 		ec.unmarshalInputMediaWhereInput,
+		ec.unmarshalInputMuteUserInput,
 		ec.unmarshalInputPostLikeWhereInput,
 		ec.unmarshalInputPostWhereInput,
 		ec.unmarshalInputProfileTableInfoItemWhereInput,
@@ -4022,9 +4372,15 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUnlikeCommentInput,
 		ec.unmarshalInputUnlikePostInput,
 		ec.unmarshalInputUpdateCommentInput,
+		ec.unmarshalInputUpdateCommunityInput,
+		ec.unmarshalInputUpdateCommunityRoleInput,
 		ec.unmarshalInputUpdateHostInput,
+		ec.unmarshalInputUpdateHostRoleInput,
+		ec.unmarshalInputUpdateHostSocialNavigationInput,
 		ec.unmarshalInputUpdatePostInput,
+		ec.unmarshalInputUpdateUserInput,
 		ec.unmarshalInputUserFollowWhereInput,
+		ec.unmarshalInputUserInfoPatchInput,
 		ec.unmarshalInputUserWhereInput,
 		ec.unmarshalInputVerifyEmailInput,
 	)
@@ -4172,6 +4528,50 @@ func (ec *executionContext) field_Mutation_addBookmarkPost_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_banCommunityFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBanCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanCommunityInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_banUserFromCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBanUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_banUserFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBanUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_community_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommunityInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4183,10 +4583,32 @@ func (ec *executionContext) field_Mutation_createComment_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createCommunityRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateCommunityRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityRoleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateHostRoleInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4213,6 +4635,28 @@ func (ec *executionContext) field_Mutation_deleteBookmarkPost_args(ctx context.C
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteCommunityRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -4293,6 +4737,17 @@ func (ec *executionContext) field_Mutation_loginUser_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_muteUserInCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNMuteUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_post_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4323,6 +4778,39 @@ func (ec *executionContext) field_Mutation_resendUserVerifyEmail_args(ctx contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unbanCommunityFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "banID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["banID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unbanUserFromCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "banID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["banID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unbanUserFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "banID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["banID"] = arg0
 	return args, nil
 }
 
@@ -4370,10 +4858,65 @@ func (ec *executionContext) field_Mutation_unlikePost_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_unmuteUserInCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "muteID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["muteID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateComment_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommentInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateCommunityRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateCommunityRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommunityRoleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRoleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateHostSocialNavigation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateHostSocialNavigationInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostSocialNavigationInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateUserInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4641,6 +5184,28 @@ func (ec *executionContext) field_Query_communityModerator_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_communityRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_communityRoles_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_communityRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4668,6 +5233,17 @@ func (ec *executionContext) field_Query_communityUserBan_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_communityUserBans_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_communityUserMute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4681,6 +5257,28 @@ func (ec *executionContext) field_Query_communityUserMute_args(ctx context.Conte
 		return nil, err
 	}
 	args["userId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_communityUserMutes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_communityUsers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg0
 	return args, nil
 }
 
@@ -4703,6 +5301,17 @@ func (ec *executionContext) field_Query_feedPosts_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["visibility"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_hostCommunityBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -4872,6 +5481,22 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_usersForRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "roleID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["roleID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "search", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["search"] = arg1
 	return args, nil
 }
 
@@ -17653,6 +18278,1221 @@ func (ec *executionContext) fieldContext_Mutation_incrementPostViews(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_community(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_community(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Community(rctx, fc.Args["input"].(models.UpdateCommunityInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Community)
+	fc.Result = res
+	return ec.marshalNCommunity2ᚖstormlinkᚋserverᚋentᚐCommunity(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_community(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Community_id(ctx, field)
+			case "logoID":
+				return ec.fieldContext_Community_logoID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_Community_bannerID(ctx, field)
+			case "ownerID":
+				return ec.fieldContext_Community_ownerID(ctx, field)
+			case "title":
+				return ec.fieldContext_Community_title(ctx, field)
+			case "slug":
+				return ec.fieldContext_Community_slug(ctx, field)
+			case "contacts":
+				return ec.fieldContext_Community_contacts(ctx, field)
+			case "description":
+				return ec.fieldContext_Community_description(ctx, field)
+			case "communityHasBanned":
+				return ec.fieldContext_Community_communityHasBanned(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Community_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Community_updatedAt(ctx, field)
+			case "logo":
+				return ec.fieldContext_Community_logo(ctx, field)
+			case "banner":
+				return ec.fieldContext_Community_banner(ctx, field)
+			case "owner":
+				return ec.fieldContext_Community_owner(ctx, field)
+			case "communityInfo":
+				return ec.fieldContext_Community_communityInfo(ctx, field)
+			case "moderators":
+				return ec.fieldContext_Community_moderators(ctx, field)
+			case "roles":
+				return ec.fieldContext_Community_roles(ctx, field)
+			case "rules":
+				return ec.fieldContext_Community_rules(ctx, field)
+			case "followers":
+				return ec.fieldContext_Community_followers(ctx, field)
+			case "bans":
+				return ec.fieldContext_Community_bans(ctx, field)
+			case "mutes":
+				return ec.fieldContext_Community_mutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_Community_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_Community_comments(ctx, field)
+			case "viewerPermissions":
+				return ec.fieldContext_Community_viewerPermissions(ctx, field)
+			case "communityStatus":
+				return ec.fieldContext_Community_communityStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Community", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_community_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateUser(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateUser(rctx, fc.Args["input"].(models.UpdateUserInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.UserResponse)
+	fc.Result = res
+	return ec.marshalNUserResponse2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserResponse(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_UserResponse_id(ctx, field)
+			case "name":
+				return ec.fieldContext_UserResponse_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_UserResponse_slug(ctx, field)
+			case "avatar":
+				return ec.fieldContext_UserResponse_avatar(ctx, field)
+			case "email":
+				return ec.fieldContext_UserResponse_email(ctx, field)
+			case "description":
+				return ec.fieldContext_UserResponse_description(ctx, field)
+			case "userInfo":
+				return ec.fieldContext_UserResponse_userInfo(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_UserResponse_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_UserResponse_communitiesRoles(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_UserResponse_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_UserResponse_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_UserResponse_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserResponse", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateHostSocialNavigation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateHostSocialNavigation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateHostSocialNavigation(rctx, fc.Args["input"].(models.UpdateHostSocialNavigationInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostSocialNavigation)
+	fc.Result = res
+	return ec.marshalNHostSocialNavigation2ᚖstormlinkᚋserverᚋentᚐHostSocialNavigation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateHostSocialNavigation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostSocialNavigation_id(ctx, field)
+			case "github":
+				return ec.fieldContext_HostSocialNavigation_github(ctx, field)
+			case "site":
+				return ec.fieldContext_HostSocialNavigation_site(ctx, field)
+			case "telegram":
+				return ec.fieldContext_HostSocialNavigation_telegram(ctx, field)
+			case "instagram":
+				return ec.fieldContext_HostSocialNavigation_instagram(ctx, field)
+			case "twitter":
+				return ec.fieldContext_HostSocialNavigation_twitter(ctx, field)
+			case "mastodon":
+				return ec.fieldContext_HostSocialNavigation_mastodon(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostSocialNavigation_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostSocialNavigation_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostSocialNavigation", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateHostSocialNavigation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createHostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createHostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateHostRole(rctx, fc.Args["input"].(models.CreateHostRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostRole)
+	fc.Result = res
+	return ec.marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createHostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRole_id(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRole_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_HostRole_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_HostRole_color(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_HostRole_communityRolesManagement(ctx, field)
+			case "hostUserBan":
+				return ec.fieldContext_HostRole_hostUserBan(ctx, field)
+			case "hostUserMute":
+				return ec.fieldContext_HostRole_hostUserMute(ctx, field)
+			case "hostCommunityDeletePost":
+				return ec.fieldContext_HostRole_hostCommunityDeletePost(ctx, field)
+			case "hostCommunityRemovePostFromPublication":
+				return ec.fieldContext_HostRole_hostCommunityRemovePostFromPublication(ctx, field)
+			case "hostCommunityDeleteComments":
+				return ec.fieldContext_HostRole_hostCommunityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRole_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRole_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_HostRole_badge(ctx, field)
+			case "users":
+				return ec.fieldContext_HostRole_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createHostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateHostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateHostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateHostRole(rctx, fc.Args["input"].(models.UpdateHostRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostRole)
+	fc.Result = res
+	return ec.marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateHostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRole_id(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRole_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_HostRole_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_HostRole_color(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_HostRole_communityRolesManagement(ctx, field)
+			case "hostUserBan":
+				return ec.fieldContext_HostRole_hostUserBan(ctx, field)
+			case "hostUserMute":
+				return ec.fieldContext_HostRole_hostUserMute(ctx, field)
+			case "hostCommunityDeletePost":
+				return ec.fieldContext_HostRole_hostCommunityDeletePost(ctx, field)
+			case "hostCommunityRemovePostFromPublication":
+				return ec.fieldContext_HostRole_hostCommunityRemovePostFromPublication(ctx, field)
+			case "hostCommunityDeleteComments":
+				return ec.fieldContext_HostRole_hostCommunityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRole_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRole_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_HostRole_badge(ctx, field)
+			case "users":
+				return ec.fieldContext_HostRole_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRole", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateHostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteHostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteHostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteHostRole(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteHostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteHostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createCommunityRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createCommunityRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateCommunityRole(rctx, fc.Args["input"].(models.CreateCommunityRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Role)
+	fc.Result = res
+	return ec.marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createCommunityRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createCommunityRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateCommunityRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateCommunityRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateCommunityRole(rctx, fc.Args["input"].(models.UpdateCommunityRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Role)
+	fc.Result = res
+	return ec.marshalNRole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateCommunityRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateCommunityRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteCommunityRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteCommunityRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteCommunityRole(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteCommunityRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteCommunityRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_banUserFromHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_banUserFromHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BanUserFromHost(rctx, fc.Args["input"].(models.BanUserInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.HostUserBan)
+	fc.Result = res
+	return ec.marshalNHostUserBan2ᚖstormlinkᚋserverᚋentᚐHostUserBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_banUserFromHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserBan_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserBan_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_banUserFromHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unbanUserFromHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unbanUserFromHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnbanUserFromHost(rctx, fc.Args["banID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unbanUserFromHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unbanUserFromHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_banCommunityFromHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_banCommunityFromHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BanCommunityFromHost(rctx, fc.Args["input"].(models.BanCommunityInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostCommunityBan)
+	fc.Result = res
+	return ec.marshalNHostCommunityBan2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_banCommunityFromHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityBan_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityBan_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_banCommunityFromHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unbanCommunityFromHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unbanCommunityFromHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnbanCommunityFromHost(rctx, fc.Args["banID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unbanCommunityFromHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unbanCommunityFromHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_banUserFromCommunity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_banUserFromCommunity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().BanUserFromCommunity(rctx, fc.Args["input"].(models.BanUserInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CommunityUserBan)
+	fc.Result = res
+	return ec.marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_banUserFromCommunity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserBan_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserBan_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserBan_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_banUserFromCommunity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unbanUserFromCommunity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unbanUserFromCommunity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnbanUserFromCommunity(rctx, fc.Args["banID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unbanUserFromCommunity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unbanUserFromCommunity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_muteUserInCommunity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_muteUserInCommunity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MuteUserInCommunity(rctx, fc.Args["input"].(models.MuteUserInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.CommunityUserMute)
+	fc.Result = res
+	return ec.marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_muteUserInCommunity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserMute_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserMute_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserMute_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_muteUserInCommunity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unmuteUserInCommunity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unmuteUserInCommunity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnmuteUserInCommunity(rctx, fc.Args["muteID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unmuteUserInCommunity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unmuteUserInCommunity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
@@ -23359,6 +25199,681 @@ func (ec *executionContext) fieldContext_Query_host(_ context.Context, field gra
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Host", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityRoles(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityRoles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityRoles(rctx, fc.Args["communityID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.Role)
+	fc.Result = res
+	return ec.marshalNRole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityRoles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityRoles_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityRole(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ent.Role)
+	fc.Result = res
+	return ec.marshalORole2ᚖstormlinkᚋserverᚋentᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Role_id(ctx, field)
+			case "title":
+				return ec.fieldContext_Role_title(ctx, field)
+			case "badgeID":
+				return ec.fieldContext_Role_badgeID(ctx, field)
+			case "color":
+				return ec.fieldContext_Role_color(ctx, field)
+			case "communityID":
+				return ec.fieldContext_Role_communityID(ctx, field)
+			case "communityRolesManagement":
+				return ec.fieldContext_Role_communityRolesManagement(ctx, field)
+			case "communityUserBan":
+				return ec.fieldContext_Role_communityUserBan(ctx, field)
+			case "communityUserMute":
+				return ec.fieldContext_Role_communityUserMute(ctx, field)
+			case "communityDeletePost":
+				return ec.fieldContext_Role_communityDeletePost(ctx, field)
+			case "communityRemovePostFromPublication":
+				return ec.fieldContext_Role_communityRemovePostFromPublication(ctx, field)
+			case "communityDeleteComments":
+				return ec.fieldContext_Role_communityDeleteComments(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Role_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Role_updatedAt(ctx, field)
+			case "badge":
+				return ec.fieldContext_Role_badge(ctx, field)
+			case "community":
+				return ec.fieldContext_Role_community(ctx, field)
+			case "users":
+				return ec.fieldContext_Role_users(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Role", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostCommunityBans(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostCommunityBans(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostCommunityBans(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.HostCommunityBan)
+	fc.Result = res
+	return ec.marshalNHostCommunityBan2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostCommunityBans(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityBan_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityBan_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityBan", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostCommunityBan(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostCommunityBan(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostCommunityBan(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostCommunityBan)
+	fc.Result = res
+	return ec.marshalOHostCommunityBan2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostCommunityBan(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityBan_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityBan_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostCommunityBan_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityUserBans(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityUserBans(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityUserBans(rctx, fc.Args["communityID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.CommunityUserBan)
+	fc.Result = res
+	return ec.marshalNCommunityUserBan2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserBanᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityUserBans(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserBan_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserBan_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserBan_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserBan_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserBan_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserBan_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserBan_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserBan", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityUserBans_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityUserMutes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityUserMutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityUserMutes(rctx, fc.Args["communityID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.CommunityUserMute)
+	fc.Result = res
+	return ec.marshalNCommunityUserMute2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserMuteᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityUserMutes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CommunityUserMute_id(ctx, field)
+			case "userID":
+				return ec.fieldContext_CommunityUserMute_userID(ctx, field)
+			case "communityID":
+				return ec.fieldContext_CommunityUserMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CommunityUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CommunityUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_CommunityUserMute_user(ctx, field)
+			case "community":
+				return ec.fieldContext_CommunityUserMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CommunityUserMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityUserMutes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_usersForRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_usersForRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().UsersForRole(rctx, fc.Args["roleID"].(string), fc.Args["search"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_usersForRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
+			case "avatarID":
+				return ec.fieldContext_User_avatarID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_User_bannerID(ctx, field)
+			case "description":
+				return ec.fieldContext_User_description(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "passwordHash":
+				return ec.fieldContext_User_passwordHash(ctx, field)
+			case "salt":
+				return ec.fieldContext_User_salt(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_User_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "avatar":
+				return ec.fieldContext_User_avatar(ctx, field)
+			case "banner":
+				return ec.fieldContext_User_banner(ctx, field)
+			case "userInfo":
+				return ec.fieldContext_User_userInfo(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_User_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_User_communitiesRoles(ctx, field)
+			case "communitiesBans":
+				return ec.fieldContext_User_communitiesBans(ctx, field)
+			case "communitiesMutes":
+				return ec.fieldContext_User_communitiesMutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_User_comments(ctx, field)
+			case "following":
+				return ec.fieldContext_User_following(ctx, field)
+			case "followers":
+				return ec.fieldContext_User_followers(ctx, field)
+			case "communitiesFollow":
+				return ec.fieldContext_User_communitiesFollow(ctx, field)
+			case "communitiesOwner":
+				return ec.fieldContext_User_communitiesOwner(ctx, field)
+			case "communitiesModerator":
+				return ec.fieldContext_User_communitiesModerator(ctx, field)
+			case "postsLikes":
+				return ec.fieldContext_User_postsLikes(ctx, field)
+			case "commentsLikes":
+				return ec.fieldContext_User_commentsLikes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_User_bookmarks(ctx, field)
+			case "emailVerifications":
+				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_usersForRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityUsers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityUsers(rctx, fc.Args["communityID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityUsers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
+			case "avatarID":
+				return ec.fieldContext_User_avatarID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_User_bannerID(ctx, field)
+			case "description":
+				return ec.fieldContext_User_description(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "passwordHash":
+				return ec.fieldContext_User_passwordHash(ctx, field)
+			case "salt":
+				return ec.fieldContext_User_salt(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_User_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "avatar":
+				return ec.fieldContext_User_avatar(ctx, field)
+			case "banner":
+				return ec.fieldContext_User_banner(ctx, field)
+			case "userInfo":
+				return ec.fieldContext_User_userInfo(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_User_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_User_communitiesRoles(ctx, field)
+			case "communitiesBans":
+				return ec.fieldContext_User_communitiesBans(ctx, field)
+			case "communitiesMutes":
+				return ec.fieldContext_User_communitiesMutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_User_comments(ctx, field)
+			case "following":
+				return ec.fieldContext_User_following(ctx, field)
+			case "followers":
+				return ec.fieldContext_User_followers(ctx, field)
+			case "communitiesFollow":
+				return ec.fieldContext_User_communitiesFollow(ctx, field)
+			case "communitiesOwner":
+				return ec.fieldContext_User_communitiesOwner(ctx, field)
+			case "communitiesModerator":
+				return ec.fieldContext_User_communitiesModerator(ctx, field)
+			case "postsLikes":
+				return ec.fieldContext_User_postsLikes(ctx, field)
+			case "commentsLikes":
+				return ec.fieldContext_User_commentsLikes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_User_bookmarks(ctx, field)
+			case "emailVerifications":
+				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -30917,6 +33432,67 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputBanCommunityInput(ctx context.Context, obj any) (models.BanCommunityInput, error) {
+	var it models.BanCommunityInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"communityID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputBanUserInput(ctx context.Context, obj any) (models.BanUserInput, error) {
+	var it models.BanUserInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"userID", "communityID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBookmarkPostInput(ctx context.Context, obj any) (models.BookmarkPostInput, error) {
 	var it models.BookmarkPostInput
 	asMap := map[string]any{}
@@ -34770,6 +37346,193 @@ func (ec *executionContext) unmarshalInputCreateCommunityInput(ctx context.Conte
 				return it, err
 			}
 			it.OwnerID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateCommunityRoleInput(ctx context.Context, obj any) (models.CreateCommunityRoleInput, error) {
+	var it models.CreateCommunityRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "color", "badgeID", "communityID", "communityRolesManagement", "communityUserBan", "communityUserMute", "communityDeletePost", "communityDeleteComments", "communityRemovePostFromPublication", "userIDs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
+		case "badgeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BadgeID = data
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		case "communityRolesManagement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRolesManagement"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRolesManagement = data
+		case "communityUserBan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityUserBan"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityUserBan = data
+		case "communityUserMute":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityUserMute"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityUserMute = data
+		case "communityDeletePost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityDeletePost"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityDeletePost = data
+		case "communityDeleteComments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityDeleteComments"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityDeleteComments = data
+		case "communityRemovePostFromPublication":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRemovePostFromPublication"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRemovePostFromPublication = data
+		case "userIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDs"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateHostRoleInput(ctx context.Context, obj any) (models.CreateHostRoleInput, error) {
+	var it models.CreateHostRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "color", "badgeID", "communityRolesManagement", "hostUserBan", "hostUserMute", "hostCommunityDeletePost", "hostCommunityRemovePostFromPublication", "hostCommunityDeleteComments", "userIDs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
+		case "badgeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BadgeID = data
+		case "communityRolesManagement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRolesManagement"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRolesManagement = data
+		case "hostUserBan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostUserBan"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostUserBan = data
+		case "hostUserMute":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostUserMute"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostUserMute = data
+		case "hostCommunityDeletePost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityDeletePost"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityDeletePost = data
+		case "hostCommunityRemovePostFromPublication":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityRemovePostFromPublication"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityRemovePostFromPublication = data
+		case "hostCommunityDeleteComments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityDeleteComments"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityDeleteComments = data
+		case "userIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDs"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDs = data
 		}
 	}
 
@@ -40179,6 +42942,40 @@ func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMuteUserInput(ctx context.Context, obj any) (models.MuteUserInput, error) {
+	var it models.MuteUserInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"userID", "communityID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPostLikeWhereInput(ctx context.Context, obj any) (models.PostLikeWhereInput, error) {
 	var it models.PostLikeWhereInput
 	asMap := map[string]any{}
@@ -42569,6 +45366,165 @@ func (ec *executionContext) unmarshalInputUpdateCommentInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateCommunityInput(ctx context.Context, obj any) (models.UpdateCommunityInput, error) {
+	var it models.UpdateCommunityInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "title", "slug", "description", "logoID", "bannerID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "logoID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logoID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LogoID = data
+		case "bannerID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bannerID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BannerID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateCommunityRoleInput(ctx context.Context, obj any) (models.UpdateCommunityRoleInput, error) {
+	var it models.UpdateCommunityRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "title", "color", "badgeID", "communityRolesManagement", "communityUserBan", "communityUserMute", "communityDeletePost", "communityDeleteComments", "communityRemovePostFromPublication", "userIDs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
+		case "badgeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BadgeID = data
+		case "communityRolesManagement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRolesManagement"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRolesManagement = data
+		case "communityUserBan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityUserBan"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityUserBan = data
+		case "communityUserMute":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityUserMute"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityUserMute = data
+		case "communityDeletePost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityDeletePost"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityDeletePost = data
+		case "communityDeleteComments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityDeleteComments"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityDeleteComments = data
+		case "communityRemovePostFromPublication":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRemovePostFromPublication"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRemovePostFromPublication = data
+		case "userIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDs"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDs = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, obj any) (models.UpdateHostInput, error) {
 	var it models.UpdateHostInput
 	asMap := map[string]any{}
@@ -42645,6 +45601,165 @@ func (ec *executionContext) unmarshalInputUpdateHostInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateHostRoleInput(ctx context.Context, obj any) (models.UpdateHostRoleInput, error) {
+	var it models.UpdateHostRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "title", "color", "badgeID", "communityRolesManagement", "hostUserBan", "hostUserMute", "hostCommunityDeletePost", "hostCommunityRemovePostFromPublication", "hostCommunityDeleteComments", "userIDs"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "color":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("color"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Color = data
+		case "badgeID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("badgeID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BadgeID = data
+		case "communityRolesManagement":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityRolesManagement"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityRolesManagement = data
+		case "hostUserBan":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostUserBan"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostUserBan = data
+		case "hostUserMute":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostUserMute"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostUserMute = data
+		case "hostCommunityDeletePost":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityDeletePost"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityDeletePost = data
+		case "hostCommunityRemovePostFromPublication":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityRemovePostFromPublication"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityRemovePostFromPublication = data
+		case "hostCommunityDeleteComments":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostCommunityDeleteComments"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HostCommunityDeleteComments = data
+		case "userIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userIDs"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserIDs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateHostSocialNavigationInput(ctx context.Context, obj any) (models.UpdateHostSocialNavigationInput, error) {
+	var it models.UpdateHostSocialNavigationInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"github", "site", "telegram", "instagram", "twitter", "mastodon"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "github":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("github"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Github = data
+		case "site":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("site"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Site = data
+		case "telegram":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("telegram"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Telegram = data
+		case "instagram":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instagram"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Instagram = data
+		case "twitter":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("twitter"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Twitter = data
+		case "mastodon":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mastodon"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Mastodon = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, obj any) (models.UpdatePostInput, error) {
 	var it models.UpdatePostInput
 	asMap := map[string]any{}
@@ -42715,6 +45830,68 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.PublishedAt = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, obj any) (models.UpdateUserInput, error) {
+	var it models.UpdateUserInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "name", "slug", "description", "avatarID", "info"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "slug":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("slug"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Slug = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "avatarID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("avatarID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AvatarID = data
+		case "info":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("info"))
+			data, err := ec.unmarshalOUserInfoPatchInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoPatchInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Info = data
 		}
 	}
 
@@ -43008,6 +46185,40 @@ func (ec *executionContext) unmarshalInputUserFollowWhereInput(ctx context.Conte
 				return it, err
 			}
 			it.HasFolloweeWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUserInfoPatchInput(ctx context.Context, obj any) (models.UserInfoPatchInput, error) {
+	var it models.UserInfoPatchInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
 		}
 	}
 
@@ -47567,6 +50778,125 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "community":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_community(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateUser":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUser(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateHostSocialNavigation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateHostSocialNavigation(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createHostRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createHostRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateHostRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateHostRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteHostRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteHostRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createCommunityRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createCommunityRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateCommunityRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateCommunityRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteCommunityRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteCommunityRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "banUserFromHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_banUserFromHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unbanUserFromHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unbanUserFromHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "banCommunityFromHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_banCommunityFromHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unbanCommunityFromHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unbanCommunityFromHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "banUserFromCommunity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_banUserFromCommunity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unbanUserFromCommunity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unbanUserFromCommunity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "muteUserInCommunity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_muteUserInCommunity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unmuteUserInCommunity":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unmuteUserInCommunity(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -49079,6 +52409,176 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_host(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityRoles":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityRoles(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityRole":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityRole(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostCommunityBans":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostCommunityBans(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostCommunityBan":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostCommunityBan(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityUserBans":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityUserBans(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityUserMutes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityUserMutes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "usersForRole":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_usersForRole(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityUsers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityUsers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -51026,6 +54526,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNBanCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanCommunityInput(ctx context.Context, v any) (models.BanCommunityInput, error) {
+	res, err := ec.unmarshalInputBanCommunityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNBanUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanUserInput(ctx context.Context, v any) (models.BanUserInput, error) {
+	res, err := ec.unmarshalInputBanUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNBookmark2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐBookmark(ctx context.Context, sel ast.SelectionSet, v *models.Bookmark) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -51353,6 +54863,54 @@ func (ec *executionContext) marshalNCommunityStatus2ᚖstormlinkᚋserverᚋgrap
 	return ec._CommunityStatus(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCommunityUserBan2stormlinkᚋserverᚋentᚐCommunityUserBan(ctx context.Context, sel ast.SelectionSet, v ent.CommunityUserBan) graphql.Marshaler {
+	return ec._CommunityUserBan(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCommunityUserBan2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CommunityUserBan) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋentᚐCommunityUserBan(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserBan) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -51366,6 +54924,54 @@ func (ec *executionContext) marshalNCommunityUserBan2ᚖstormlinkᚋserverᚋent
 func (ec *executionContext) unmarshalNCommunityUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityUserBanWhereInput(ctx context.Context, v any) (*models.CommunityUserBanWhereInput, error) {
 	res, err := ec.unmarshalInputCommunityUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCommunityUserMute2stormlinkᚋserverᚋentᚐCommunityUserMute(ctx context.Context, sel ast.SelectionSet, v ent.CommunityUserMute) graphql.Marshaler {
+	return ec._CommunityUserMute(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCommunityUserMute2ᚕᚖstormlinkᚋserverᚋentᚐCommunityUserMuteᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CommunityUserMute) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNCommunityUserMute2ᚖstormlinkᚋserverᚋentᚐCommunityUserMute(ctx context.Context, sel ast.SelectionSet, v *ent.CommunityUserMute) graphql.Marshaler {
@@ -51395,6 +55001,16 @@ func (ec *executionContext) unmarshalNCreateCommentInput2stormlinkᚋserverᚋgr
 
 func (ec *executionContext) unmarshalNCreateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityInput(ctx context.Context, v any) (models.CreateCommunityInput, error) {
 	res, err := ec.unmarshalInputCreateCommunityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateCommunityRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateCommunityRoleInput(ctx context.Context, v any) (models.CreateCommunityRoleInput, error) {
+	res, err := ec.unmarshalInputCreateCommunityRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateHostRoleInput(ctx context.Context, v any) (models.CreateHostRoleInput, error) {
+	res, err := ec.unmarshalInputCreateHostRoleInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -51447,6 +55063,64 @@ func (ec *executionContext) marshalNHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 	return ec._Host(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHostCommunityBan2stormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx context.Context, sel ast.SelectionSet, v models.HostCommunityBan) graphql.Marshaler {
+	return ec._HostCommunityBan(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostCommunityBan2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.HostCommunityBan) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostCommunityBan2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostCommunityBan2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx context.Context, sel ast.SelectionSet, v *models.HostCommunityBan) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HostCommunityBan(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInput(ctx context.Context, v any) (*models.HostCommunityBanWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunityBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -51455,6 +55129,10 @@ func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋ
 func (ec *executionContext) unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*models.HostCommunityMuteWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunityMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostRole2stormlinkᚋserverᚋentᚐHostRole(ctx context.Context, sel ast.SelectionSet, v ent.HostRole) graphql.Marshaler {
+	return ec._HostRole(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNHostRole2ᚕᚖstormlinkᚋserverᚋentᚐHostRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostRole) graphql.Marshaler {
@@ -51605,9 +55283,27 @@ func (ec *executionContext) unmarshalNHostSidebarNavigationWhereInput2ᚖstormli
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNHostSocialNavigation2stormlinkᚋserverᚋentᚐHostSocialNavigation(ctx context.Context, sel ast.SelectionSet, v ent.HostSocialNavigation) graphql.Marshaler {
+	return ec._HostSocialNavigation(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostSocialNavigation2ᚖstormlinkᚋserverᚋentᚐHostSocialNavigation(ctx context.Context, sel ast.SelectionSet, v *ent.HostSocialNavigation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HostSocialNavigation(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNHostSocialNavigationWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostSocialNavigationWhereInput(ctx context.Context, v any) (*models.HostSocialNavigationWhereInput, error) {
 	res, err := ec.unmarshalInputHostSocialNavigationWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostUserBan2stormlinkᚋserverᚋentᚐHostUserBan(ctx context.Context, sel ast.SelectionSet, v ent.HostUserBan) graphql.Marshaler {
+	return ec._HostUserBan(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNHostUserBan2ᚕᚖstormlinkᚋserverᚋentᚐHostUserBanᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HostUserBan) graphql.Marshaler {
@@ -51839,6 +55535,11 @@ func (ec *executionContext) marshalNMedia2ᚖstormlinkᚋserverᚋentᚐMedia(ct
 func (ec *executionContext) unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐMediaWhereInput(ctx context.Context, v any) (*models.MediaWhereInput, error) {
 	res, err := ec.unmarshalInputMediaWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNMuteUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserInput(ctx context.Context, v any) (models.MuteUserInput, error) {
+	res, err := ec.unmarshalInputMuteUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNNode2ᚕstormlinkᚋserverᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v []ent.Noder) graphql.Marshaler {
@@ -52112,6 +55813,10 @@ func (ec *executionContext) marshalNResendVerifyEmailResponse2ᚖstormlinkᚋser
 	return ec._ResendVerifyEmailResponse(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNRole2stormlinkᚋserverᚋentᚐRole(ctx context.Context, sel ast.SelectionSet, v ent.Role) graphql.Marshaler {
+	return ec._Role(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNRole2ᚕᚖstormlinkᚋserverᚋentᚐRoleᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Role) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -52250,13 +55955,38 @@ func (ec *executionContext) unmarshalNUpdateCommentInput2stormlinkᚋserverᚋgr
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommunityInput(ctx context.Context, v any) (models.UpdateCommunityInput, error) {
+	res, err := ec.unmarshalInputUpdateCommunityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateCommunityRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateCommunityRoleInput(ctx context.Context, v any) (models.UpdateCommunityRoleInput, error) {
+	res, err := ec.unmarshalInputUpdateCommunityRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostInput(ctx context.Context, v any) (models.UpdateHostInput, error) {
 	res, err := ec.unmarshalInputUpdateHostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRoleInput(ctx context.Context, v any) (models.UpdateHostRoleInput, error) {
+	res, err := ec.unmarshalInputUpdateHostRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateHostSocialNavigationInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostSocialNavigationInput(ctx context.Context, v any) (models.UpdateHostSocialNavigationInput, error) {
+	res, err := ec.unmarshalInputUpdateHostSocialNavigationInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput(ctx context.Context, v any) (models.UpdatePostInput, error) {
 	res, err := ec.unmarshalInputUpdatePostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateUserInput(ctx context.Context, v any) (models.UpdateUserInput, error) {
+	res, err := ec.unmarshalInputUpdateUserInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -52451,6 +56181,11 @@ func (ec *executionContext) marshalNUserHostRoleResponse2ᚖstormlinkᚋserver�
 		return graphql.Null
 	}
 	return ec._UserHostRoleResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUserInfoPatchInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoPatchInput(ctx context.Context, v any) (*models.UserInfoPatchInput, error) {
+	res, err := ec.unmarshalInputUserInfoPatchInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUserInfoResponse2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoResponseᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.UserInfoResponse) graphql.Marshaler {
@@ -53637,6 +57372,13 @@ func (ec *executionContext) marshalOHost2ᚖstormlinkᚋserverᚋentᚐHost(ctx 
 		return graphql.Null
 	}
 	return ec._Host(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOHostCommunityBan2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBan(ctx context.Context, sel ast.SelectionSet, v *models.HostCommunityBan) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostCommunityBan(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityBanWhereInputᚄ(ctx context.Context, v any) ([]*models.HostCommunityBanWhereInput, error) {
@@ -54991,6 +58733,24 @@ func (ec *executionContext) unmarshalOUserFollowWhereInput2ᚖstormlinkᚋserver
 	}
 	res, err := ec.unmarshalInputUserFollowWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOUserInfoPatchInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoPatchInputᚄ(ctx context.Context, v any) ([]*models.UserInfoPatchInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*models.UserInfoPatchInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNUserInfoPatchInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserInfoPatchInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOUserWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐUserWhereInputᚄ(ctx context.Context, v any) ([]*models.UserWhereInput, error) {
