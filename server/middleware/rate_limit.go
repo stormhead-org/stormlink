@@ -1,119 +1,122 @@
 package middleware
 
 import (
-	"context"
 	"log"
-	"strings"
+	"net/http"
 	"sync"
+	"time"
 
 	"golang.org/x/time/rate"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/status"
 )
 
-// RateLimiter хранит лимитеры для каждого клиента
+// RateLimiter представляет rate limiter для каждого IP
 type RateLimiter struct {
-	limiters map[string]*rate.Limiter
-	mu       sync.Mutex
-	clientMu map[string]*sync.Mutex
-	rate     rate.Limit
-	burst    int
+	limiter *rate.Limiter
+	lastSeen time.Time
 }
 
-// NewRateLimiter создает новый RateLimiter
-func NewRateLimiter(r rate.Limit, b int) *RateLimiter {
-	return &RateLimiter{
-		limiters: make(map[string]*rate.Limiter),
-		clientMu: make(map[string]*sync.Mutex),
-		rate:     r,
-		burst:    b,
-	}
+// RateLimitMiddleware ограничивает количество запросов с одного IP
+func RateLimitMiddleware(next http.Handler) http.Handler {
+	// Хранилище лимитеров для каждого IP
+	visitors := make(map[string]*RateLimiter)
+	var mu sync.RWMutex
+
+	// Очистка старых записей каждые 3 минуты
+	go func() {
+		for {
+			time.Sleep(time.Minute * 3)
+			mu.Lock()
+			for ip, v := range visitors {
+				if time.Since(v.lastSeen) > 3*time.Minute {
+					delete(visitors, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := getClientIP(r)
+		
+		mu.Lock()
+		if limiter, exists := visitors[ip]; exists {
+			limiter.lastSeen = time.Now()
+		} else {
+			// Более строгий лимит: 5 запросов в секунду, burst до 10
+			visitors[ip] = &RateLimiter{
+				limiter: rate.NewLimiter(rate.Every(time.Second/5), 10),
+				lastSeen: time.Now(),
+			}
+		}
+		
+		if !visitors[ip].limiter.Allow() {
+			mu.Unlock()
+			log.Printf("🚫 Rate limit exceeded for IP: %s", ip)
+			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			return
+		}
+		mu.Unlock()
+		
+		next.ServeHTTP(w, r)
+	})
 }
 
-// getLimiter возвращает лимитер и мьютекс для клиента или создает новые
-func (rl *RateLimiter) getLimiter(clientID string) (*rate.Limiter, *sync.Mutex) {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	limiter, exists := rl.limiters[clientID]
-	clientMu, muExists := rl.clientMu[clientID]
-	if !exists {
-		limiter = rate.NewLimiter(rl.rate, rl.burst)
-		rl.limiters[clientID] = limiter
+// getClientIP извлекает реальный IP клиента
+func getClientIP(r *http.Request) string {
+	// Проверяем заголовки прокси
+	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
+		return ip
 	}
-	if !muExists {
-		clientMu = &sync.Mutex{}
-		rl.clientMu[clientID] = clientMu
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
 	}
-	return limiter, clientMu
+	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
+		return ip
+	}
+	
+	return r.RemoteAddr
 }
 
-// RateLimitMiddleware создает gRPC middleware для ограничения запросов
-func RateLimitMiddleware(rl *RateLimiter) grpc.UnaryServerInterceptor {
-	return func(
-		ctx context.Context,
-		req interface{},
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (interface{}, error) {
-        publicMethods := map[string]bool{
-            "/auth.AuthService/Login":             true,
-            "/user.UserService/RegisterUser":      true,
-            "/mail.MailService/VerifyEmail":       true,
-            "/mail.MailService/ResendVerifyEmail": true,
-        }
+// AuthRateLimitMiddleware специальный rate limiter для auth endpoints
+func AuthRateLimitMiddleware(next http.Handler) http.Handler {
+	// Более строгие лимиты для auth endpoints
+	visitors := make(map[string]*RateLimiter)
+	var mu sync.RWMutex
 
-		if !publicMethods[info.FullMethod] {
-			return handler(ctx, req)
+	go func() {
+		for {
+			time.Sleep(time.Minute * 5)
+			mu.Lock()
+			for ip, v := range visitors {
+				if time.Since(v.lastSeen) > 5*time.Minute {
+					delete(visitors, ip)
+				}
+			}
+			mu.Unlock()
 		}
+	}()
 
-		clientID := getClientID(ctx)
-		if clientID == "" {
-			log.Println("⚠️ Не удалось определить client ID, пропускаем rate limiting")
-			return handler(ctx, req)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := getClientIP(r)
+		
+		mu.Lock()
+		if limiter, exists := visitors[ip]; exists {
+			limiter.lastSeen = time.Now()
+		} else {
+			// 5 запросов в минуту для auth endpoints
+			visitors[ip] = &RateLimiter{
+				limiter: rate.NewLimiter(rate.Every(time.Minute/5), 10),
+				lastSeen: time.Now(),
+			}
 		}
-
-		limiter, clientMu := rl.getLimiter(clientID)
-
-		clientMu.Lock()
-		defer clientMu.Unlock()
-
-		reservation := limiter.Reserve()
-		if !reservation.OK() {
-			log.Printf("🚫 Rate limit exceeded for client %s on method %s (no tokens available)", clientID, info.FullMethod)
-			return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
+		
+		if !visitors[ip].limiter.Allow() {
+			mu.Unlock()
+			http.Error(w, "Too many authentication attempts", http.StatusTooManyRequests)
+			return
 		}
-
-		delay := reservation.Delay()
-		if delay > 0 {
-			log.Printf("🚫 Rate limit exceeded for client %s on method %s (delay required: %v)", clientID, info.FullMethod, delay)
-			return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded")
-		}
-
-		log.Printf("✅ Rate limit check passed for client %s on method %s", clientID, info.FullMethod)
-		return handler(ctx, req)
-	}
-}
-
-// getClientID извлекает идентификатор клиента (например, IP) из контекста
-func getClientID(ctx context.Context) string {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if values := md.Get("x-forwarded-for"); len(values) > 0 {
-			return values[0]
-		}
-	}
-	if p, ok := peer.FromContext(ctx); ok {
-		addr := p.Addr.String()
-		if addr == "::1" || strings.HasPrefix(addr, "[::1]:") {
-			return "127.0.0.1"
-		}
-		if idx := strings.LastIndex(addr, ":"); idx != -1 {
-			return addr[:idx]
-		}
-		return addr
-	}
-	return ""
+		mu.Unlock()
+		
+		next.ServeHTTP(w, r)
+	})
 }

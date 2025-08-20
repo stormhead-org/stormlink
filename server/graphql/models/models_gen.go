@@ -781,6 +781,14 @@ type CreatePostInput struct {
 	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
 }
 
+type CreateProfileTableInfoItemInput struct {
+	Key         string                    `json:"key"`
+	Value       string                    `json:"value"`
+	Type        profiletableinfoitem.Type `json:"type"`
+	CommunityID *string                   `json:"communityID,omitempty"`
+	UserID      *string                   `json:"userID,omitempty"`
+}
+
 type DeleteBookmarkPostInput struct {
 	PostID string `json:"postID"`
 }
@@ -2187,6 +2195,7 @@ type UpdateCommunityInput struct {
 	Title       *string `json:"title,omitempty"`
 	Slug        *string `json:"slug,omitempty"`
 	Description *string `json:"description,omitempty"`
+	Contacts    *string `json:"contacts,omitempty"`
 	LogoID      *string `json:"logoID,omitempty"`
 	BannerID    *string `json:"bannerID,omitempty"`
 }
@@ -2248,6 +2257,12 @@ type UpdatePostInput struct {
 	HeroImageID *string          `json:"heroImageID,omitempty"`
 	Visibility  *post.Visibility `json:"visibility,omitempty"`
 	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
+}
+
+type UpdateProfileTableInfoItemInput struct {
+	ID    string  `json:"id"`
+	Key   *string `json:"key,omitempty"`
+	Value *string `json:"value,omitempty"`
 }
 
 type UpdateUserInput struct {
@@ -2473,34 +2488,6 @@ type UserWhereInput struct {
 	EmailHasSuffix    *string  `json:"emailHasSuffix,omitempty"`
 	EmailEqualFold    *string  `json:"emailEqualFold,omitempty"`
 	EmailContainsFold *string  `json:"emailContainsFold,omitempty"`
-	// password_hash field predicates
-	PasswordHash             *string  `json:"passwordHash,omitempty"`
-	PasswordHashNeq          *string  `json:"passwordHashNEQ,omitempty"`
-	PasswordHashIn           []string `json:"passwordHashIn,omitempty"`
-	PasswordHashNotIn        []string `json:"passwordHashNotIn,omitempty"`
-	PasswordHashGt           *string  `json:"passwordHashGT,omitempty"`
-	PasswordHashGte          *string  `json:"passwordHashGTE,omitempty"`
-	PasswordHashLt           *string  `json:"passwordHashLT,omitempty"`
-	PasswordHashLte          *string  `json:"passwordHashLTE,omitempty"`
-	PasswordHashContains     *string  `json:"passwordHashContains,omitempty"`
-	PasswordHashHasPrefix    *string  `json:"passwordHashHasPrefix,omitempty"`
-	PasswordHashHasSuffix    *string  `json:"passwordHashHasSuffix,omitempty"`
-	PasswordHashEqualFold    *string  `json:"passwordHashEqualFold,omitempty"`
-	PasswordHashContainsFold *string  `json:"passwordHashContainsFold,omitempty"`
-	// salt field predicates
-	Salt             *string  `json:"salt,omitempty"`
-	SaltNeq          *string  `json:"saltNEQ,omitempty"`
-	SaltIn           []string `json:"saltIn,omitempty"`
-	SaltNotIn        []string `json:"saltNotIn,omitempty"`
-	SaltGt           *string  `json:"saltGT,omitempty"`
-	SaltGte          *string  `json:"saltGTE,omitempty"`
-	SaltLt           *string  `json:"saltLT,omitempty"`
-	SaltLte          *string  `json:"saltLTE,omitempty"`
-	SaltContains     *string  `json:"saltContains,omitempty"`
-	SaltHasPrefix    *string  `json:"saltHasPrefix,omitempty"`
-	SaltHasSuffix    *string  `json:"saltHasSuffix,omitempty"`
-	SaltEqualFold    *string  `json:"saltEqualFold,omitempty"`
-	SaltContainsFold *string  `json:"saltContainsFold,omitempty"`
 	// is_verified field predicates
 	IsVerified    *bool `json:"isVerified,omitempty"`
 	IsVerifiedNeq *bool `json:"isVerifiedNEQ,omitempty"`
@@ -2584,6 +2571,65 @@ type VerifyEmailInput struct {
 
 type VerifyEmailResponse struct {
 	Message string `json:"message"`
+}
+
+type CommunityFollowersFilter string
+
+const (
+	CommunityFollowersFilterAll    CommunityFollowersFilter = "ALL"
+	CommunityFollowersFilterBanned CommunityFollowersFilter = "BANNED"
+	CommunityFollowersFilterMuted  CommunityFollowersFilter = "MUTED"
+	CommunityFollowersFilterActive CommunityFollowersFilter = "ACTIVE"
+)
+
+var AllCommunityFollowersFilter = []CommunityFollowersFilter{
+	CommunityFollowersFilterAll,
+	CommunityFollowersFilterBanned,
+	CommunityFollowersFilterMuted,
+	CommunityFollowersFilterActive,
+}
+
+func (e CommunityFollowersFilter) IsValid() bool {
+	switch e {
+	case CommunityFollowersFilterAll, CommunityFollowersFilterBanned, CommunityFollowersFilterMuted, CommunityFollowersFilterActive:
+		return true
+	}
+	return false
+}
+
+func (e CommunityFollowersFilter) String() string {
+	return string(e)
+}
+
+func (e *CommunityFollowersFilter) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CommunityFollowersFilter(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CommunityFollowersFilter", str)
+	}
+	return nil
+}
+
+func (e CommunityFollowersFilter) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CommunityFollowersFilter) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CommunityFollowersFilter) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 // Possible directions in which to order a list of items when provided an `orderBy` argument.

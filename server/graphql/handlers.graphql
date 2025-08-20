@@ -1,6 +1,14 @@
 scalar JSON
 scalar Upload
 
+# Enum для фильтрации подписчиков сообщества
+enum CommunityFollowersFilter {
+	ALL
+	BANNED
+	MUTED
+	ACTIVE
+}
+
 # Статусы моделей
 type UserStatus {
 	followersCount: String!
@@ -276,6 +284,14 @@ extend type Query {
 	# Пользователи для добавления в роли
 	usersForRole(roleID: ID!, search: String): [User!]!
 	communityUsers(communityID: ID!): [User!]!
+
+	# Подписчики сообщества с фильтрацией
+	communityFollowers(
+		communityID: ID!
+		filter: CommunityFollowersFilter = ALL
+		limit: Int = 50
+		offset: Int = 0
+	): [User!]!
 }
 
 extend type Mutation {
@@ -343,6 +359,15 @@ extend type Mutation {
 	unbanUserFromCommunity(banID: ID!): Boolean!
 	muteUserInCommunity(input: MuteUserInput!): CommunityUserMute!
 	unmuteUserInCommunity(muteID: ID!): Boolean!
+
+	# Мутации для ProfileTableInfoItem
+	createProfileTableInfoItem(
+		input: CreateProfileTableInfoItemInput!
+	): ProfileTableInfoItem!
+	updateProfileTableInfoItem(
+		input: UpdateProfileTableInfoItemInput!
+	): ProfileTableInfoItem!
+	deleteProfileTableInfoItem(id: ID!): Boolean!
 }
 
 extend type Subscription {
@@ -373,8 +398,23 @@ input UpdateCommunityInput {
 	title: String
 	slug: String
 	description: String
+	contacts: String
 	logoID: ID
 	bannerID: ID
+}
+
+input CreateProfileTableInfoItemInput {
+	key: String!
+	value: String!
+	type: ProfileTableInfoItemType!
+	communityID: ID
+	userID: ID
+}
+
+input UpdateProfileTableInfoItemInput {
+	id: ID!
+	key: String
+	value: String
 }
 
 input UserInfoPatchInput {

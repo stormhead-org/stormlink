@@ -9,6 +9,7 @@ import (
 	"stormlink/server/usecase/hostrole"
 	"stormlink/server/usecase/post"
 	"stormlink/server/usecase/user"
+	"stormlink/server/usecase/profiletableinfoitem"
 
 	authpb "stormlink/server/grpc/auth/protobuf"
 	mailpb "stormlink/server/grpc/mail/protobuf"
@@ -25,6 +26,7 @@ type Resolver struct {
 	HostRoleUC hostrole.HostRoleUsecase
 	CommunityRoleUC communityrole.CommunityRoleUsecase
 	BanUC ban.BanUsecase
+	ProfileTableInfoItemUC profiletableinfoitem.ProfileTableInfoItemUsecase
 	AuthClient authpb.AuthServiceClient
 	UserClient userpb.UserServiceClient
 	MailClient mailpb.MailServiceClient

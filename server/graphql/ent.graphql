@@ -2721,8 +2721,6 @@ type User implements Node {
   bannerID: ID
   description: String
   email: String!
-  passwordHash: String!
-  salt: String!
   isVerified: Boolean!
   createdAt: Time!
   updatedAt: Time!
@@ -2923,38 +2921,6 @@ input UserWhereInput {
   emailHasSuffix: String
   emailEqualFold: String
   emailContainsFold: String
-  """
-  password_hash field predicates
-  """
-  passwordHash: String
-  passwordHashNEQ: String
-  passwordHashIn: [String!]
-  passwordHashNotIn: [String!]
-  passwordHashGT: String
-  passwordHashGTE: String
-  passwordHashLT: String
-  passwordHashLTE: String
-  passwordHashContains: String
-  passwordHashHasPrefix: String
-  passwordHashHasSuffix: String
-  passwordHashEqualFold: String
-  passwordHashContainsFold: String
-  """
-  salt field predicates
-  """
-  salt: String
-  saltNEQ: String
-  saltIn: [String!]
-  saltNotIn: [String!]
-  saltGT: String
-  saltGTE: String
-  saltLT: String
-  saltLTE: String
-  saltContains: String
-  saltHasPrefix: String
-  saltHasSuffix: String
-  saltEqualFold: String
-  saltContainsFold: String
   """
   is_verified field predicates
   """

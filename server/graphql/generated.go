@@ -360,9 +360,11 @@ type ComplexityRoot struct {
 		CreateCommunityRole        func(childComplexity int, input models.CreateCommunityRoleInput) int
 		CreateHostRole             func(childComplexity int, input models.CreateHostRoleInput) int
 		CreatePost                 func(childComplexity int, input models.CreatePostInput) int
+		CreateProfileTableInfoItem func(childComplexity int, input models.CreateProfileTableInfoItemInput) int
 		DeleteBookmarkPost         func(childComplexity int, input models.DeleteBookmarkPostInput) int
 		DeleteCommunityRole        func(childComplexity int, id string) int
 		DeleteHostRole             func(childComplexity int, id string) int
+		DeleteProfileTableInfoItem func(childComplexity int, id string) int
 		FollowCommunity            func(childComplexity int, input models.FollowCommunityInput) int
 		FollowUser                 func(childComplexity int, input models.FollowUserInput) int
 		Host                       func(childComplexity int, input models.UpdateHostInput) int
@@ -387,6 +389,7 @@ type ComplexityRoot struct {
 		UpdateCommunityRole        func(childComplexity int, input models.UpdateCommunityRoleInput) int
 		UpdateHostRole             func(childComplexity int, input models.UpdateHostRoleInput) int
 		UpdateHostSocialNavigation func(childComplexity int, input models.UpdateHostSocialNavigationInput) int
+		UpdateProfileTableInfoItem func(childComplexity int, input models.UpdateProfileTableInfoItemInput) int
 		UpdateUser                 func(childComplexity int, input models.UpdateUserInput) int
 		UploadMedia                func(childComplexity int, file graphql.Upload, dir *string) int
 		UserRefreshToken           func(childComplexity int) int
@@ -469,6 +472,7 @@ type ComplexityRoot struct {
 		Communities                func(childComplexity int, onlyNotBanned *bool) int
 		Community                  func(childComplexity int, id string) int
 		CommunityBySlug            func(childComplexity int, slug string) int
+		CommunityFollowers         func(childComplexity int, communityID string, filter *models.CommunityFollowersFilter, limit *int32, offset *int32) int
 		CommunityModerator         func(childComplexity int, communityID string, userID string) int
 		CommunityRole              func(childComplexity int, id string) int
 		CommunityRoles             func(childComplexity int, communityID string) int
@@ -569,10 +573,8 @@ type ComplexityRoot struct {
 		ID                   func(childComplexity int) int
 		IsVerified           func(childComplexity int) int
 		Name                 func(childComplexity int) int
-		PasswordHash         func(childComplexity int) int
 		Posts                func(childComplexity int) int
 		PostsLikes           func(childComplexity int) int
-		Salt                 func(childComplexity int) int
 		Slug                 func(childComplexity int) int
 		UpdatedAt            func(childComplexity int) int
 		UserInfo             func(childComplexity int) int
@@ -708,6 +710,9 @@ type MutationResolver interface {
 	UnbanUserFromCommunity(ctx context.Context, banID string) (bool, error)
 	MuteUserInCommunity(ctx context.Context, input models.MuteUserInput) (*ent.CommunityUserMute, error)
 	UnmuteUserInCommunity(ctx context.Context, muteID string) (bool, error)
+	CreateProfileTableInfoItem(ctx context.Context, input models.CreateProfileTableInfoItemInput) (*ent.ProfileTableInfoItem, error)
+	UpdateProfileTableInfoItem(ctx context.Context, input models.UpdateProfileTableInfoItemInput) (*ent.ProfileTableInfoItem, error)
+	DeleteProfileTableInfoItem(ctx context.Context, id string) (bool, error)
 }
 type PostResolver interface {
 	Likes(ctx context.Context, obj *ent.Post) ([]*models.PostLike, error)
@@ -762,6 +767,7 @@ type QueryResolver interface {
 	CommunityUserMutes(ctx context.Context, communityID string) ([]*ent.CommunityUserMute, error)
 	UsersForRole(ctx context.Context, roleID string, search *string) ([]*ent.User, error)
 	CommunityUsers(ctx context.Context, communityID string) ([]*ent.User, error)
+	CommunityFollowers(ctx context.Context, communityID string, filter *models.CommunityFollowersFilter, limit *int32, offset *int32) ([]*ent.User, error)
 }
 type SubscriptionResolver interface {
 	CommentAdded(ctx context.Context, postID string) (<-chan *ent.Comment, error)
@@ -2362,6 +2368,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreatePost(childComplexity, args["input"].(models.CreatePostInput)), true
 
+	case "Mutation.createProfileTableInfoItem":
+		if e.complexity.Mutation.CreateProfileTableInfoItem == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createProfileTableInfoItem_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateProfileTableInfoItem(childComplexity, args["input"].(models.CreateProfileTableInfoItemInput)), true
+
 	case "Mutation.deleteBookmarkPost":
 		if e.complexity.Mutation.DeleteBookmarkPost == nil {
 			break
@@ -2397,6 +2415,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteHostRole(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteProfileTableInfoItem":
+		if e.complexity.Mutation.DeleteProfileTableInfoItem == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteProfileTableInfoItem_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteProfileTableInfoItem(childComplexity, args["id"].(string)), true
 
 	case "Mutation.followCommunity":
 		if e.complexity.Mutation.FollowCommunity == nil {
@@ -2680,6 +2710,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateHostSocialNavigation(childComplexity, args["input"].(models.UpdateHostSocialNavigationInput)), true
+
+	case "Mutation.updateProfileTableInfoItem":
+		if e.complexity.Mutation.UpdateProfileTableInfoItem == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateProfileTableInfoItem_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateProfileTableInfoItem(childComplexity, args["input"].(models.UpdateProfileTableInfoItemInput)), true
 
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
@@ -3203,6 +3245,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.CommunityBySlug(childComplexity, args["slug"].(string)), true
+
+	case "Query.communityFollowers":
+		if e.complexity.Query.CommunityFollowers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_communityFollowers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CommunityFollowers(childComplexity, args["communityID"].(string), args["filter"].(*models.CommunityFollowersFilter), args["limit"].(*int32), args["offset"].(*int32)), true
 
 	case "Query.communityModerator":
 		if e.complexity.Query.CommunityModerator == nil {
@@ -3918,13 +3972,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Name(childComplexity), true
 
-	case "User.passwordHash":
-		if e.complexity.User.PasswordHash == nil {
-			break
-		}
-
-		return e.complexity.User.PasswordHash(childComplexity), true
-
 	case "User.posts":
 		if e.complexity.User.Posts == nil {
 			break
@@ -3938,13 +3985,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.PostsLikes(childComplexity), true
-
-	case "User.salt":
-		if e.complexity.User.Salt == nil {
-			break
-		}
-
-		return e.complexity.User.Salt(childComplexity), true
 
 	case "User.slug":
 		if e.complexity.User.Slug == nil {
@@ -4342,6 +4382,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCommunityRoleInput,
 		ec.unmarshalInputCreateHostRoleInput,
 		ec.unmarshalInputCreatePostInput,
+		ec.unmarshalInputCreateProfileTableInfoItemInput,
 		ec.unmarshalInputDeleteBookmarkPostInput,
 		ec.unmarshalInputEmailVerificationWhereInput,
 		ec.unmarshalInputFollowCommunityInput,
@@ -4378,6 +4419,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateHostRoleInput,
 		ec.unmarshalInputUpdateHostSocialNavigationInput,
 		ec.unmarshalInputUpdatePostInput,
+		ec.unmarshalInputUpdateProfileTableInfoItemInput,
 		ec.unmarshalInputUpdateUserInput,
 		ec.unmarshalInputUserFollowWhereInput,
 		ec.unmarshalInputUserInfoPatchInput,
@@ -4627,6 +4669,17 @@ func (ec *executionContext) field_Mutation_createPost_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createProfileTableInfoItem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateProfileTableInfoItemInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateProfileTableInfoItemInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteBookmarkPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4650,6 +4703,17 @@ func (ec *executionContext) field_Mutation_deleteCommunityRole_args(ctx context.
 }
 
 func (ec *executionContext) field_Mutation_deleteHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteProfileTableInfoItem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -4913,6 +4977,17 @@ func (ec *executionContext) field_Mutation_updateHostSocialNavigation_args(ctx c
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateProfileTableInfoItem_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateProfileTableInfoItemInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateProfileTableInfoItemInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5165,6 +5240,32 @@ func (ec *executionContext) field_Query_communityBySlug_args(ctx context.Context
 		return nil, err
 	}
 	args["slug"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_communityFollowers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "communityID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["communityID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOCommunityFollowersFilter2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowersFilter)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "offset", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg3
 	return args, nil
 }
 
@@ -5847,10 +5948,6 @@ func (ec *executionContext) fieldContext_Bookmark_user(_ context.Context, field 
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -6519,10 +6616,6 @@ func (ec *executionContext) fieldContext_Comment_author(_ context.Context, field
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -7487,10 +7580,6 @@ func (ec *executionContext) fieldContext_CommentLike_user(_ context.Context, fie
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -8545,10 +8634,6 @@ func (ec *executionContext) fieldContext_Community_owner(_ context.Context, fiel
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -9578,10 +9663,6 @@ func (ec *executionContext) fieldContext_CommunityFollow_user(_ context.Context,
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -10002,10 +10083,6 @@ func (ec *executionContext) fieldContext_CommunityModerator_user(_ context.Conte
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -11346,10 +11423,6 @@ func (ec *executionContext) fieldContext_CommunityUserBan_user(_ context.Context
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -11770,10 +11843,6 @@ func (ec *executionContext) fieldContext_CommunityUserMute_user(_ context.Contex
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -12147,10 +12216,6 @@ func (ec *executionContext) fieldContext_EmailVerification_user(_ context.Contex
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -12927,10 +12992,6 @@ func (ec *executionContext) fieldContext_Host_owner(_ context.Context, field gra
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -14212,10 +14273,6 @@ func (ec *executionContext) fieldContext_HostRole_users(_ context.Context, field
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -15711,10 +15768,6 @@ func (ec *executionContext) fieldContext_HostUserBan_user(_ context.Context, fie
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -15951,10 +16004,6 @@ func (ec *executionContext) fieldContext_HostUserMute_user(_ context.Context, fi
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -19493,6 +19542,215 @@ func (ec *executionContext) fieldContext_Mutation_unmuteUserInCommunity(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createProfileTableInfoItem(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateProfileTableInfoItem(rctx, fc.Args["input"].(models.CreateProfileTableInfoItemInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.ProfileTableInfoItem)
+	fc.Result = res
+	return ec.marshalNProfileTableInfoItem2ᚖstormlinkᚋserverᚋentᚐProfileTableInfoItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ProfileTableInfoItem_id(ctx, field)
+			case "key":
+				return ec.fieldContext_ProfileTableInfoItem_key(ctx, field)
+			case "value":
+				return ec.fieldContext_ProfileTableInfoItem_value(ctx, field)
+			case "communityID":
+				return ec.fieldContext_ProfileTableInfoItem_communityID(ctx, field)
+			case "userID":
+				return ec.fieldContext_ProfileTableInfoItem_userID(ctx, field)
+			case "type":
+				return ec.fieldContext_ProfileTableInfoItem_type(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ProfileTableInfoItem_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ProfileTableInfoItem_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_ProfileTableInfoItem_community(ctx, field)
+			case "user":
+				return ec.fieldContext_ProfileTableInfoItem_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProfileTableInfoItem", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createProfileTableInfoItem_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateProfileTableInfoItem(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateProfileTableInfoItem(rctx, fc.Args["input"].(models.UpdateProfileTableInfoItemInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ent.ProfileTableInfoItem)
+	fc.Result = res
+	return ec.marshalNProfileTableInfoItem2ᚖstormlinkᚋserverᚋentᚐProfileTableInfoItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ProfileTableInfoItem_id(ctx, field)
+			case "key":
+				return ec.fieldContext_ProfileTableInfoItem_key(ctx, field)
+			case "value":
+				return ec.fieldContext_ProfileTableInfoItem_value(ctx, field)
+			case "communityID":
+				return ec.fieldContext_ProfileTableInfoItem_communityID(ctx, field)
+			case "userID":
+				return ec.fieldContext_ProfileTableInfoItem_userID(ctx, field)
+			case "type":
+				return ec.fieldContext_ProfileTableInfoItem_type(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ProfileTableInfoItem_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_ProfileTableInfoItem_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_ProfileTableInfoItem_community(ctx, field)
+			case "user":
+				return ec.fieldContext_ProfileTableInfoItem_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProfileTableInfoItem", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateProfileTableInfoItem_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteProfileTableInfoItem(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteProfileTableInfoItem(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteProfileTableInfoItem(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteProfileTableInfoItem_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *models.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
@@ -20555,10 +20813,6 @@ func (ec *executionContext) fieldContext_Post_author(_ context.Context, field gr
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -21057,10 +21311,6 @@ func (ec *executionContext) fieldContext_PostLike_user(_ context.Context, field 
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -21995,10 +22245,6 @@ func (ec *executionContext) fieldContext_ProfileTableInfoItem_user(_ context.Con
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -22932,10 +23178,6 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -23048,10 +23290,6 @@ func (ec *executionContext) fieldContext_Query_userBySlug(ctx context.Context, f
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -23167,10 +23405,6 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -25693,10 +25927,6 @@ func (ec *executionContext) fieldContext_Query_usersForRole(ctx context.Context,
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -25812,10 +26042,6 @@ func (ec *executionContext) fieldContext_Query_communityUsers(ctx context.Contex
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -25872,6 +26098,121 @@ func (ec *executionContext) fieldContext_Query_communityUsers(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_communityUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_communityFollowers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_communityFollowers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CommunityFollowers(rctx, fc.Args["communityID"].(string), fc.Args["filter"].(*models.CommunityFollowersFilter), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*ent.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚕᚖstormlinkᚋserverᚋentᚐUserᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_communityFollowers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "slug":
+				return ec.fieldContext_User_slug(ctx, field)
+			case "avatarID":
+				return ec.fieldContext_User_avatarID(ctx, field)
+			case "bannerID":
+				return ec.fieldContext_User_bannerID(ctx, field)
+			case "description":
+				return ec.fieldContext_User_description(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "isVerified":
+				return ec.fieldContext_User_isVerified(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "avatar":
+				return ec.fieldContext_User_avatar(ctx, field)
+			case "banner":
+				return ec.fieldContext_User_banner(ctx, field)
+			case "userInfo":
+				return ec.fieldContext_User_userInfo(ctx, field)
+			case "hostRoles":
+				return ec.fieldContext_User_hostRoles(ctx, field)
+			case "communitiesRoles":
+				return ec.fieldContext_User_communitiesRoles(ctx, field)
+			case "communitiesBans":
+				return ec.fieldContext_User_communitiesBans(ctx, field)
+			case "communitiesMutes":
+				return ec.fieldContext_User_communitiesMutes(ctx, field)
+			case "posts":
+				return ec.fieldContext_User_posts(ctx, field)
+			case "comments":
+				return ec.fieldContext_User_comments(ctx, field)
+			case "following":
+				return ec.fieldContext_User_following(ctx, field)
+			case "followers":
+				return ec.fieldContext_User_followers(ctx, field)
+			case "communitiesFollow":
+				return ec.fieldContext_User_communitiesFollow(ctx, field)
+			case "communitiesOwner":
+				return ec.fieldContext_User_communitiesOwner(ctx, field)
+			case "communitiesModerator":
+				return ec.fieldContext_User_communitiesModerator(ctx, field)
+			case "postsLikes":
+				return ec.fieldContext_User_postsLikes(ctx, field)
+			case "commentsLikes":
+				return ec.fieldContext_User_commentsLikes(ctx, field)
+			case "bookmarks":
+				return ec.fieldContext_User_bookmarks(ctx, field)
+			case "emailVerifications":
+				return ec.fieldContext_User_emailVerifications(ctx, field)
+			case "userStatus":
+				return ec.fieldContext_User_userStatus(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_communityFollowers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -26954,10 +27295,6 @@ func (ec *executionContext) fieldContext_Role_users(_ context.Context, field gra
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -27710,94 +28047,6 @@ func (ec *executionContext) _User_email(ctx context.Context, field graphql.Colle
 }
 
 func (ec *executionContext) fieldContext_User_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_passwordHash(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_User_passwordHash(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PasswordHash, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_User_passwordHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _User_salt(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_User_salt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Salt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_User_salt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "User",
 		Field:      field,
@@ -29903,10 +30152,6 @@ func (ec *executionContext) fieldContext_UserFollow_follower(_ context.Context, 
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -30011,10 +30256,6 @@ func (ec *executionContext) fieldContext_UserFollow_followee(_ context.Context, 
 				return ec.fieldContext_User_description(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
-			case "passwordHash":
-				return ec.fieldContext_User_passwordHash(ctx, field)
-			case "salt":
-				return ec.fieldContext_User_salt(ctx, field)
 			case "isVerified":
 				return ec.fieldContext_User_isVerified(ctx, field)
 			case "createdAt":
@@ -37606,6 +37847,61 @@ func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, o
 				return it, err
 			}
 			it.PublishedAt = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateProfileTableInfoItemInput(ctx context.Context, obj any) (models.CreateProfileTableInfoItemInput, error) {
+	var it models.CreateProfileTableInfoItemInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"key", "value", "type", "communityID", "userID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNProfileTableInfoItemType2stormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		}
 	}
 
@@ -45373,7 +45669,7 @@ func (ec *executionContext) unmarshalInputUpdateCommunityInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "title", "slug", "description", "logoID", "bannerID"}
+	fieldsInOrder := [...]string{"id", "title", "slug", "description", "contacts", "logoID", "bannerID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -45408,6 +45704,13 @@ func (ec *executionContext) unmarshalInputUpdateCommunityInput(ctx context.Conte
 				return it, err
 			}
 			it.Description = data
+		case "contacts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contacts"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Contacts = data
 		case "logoID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("logoID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -45836,6 +46139,47 @@ func (ec *executionContext) unmarshalInputUpdatePostInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateProfileTableInfoItemInput(ctx context.Context, obj any) (models.UpdateProfileTableInfoItemInput, error) {
+	var it models.UpdateProfileTableInfoItemInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "key", "value"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "key":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("key"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Key = data
+		case "value":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("value"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Value = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, obj any) (models.UpdateUserInput, error) {
 	var it models.UpdateUserInput
 	asMap := map[string]any{}
@@ -46232,7 +46576,7 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "avatarID", "avatarIDNEQ", "avatarIDIn", "avatarIDNotIn", "avatarIDIsNil", "avatarIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "email", "emailNEQ", "emailIn", "emailNotIn", "emailGT", "emailGTE", "emailLT", "emailLTE", "emailContains", "emailHasPrefix", "emailHasSuffix", "emailEqualFold", "emailContainsFold", "passwordHash", "passwordHashNEQ", "passwordHashIn", "passwordHashNotIn", "passwordHashGT", "passwordHashGTE", "passwordHashLT", "passwordHashLTE", "passwordHashContains", "passwordHashHasPrefix", "passwordHashHasSuffix", "passwordHashEqualFold", "passwordHashContainsFold", "salt", "saltNEQ", "saltIn", "saltNotIn", "saltGT", "saltGTE", "saltLT", "saltLTE", "saltContains", "saltHasPrefix", "saltHasSuffix", "saltEqualFold", "saltContainsFold", "isVerified", "isVerifiedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasAvatar", "hasAvatarWith", "hasBanner", "hasBannerWith", "hasUserInfo", "hasUserInfoWith", "hasHostRoles", "hasHostRolesWith", "hasCommunitiesRoles", "hasCommunitiesRolesWith", "hasCommunitiesBans", "hasCommunitiesBansWith", "hasCommunitiesMutes", "hasCommunitiesMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith", "hasFollowing", "hasFollowingWith", "hasFollowers", "hasFollowersWith", "hasCommunitiesFollow", "hasCommunitiesFollowWith", "hasCommunitiesOwner", "hasCommunitiesOwnerWith", "hasCommunitiesModerator", "hasCommunitiesModeratorWith", "hasPostsLikes", "hasPostsLikesWith", "hasCommentsLikes", "hasCommentsLikesWith", "hasBookmarks", "hasBookmarksWith", "hasEmailVerifications", "hasEmailVerificationsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "slug", "slugNEQ", "slugIn", "slugNotIn", "slugGT", "slugGTE", "slugLT", "slugLTE", "slugContains", "slugHasPrefix", "slugHasSuffix", "slugEqualFold", "slugContainsFold", "avatarID", "avatarIDNEQ", "avatarIDIn", "avatarIDNotIn", "avatarIDIsNil", "avatarIDNotNil", "bannerID", "bannerIDNEQ", "bannerIDIn", "bannerIDNotIn", "bannerIDIsNil", "bannerIDNotNil", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "email", "emailNEQ", "emailIn", "emailNotIn", "emailGT", "emailGTE", "emailLT", "emailLTE", "emailContains", "emailHasPrefix", "emailHasSuffix", "emailEqualFold", "emailContainsFold", "isVerified", "isVerifiedNEQ", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasAvatar", "hasAvatarWith", "hasBanner", "hasBannerWith", "hasUserInfo", "hasUserInfoWith", "hasHostRoles", "hasHostRolesWith", "hasCommunitiesRoles", "hasCommunitiesRolesWith", "hasCommunitiesBans", "hasCommunitiesBansWith", "hasCommunitiesMutes", "hasCommunitiesMutesWith", "hasPosts", "hasPostsWith", "hasComments", "hasCommentsWith", "hasFollowing", "hasFollowingWith", "hasFollowers", "hasFollowersWith", "hasCommunitiesFollow", "hasCommunitiesFollowWith", "hasCommunitiesOwner", "hasCommunitiesOwnerWith", "hasCommunitiesModerator", "hasCommunitiesModeratorWith", "hasPostsLikes", "hasPostsLikesWith", "hasCommentsLikes", "hasCommentsLikesWith", "hasBookmarks", "hasBookmarksWith", "hasEmailVerifications", "hasEmailVerificationsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -46778,188 +47122,6 @@ func (ec *executionContext) unmarshalInputUserWhereInput(ctx context.Context, ob
 				return it, err
 			}
 			it.EmailContainsFold = data
-		case "passwordHash":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHash"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHash = data
-		case "passwordHashNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashNeq = data
-		case "passwordHashIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashIn = data
-		case "passwordHashNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashNotIn = data
-		case "passwordHashGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashGt = data
-		case "passwordHashGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashGte = data
-		case "passwordHashLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashLt = data
-		case "passwordHashLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashLte = data
-		case "passwordHashContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashContains = data
-		case "passwordHashHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashHasPrefix = data
-		case "passwordHashHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashHasSuffix = data
-		case "passwordHashEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashEqualFold = data
-		case "passwordHashContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("passwordHashContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PasswordHashContainsFold = data
-		case "salt":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("salt"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Salt = data
-		case "saltNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltNeq = data
-		case "saltIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltIn = data
-		case "saltNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltNotIn = data
-		case "saltGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltGt = data
-		case "saltGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltGte = data
-		case "saltLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltLt = data
-		case "saltLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltLte = data
-		case "saltContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltContains = data
-		case "saltHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltHasPrefix = data
-		case "saltHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltHasSuffix = data
-		case "saltEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltEqualFold = data
-		case "saltContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("saltContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SaltContainsFold = data
 		case "isVerified":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isVerified"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -50897,6 +51059,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createProfileTableInfoItem":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createProfileTableInfoItem(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateProfileTableInfoItem":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateProfileTableInfoItem(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteProfileTableInfoItem":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteProfileTableInfoItem(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -52588,6 +52771,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "communityFollowers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_communityFollowers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -52996,16 +53201,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._User_description(ctx, field, obj)
 		case "email":
 			out.Values[i] = ec._User_email(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "passwordHash":
-			out.Values[i] = ec._User_passwordHash(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "salt":
-			out.Values[i] = ec._User_salt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -55019,6 +55214,11 @@ func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraph
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateProfileTableInfoItemInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateProfileTableInfoItemInput(ctx context.Context, v any) (models.CreateProfileTableInfoItemInput, error) {
+	res, err := ec.unmarshalInputCreateProfileTableInfoItemInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNDeleteBookmarkPostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐDeleteBookmarkPostInput(ctx context.Context, v any) (models.DeleteBookmarkPostInput, error) {
 	res, err := ec.unmarshalInputDeleteBookmarkPostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -55692,6 +55892,10 @@ func (ec *executionContext) unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgra
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNProfileTableInfoItem2stormlinkᚋserverᚋentᚐProfileTableInfoItem(ctx context.Context, sel ast.SelectionSet, v ent.ProfileTableInfoItem) graphql.Marshaler {
+	return ec._ProfileTableInfoItem(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNProfileTableInfoItem2ᚕᚖstormlinkᚋserverᚋentᚐProfileTableInfoItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.ProfileTableInfoItem) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -55982,6 +56186,11 @@ func (ec *executionContext) unmarshalNUpdateHostSocialNavigationInput2stormlink�
 
 func (ec *executionContext) unmarshalNUpdatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdatePostInput(ctx context.Context, v any) (models.UpdatePostInput, error) {
 	res, err := ec.unmarshalInputUpdatePostInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateProfileTableInfoItemInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateProfileTableInfoItemInput(ctx context.Context, v any) (models.UpdateProfileTableInfoItemInput, error) {
+	res, err := ec.unmarshalInputUpdateProfileTableInfoItemInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -56928,6 +57137,22 @@ func (ec *executionContext) unmarshalOCommunityFollowWhereInput2ᚖstormlinkᚋs
 	}
 	res, err := ec.unmarshalInputCommunityFollowWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOCommunityFollowersFilter2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowersFilter(ctx context.Context, v any) (*models.CommunityFollowersFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(models.CommunityFollowersFilter)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCommunityFollowersFilter2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐCommunityFollowersFilter(ctx context.Context, sel ast.SelectionSet, v *models.CommunityFollowersFilter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOCommunityModerator2ᚕᚖstormlinkᚋserverᚋentᚐCommunityModeratorᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.CommunityModerator) graphql.Marshaler {

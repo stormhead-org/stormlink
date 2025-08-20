@@ -47,6 +47,7 @@ func HTTPAuthMiddleware(next http.Handler) http.Handler {
             return
         }
         ctx = sharedauth.WithUserID(ctx, int(resp.GetUserId()))
+        
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }

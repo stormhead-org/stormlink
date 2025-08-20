@@ -3,6 +3,7 @@ package schema
 import (
 	"time"
 
+	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -24,8 +25,12 @@ func (User) Fields() []ent.Field {
 		field.String("description").Optional(),
 
 		field.String("email").Unique().NotEmpty(),
-		field.String("password_hash").NotEmpty(),
-		field.String("salt").NotEmpty(),
+		field.String("password_hash").NotEmpty().Annotations(
+			entgql.Skip(entgql.SkipAll),
+		),
+		field.String("salt").NotEmpty().Annotations(
+			entgql.Skip(entgql.SkipAll),
+		),
 		field.Bool("is_verified").Default(false),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),

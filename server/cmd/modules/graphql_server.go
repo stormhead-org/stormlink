@@ -46,6 +46,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"stormlink/server/usecase/profiletableinfoitem"
 )
 
 var httpSrv *http.Server
@@ -86,6 +87,7 @@ func StartGraphQLServer(client *ent.Client) {
     hostRoleUC := hostroleuc.NewHostRoleUsecase(client)
     communityRoleUC := communityroleuc.NewCommunityRoleUsecase(client)
     banUC := banuc.NewBanUsecase(client)
+    	profileTableInfoItemUC := profiletableinfoitem.NewProfileTableInfoItemUsecase(client)
 
     // gRPC-клиенты к микросервисам (адреса из ENV)
     get := func(key, def string) string { v := os.Getenv(key); if v == "" { return def }; return v }
@@ -130,6 +132,7 @@ func StartGraphQLServer(client *ent.Client) {
         UserClient:      userClient,
         MailClient:      mailClient,
         MediaClient:     mediaClient,
+        ProfileTableInfoItemUC: profileTableInfoItemUC,
     }
 
     // 5) Конфигурируем gqlgen‑сервер вручную (не NewDefaultServer)
@@ -238,52 +241,45 @@ func StartGraphQLServer(client *ent.Client) {
     } else {
         mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
     }
-	// GraphQL endpoint
-    // CSRF: проверяем Origin для небезопасных методов; лимит размера тела; простой rate-limit по IP
-    mux.Handle("/query", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // CSRF Origin check для POST
-        if r.Method == http.MethodPost {
-            if !allowOrigin(r.Header.Get("Origin")) {
-                http.Error(w, "invalid origin", http.StatusForbidden)
-                return
-            }
-            // Дополнительный double-submit CSRF (опционально)
-            if os.Getenv("CSRF_ENABLE") == "true" {
-                c, err := r.Cookie("csrf_token")
-                tokenHeader := r.Header.Get("X-CSRF-Token")
-                if err != nil || c == nil || c.Value == "" || tokenHeader == "" || tokenHeader != c.Value {
-                    http.Error(w, "invalid csrf token", http.StatusForbidden)
-                    return
-                }
-            }
-        }
-        // Лимит размера тела запроса (по умолчанию 1 МБ)
-        maxBody := int64(1 * 1024 * 1024)
-        if v := os.Getenv("GRAPHQL_MAX_BODY_BYTES"); v != "" {
-            if n, err := strconv.Atoi(v); err == nil && n > 0 { maxBody = int64(n) }
-        }
-        if r.Method == http.MethodPost {
-            r.Body = http.MaxBytesReader(w, r.Body, maxBody)
-        }
-        // Простой rate limit по IP для публичной точки входа
-        ip := getClientIP(r)
-        ipLimiters.mu.Lock()
-        lim, ok := ipLimiters.limiters[ip]
-        if !ok {
-            // 10 req/sec, burst 30 по умолчанию
-            lim = rate.NewLimiter(10, 30)
-            ipLimiters.limiters[ip] = lim
-        }
-        ipLimiters.mu.Unlock()
-        if !lim.Allow() {
-            http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
-            return
-        }
-        // Вставляем куки‑контекст и авторизацию
-        ctx := httpWithCookies.WithHTTPContext(r.Context(), w, r)
-        r = r.WithContext(ctx)
-        middleware.HTTPAuthMiddleware(srv).ServeHTTP(w, r)
-    }))
+	// GraphQL endpoint с улучшенной безопасностью
+	graphqlHandler := middleware.SecurityAuditMiddleware(
+		middleware.AuditMiddleware(
+			middleware.RateLimitMiddleware(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// CSRF Origin check для POST
+					if r.Method == http.MethodPost {
+						if !allowOrigin(r.Header.Get("Origin")) {
+							http.Error(w, "invalid origin", http.StatusForbidden)
+							return
+						}
+						// Дополнительный double-submit CSRF (опционально)
+						if os.Getenv("CSRF_ENABLE") == "true" {
+							c, err := r.Cookie("csrf_token")
+							tokenHeader := r.Header.Get("X-CSRF-Token")
+							if err != nil || c == nil || c.Value == "" || tokenHeader == "" || tokenHeader != c.Value {
+								http.Error(w, "invalid csrf token", http.StatusForbidden)
+								return
+							}
+						}
+					}
+					// Лимит размера тела запроса (по умолчанию 1 МБ)
+					maxBody := int64(1 * 1024 * 1024)
+					if v := os.Getenv("GRAPHQL_MAX_BODY_BYTES"); v != "" {
+						if n, err := strconv.Atoi(v); err == nil && n > 0 { maxBody = int64(n) }
+					}
+					if r.Method == http.MethodPost {
+						r.Body = http.MaxBytesReader(w, r.Body, maxBody)
+					}
+					// Вставляем куки‑контекст и авторизацию
+					ctx := httpWithCookies.WithHTTPContext(r.Context(), w, r)
+					r = r.WithContext(ctx)
+					middleware.HTTPAuthMiddleware(srv).ServeHTTP(w, r)
+				}),
+			),
+		),
+	)
+	
+	mux.Handle("/query", graphqlHandler)
 
     // Static storage proxy to S3 (инициализируем локальный клиент и передаем в handler)
     mux.HandleFunc("/storage/", NewStorageHandler(s3client))
