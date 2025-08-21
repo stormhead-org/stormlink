@@ -65,7 +65,6 @@ func (r *commentResolver) CommentStatus(ctx context.Context, obj *ent.Comment) (
 func (r *communityResolver) ViewerPermissions(ctx context.Context, obj *ent.Community) (*model.CommunityPermissions, error) {
 	// 1) Пытаемся достать userID из контекста
 	userID, err := auth.UserIDFromContext(ctx)
-	fmt.Println("▶ ViewerPermissions, userID from ctx:", userID, "err:", err)
 	if err != nil {
 		// аноним — никаких прав
 		return &model.CommunityPermissions{}, nil
@@ -1862,11 +1861,13 @@ func (r *queryResolver) CommunityRule(ctx context.Context, id string) (*ent.Comm
 // GetMe отдает текущего авторизованного пользователя.
 func (r *queryResolver) GetMe(ctx context.Context) (*models.UserResponse, error) {
 	// Извлекаем userID из контекста для проверки авторизации
-	_, err := auth.UserIDFromContext(ctx)
+	userID, err := auth.UserIDFromContext(ctx)
 	if err != nil {
 		log.Println("❌ GraphQL: unauthenticated, no userID in context")
 		return nil, fmt.Errorf("unauthenticated")
 	}
+
+	log.Printf("✅ GraphQL GetMe: userID from context: %d", userID)
 
 	// Извлекаем заголовок Authorization
 	authHeader, ok := ctx.Value("authorization").(string)

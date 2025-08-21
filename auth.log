@@ -1,0 +1,3 @@
+2025/08/21 11:00:02 📊 Настройки пула БД: MaxOpen=15, MaxIdle=5, MaxLifetime=5м
+2025/08/21 11:00:02 📡 auth gRPC on :4001
+signal: killed

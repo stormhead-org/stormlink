@@ -41,12 +41,14 @@ import (
 	errorsx "stormlink/shared/errors"
 	httpWithCookies "stormlink/shared/http"
 
+	"stormlink/server/usecase/profiletableinfoitem"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"stormlink/server/usecase/profiletableinfoitem"
+	"google.golang.org/grpc/metadata"
 )
 
 var httpSrv *http.Server
@@ -78,6 +80,18 @@ func allowOrigin(origin string) bool {
     return origin == "" || origin == allowed
 }
 
+// authClientInterceptor добавляет Authorization заголовок из контекста в gRPC метаданные
+func authClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	// Извлекаем Authorization из контекста
+	if authHeader, ok := ctx.Value("authorization").(string); ok && authHeader != "" {
+		md := metadata.New(map[string]string{
+			"authorization": authHeader,
+		})
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
 func StartGraphQLServer(client *ent.Client) {
     // Usecases
     uUC := useruc.NewUserUsecase(client)
@@ -99,7 +113,11 @@ func StartGraphQLServer(client *ent.Client) {
         tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
         creds = grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
     }
-    authConn, err := grpc.DialContext(context.Background(), get("AUTH_GRPC_ADDR", "localhost:4001"), creds)
+    
+    // Добавляем authClientInterceptor для автоматического добавления Authorization заголовка
+    authConn, err := grpc.DialContext(context.Background(), get("AUTH_GRPC_ADDR", "localhost:4001"), 
+        creds, 
+        grpc.WithUnaryInterceptor(authClientInterceptor))
     if err != nil { log.Fatalf("❌ AUTH gRPC dial: %v", err) }
     userConn, err := grpc.DialContext(context.Background(), get("USER_GRPC_ADDR", "localhost:4002"), creds)
     if err != nil { log.Fatalf("❌ USER gRPC dial: %v", err) }

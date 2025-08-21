@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"stormlink/shared/auth"
 	"stormlink/shared/jwt"
 )
 
@@ -62,6 +63,7 @@ func GRPCAuthMiddleware(
 		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
 
-	newCtx := context.WithValue(ctx, "userID", claims.UserID)
+	// Добавляем userID в контекст используя shared/auth пакет
+	newCtx := auth.WithUserID(ctx, claims.UserID)
 	return handler(newCtx, req)
 }
