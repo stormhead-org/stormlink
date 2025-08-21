@@ -489,9 +489,9 @@ input CommunityModeratorWhereInput {
 }
 type CommunityRule implements Node {
   id: ID!
-  ruleID: ID
-  communityNameRule: String
-  communityDescriptionRule: String
+  communityID: ID
+  title: String!
+  description: String
   createdAt: Time!
   updatedAt: Time!
   community: Community
@@ -516,50 +516,48 @@ input CommunityRuleWhereInput {
   idLT: ID
   idLTE: ID
   """
-  rule_id field predicates
+  community_id field predicates
   """
-  ruleID: ID
-  ruleIDNEQ: ID
-  ruleIDIn: [ID!]
-  ruleIDNotIn: [ID!]
-  ruleIDIsNil: Boolean
-  ruleIDNotNil: Boolean
+  communityID: ID
+  communityIDNEQ: ID
+  communityIDIn: [ID!]
+  communityIDNotIn: [ID!]
+  communityIDIsNil: Boolean
+  communityIDNotNil: Boolean
   """
-  community_name_rule field predicates
+  title field predicates
   """
-  communityNameRule: String
-  communityNameRuleNEQ: String
-  communityNameRuleIn: [String!]
-  communityNameRuleNotIn: [String!]
-  communityNameRuleGT: String
-  communityNameRuleGTE: String
-  communityNameRuleLT: String
-  communityNameRuleLTE: String
-  communityNameRuleContains: String
-  communityNameRuleHasPrefix: String
-  communityNameRuleHasSuffix: String
-  communityNameRuleIsNil: Boolean
-  communityNameRuleNotNil: Boolean
-  communityNameRuleEqualFold: String
-  communityNameRuleContainsFold: String
+  title: String
+  titleNEQ: String
+  titleIn: [String!]
+  titleNotIn: [String!]
+  titleGT: String
+  titleGTE: String
+  titleLT: String
+  titleLTE: String
+  titleContains: String
+  titleHasPrefix: String
+  titleHasSuffix: String
+  titleEqualFold: String
+  titleContainsFold: String
   """
-  community_description_rule field predicates
+  description field predicates
   """
-  communityDescriptionRule: String
-  communityDescriptionRuleNEQ: String
-  communityDescriptionRuleIn: [String!]
-  communityDescriptionRuleNotIn: [String!]
-  communityDescriptionRuleGT: String
-  communityDescriptionRuleGTE: String
-  communityDescriptionRuleLT: String
-  communityDescriptionRuleLTE: String
-  communityDescriptionRuleContains: String
-  communityDescriptionRuleHasPrefix: String
-  communityDescriptionRuleHasSuffix: String
-  communityDescriptionRuleIsNil: Boolean
-  communityDescriptionRuleNotNil: Boolean
-  communityDescriptionRuleEqualFold: String
-  communityDescriptionRuleContainsFold: String
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionIsNil: Boolean
+  descriptionNotNil: Boolean
+  descriptionEqualFold: String
+  descriptionContainsFold: String
   """
   created_at field predicates
   """

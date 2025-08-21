@@ -403,45 +403,43 @@ type CommunityRuleWhereInput struct {
 	IDGte   *string  `json:"idGTE,omitempty"`
 	IDLt    *string  `json:"idLT,omitempty"`
 	IDLte   *string  `json:"idLTE,omitempty"`
-	// rule_id field predicates
-	RuleID       *string  `json:"ruleID,omitempty"`
-	RuleIdneq    *string  `json:"ruleIDNEQ,omitempty"`
-	RuleIDIn     []string `json:"ruleIDIn,omitempty"`
-	RuleIDNotIn  []string `json:"ruleIDNotIn,omitempty"`
-	RuleIDIsNil  *bool    `json:"ruleIDIsNil,omitempty"`
-	RuleIDNotNil *bool    `json:"ruleIDNotNil,omitempty"`
-	// community_name_rule field predicates
-	CommunityNameRule             *string  `json:"communityNameRule,omitempty"`
-	CommunityNameRuleNeq          *string  `json:"communityNameRuleNEQ,omitempty"`
-	CommunityNameRuleIn           []string `json:"communityNameRuleIn,omitempty"`
-	CommunityNameRuleNotIn        []string `json:"communityNameRuleNotIn,omitempty"`
-	CommunityNameRuleGt           *string  `json:"communityNameRuleGT,omitempty"`
-	CommunityNameRuleGte          *string  `json:"communityNameRuleGTE,omitempty"`
-	CommunityNameRuleLt           *string  `json:"communityNameRuleLT,omitempty"`
-	CommunityNameRuleLte          *string  `json:"communityNameRuleLTE,omitempty"`
-	CommunityNameRuleContains     *string  `json:"communityNameRuleContains,omitempty"`
-	CommunityNameRuleHasPrefix    *string  `json:"communityNameRuleHasPrefix,omitempty"`
-	CommunityNameRuleHasSuffix    *string  `json:"communityNameRuleHasSuffix,omitempty"`
-	CommunityNameRuleIsNil        *bool    `json:"communityNameRuleIsNil,omitempty"`
-	CommunityNameRuleNotNil       *bool    `json:"communityNameRuleNotNil,omitempty"`
-	CommunityNameRuleEqualFold    *string  `json:"communityNameRuleEqualFold,omitempty"`
-	CommunityNameRuleContainsFold *string  `json:"communityNameRuleContainsFold,omitempty"`
-	// community_description_rule field predicates
-	CommunityDescriptionRule             *string  `json:"communityDescriptionRule,omitempty"`
-	CommunityDescriptionRuleNeq          *string  `json:"communityDescriptionRuleNEQ,omitempty"`
-	CommunityDescriptionRuleIn           []string `json:"communityDescriptionRuleIn,omitempty"`
-	CommunityDescriptionRuleNotIn        []string `json:"communityDescriptionRuleNotIn,omitempty"`
-	CommunityDescriptionRuleGt           *string  `json:"communityDescriptionRuleGT,omitempty"`
-	CommunityDescriptionRuleGte          *string  `json:"communityDescriptionRuleGTE,omitempty"`
-	CommunityDescriptionRuleLt           *string  `json:"communityDescriptionRuleLT,omitempty"`
-	CommunityDescriptionRuleLte          *string  `json:"communityDescriptionRuleLTE,omitempty"`
-	CommunityDescriptionRuleContains     *string  `json:"communityDescriptionRuleContains,omitempty"`
-	CommunityDescriptionRuleHasPrefix    *string  `json:"communityDescriptionRuleHasPrefix,omitempty"`
-	CommunityDescriptionRuleHasSuffix    *string  `json:"communityDescriptionRuleHasSuffix,omitempty"`
-	CommunityDescriptionRuleIsNil        *bool    `json:"communityDescriptionRuleIsNil,omitempty"`
-	CommunityDescriptionRuleNotNil       *bool    `json:"communityDescriptionRuleNotNil,omitempty"`
-	CommunityDescriptionRuleEqualFold    *string  `json:"communityDescriptionRuleEqualFold,omitempty"`
-	CommunityDescriptionRuleContainsFold *string  `json:"communityDescriptionRuleContainsFold,omitempty"`
+	// community_id field predicates
+	CommunityID       *string  `json:"communityID,omitempty"`
+	CommunityIdneq    *string  `json:"communityIDNEQ,omitempty"`
+	CommunityIDIn     []string `json:"communityIDIn,omitempty"`
+	CommunityIDNotIn  []string `json:"communityIDNotIn,omitempty"`
+	CommunityIDIsNil  *bool    `json:"communityIDIsNil,omitempty"`
+	CommunityIDNotNil *bool    `json:"communityIDNotNil,omitempty"`
+	// title field predicates
+	Title             *string  `json:"title,omitempty"`
+	TitleNeq          *string  `json:"titleNEQ,omitempty"`
+	TitleIn           []string `json:"titleIn,omitempty"`
+	TitleNotIn        []string `json:"titleNotIn,omitempty"`
+	TitleGt           *string  `json:"titleGT,omitempty"`
+	TitleGte          *string  `json:"titleGTE,omitempty"`
+	TitleLt           *string  `json:"titleLT,omitempty"`
+	TitleLte          *string  `json:"titleLTE,omitempty"`
+	TitleContains     *string  `json:"titleContains,omitempty"`
+	TitleHasPrefix    *string  `json:"titleHasPrefix,omitempty"`
+	TitleHasSuffix    *string  `json:"titleHasSuffix,omitempty"`
+	TitleEqualFold    *string  `json:"titleEqualFold,omitempty"`
+	TitleContainsFold *string  `json:"titleContainsFold,omitempty"`
+	// description field predicates
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNeq          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGt           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGte          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLt           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLte          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionIsNil        *bool    `json:"descriptionIsNil,omitempty"`
+	DescriptionNotNil       *bool    `json:"descriptionNotNil,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
 	// created_at field predicates
 	CreatedAt      *time.Time   `json:"createdAt,omitempty"`
 	CreatedAtNeq   *time.Time   `json:"createdAtNEQ,omitempty"`
@@ -756,6 +754,12 @@ type CreateCommunityRoleInput struct {
 	CommunityDeleteComments            *bool    `json:"communityDeleteComments,omitempty"`
 	CommunityRemovePostFromPublication *bool    `json:"communityRemovePostFromPublication,omitempty"`
 	UserIDs                            []string `json:"userIDs,omitempty"`
+}
+
+type CreateCommunityRuleInput struct {
+	CommunityID string `json:"communityID"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 type CreateHostRoleInput struct {
@@ -2212,6 +2216,12 @@ type UpdateCommunityRoleInput struct {
 	CommunityDeleteComments            *bool    `json:"communityDeleteComments,omitempty"`
 	CommunityRemovePostFromPublication *bool    `json:"communityRemovePostFromPublication,omitempty"`
 	UserIDs                            []string `json:"userIDs,omitempty"`
+}
+
+type UpdateCommunityRuleInput struct {
+	ID          string  `json:"id"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 type UpdateHostInput struct {

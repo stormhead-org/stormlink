@@ -1,0 +1,19 @@
+{
+	"test_queries": [
+		{
+			"name": "Получение правил сообщества",
+			"query": "query { communityRules(communityID: \"1\") { id title description createdAt } }",
+			"expected_error": "unauthorized"
+		},
+		{
+			"name": "Создание правила без авторизации",
+			"query": "mutation { createCommunityRule(input: { communityID: \"1\", title: \"Тест\", description: \"Описание\" }) { id title } }",
+			"expected_error": "unauthorized"
+		},
+		{
+			"name": "Получение одного правила",
+			"query": "query { communityRule(id: \"1\") { id title description } }",
+			"expected_error": "unauthorized"
+		}
+	]
+}

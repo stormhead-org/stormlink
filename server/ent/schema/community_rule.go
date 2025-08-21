@@ -16,9 +16,9 @@ func (CommunityRule) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
-		field.Int("rule_id").Optional().Nillable(),
-		field.String("community_name_rule").Optional(),
-		field.String("community_description_rule").Optional(),
+		field.Int("community_id").Optional().Nillable(),
+		field.String("title").NotEmpty(),
+		field.String("description").Optional(),
 
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
@@ -29,7 +29,7 @@ func (CommunityRule) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("community", Community.Type).
 			Ref("rules").
-			Field("rule_id").
+			Field("community_id").
 			Unique(),
 	}
 }

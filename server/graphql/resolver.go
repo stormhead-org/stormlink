@@ -6,10 +6,11 @@ import (
 	"stormlink/server/usecase/comment"
 	"stormlink/server/usecase/community"
 	"stormlink/server/usecase/communityrole"
+	"stormlink/server/usecase/communityrule"
 	"stormlink/server/usecase/hostrole"
 	"stormlink/server/usecase/post"
-	"stormlink/server/usecase/user"
 	"stormlink/server/usecase/profiletableinfoitem"
+	"stormlink/server/usecase/user"
 
 	authpb "stormlink/server/grpc/auth/protobuf"
 	mailpb "stormlink/server/grpc/mail/protobuf"
@@ -25,6 +26,7 @@ type Resolver struct {
 	CommentUC comment.CommentUsecase
 	HostRoleUC hostrole.HostRoleUsecase
 	CommunityRoleUC communityrole.CommunityRoleUsecase
+	CommunityRuleUsecase communityrule.CommunityRuleUsecase
 	BanUC ban.BanUsecase
 	ProfileTableInfoItemUC profiletableinfoitem.ProfileTableInfoItemUsecase
 	AuthClient authpb.AuthServiceClient

@@ -180,6 +180,7 @@ extend type Query {
 	communityModerator(communityId: ID!, userId: ID!): CommunityModerator
 
 	communityRule(id: ID!): CommunityRule
+	communityRules(communityID: ID!): [CommunityRule!]!
 
 	getMe: UserResponse!
 
@@ -368,6 +369,11 @@ extend type Mutation {
 		input: UpdateProfileTableInfoItemInput!
 	): ProfileTableInfoItem!
 	deleteProfileTableInfoItem(id: ID!): Boolean!
+
+	# Мутации для правил сообществ
+	createCommunityRule(input: CreateCommunityRuleInput!): CommunityRule!
+	updateCommunityRule(input: UpdateCommunityRuleInput!): CommunityRule!
+	deleteCommunityRule(id: ID!): Boolean!
 }
 
 extend type Subscription {
@@ -630,4 +636,17 @@ input BanCommunityInput {
 input MuteUserInput {
 	userID: ID!
 	communityID: ID!
+}
+
+# Входные типы для правил сообществ
+input CreateCommunityRuleInput {
+	communityID: ID!
+	title: String!
+	description: String!
+}
+
+input UpdateCommunityRuleInput {
+	id: ID!
+	title: String
+	description: String
 }

@@ -1,17 +1,5 @@
-2025/08/21 11:00:12 📊 Настройки пула БД: MaxOpen=15, MaxIdle=5, MaxLifetime=5м
-2025/08/21 11:00:12 ℹ️  Обычная миграция схемы...
-2025/08/21 11:00:13 ✅ Миграция завершена.
-2025/08/21 11:00:13 🚀 GraphQL-сервер запущен на :8080 (HTTP и WS на /query, storage на /storage)
-2025/08/21 11:00:34 SECURITY: User 0 accessed sensitive endpoint /query | IP: [::1]:49454 | User-Agent: curl/8.14.1
-2025/08/21 11:00:34 🔍 Rate limiting: IP [::1]:49454, method GET
-2025/08/21 11:00:34 🔍 Rate limiting: Created new anonymous limiter for IP [::1]:49454
-2025/08/21 11:00:34 🔍 Rate limiting: Request allowed for anonymous IP [::1]:49454
-2025/08/21 11:00:34 🔍 HTTPAuthMiddleware: No auth_token cookie found: http: named cookie not present
-2025/08/21 11:00:34 🔍 HTTPAuthMiddleware: No auth header found
-2025/08/21 11:04:55 SECURITY: User 0 accessed sensitive endpoint /query | IP: [::1]:49736 | User-Agent: curl/8.14.1
-2025/08/21 11:04:55 🔍 Rate limiting: IP [::1]:49736, method POST
-2025/08/21 11:04:55 🔍 Rate limiting: Created new anonymous limiter for IP [::1]:49736
-2025/08/21 11:04:55 🔍 Rate limiting: Request allowed for anonymous IP [::1]:49736
-2025/08/21 11:04:55 🔍 HTTPAuthMiddleware: No auth_token cookie found: http: named cookie not present
-2025/08/21 11:04:55 🔍 HTTPAuthMiddleware: No auth header found
+2025/08/21 13:43:06 📊 Настройки пула БД: MaxOpen=15, MaxIdle=5, MaxLifetime=5м
+2025/08/21 13:43:07 ℹ️  Обычная миграция схемы...
+2025/08/21 13:43:08 ✅ Миграция завершена.
+2025/08/21 13:43:08 🚀 GraphQL-сервер запущен на :8080 (HTTP и WS на /query, storage на /storage)
 signal: killed

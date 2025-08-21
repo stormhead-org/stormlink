@@ -1750,6 +1750,21 @@ func (r *mutationResolver) DeleteProfileTableInfoItem(ctx context.Context, id st
 	return true, nil
 }
 
+// CreateCommunityRule is the resolver for the createCommunityRule field.
+func (r *mutationResolver) CreateCommunityRule(ctx context.Context, input models.CreateCommunityRuleInput) (*ent.CommunityRule, error) {
+	return r.CommunityRuleUsecase.CreateCommunityRule(ctx, &input)
+}
+
+// UpdateCommunityRule is the resolver for the updateCommunityRule field.
+func (r *mutationResolver) UpdateCommunityRule(ctx context.Context, input models.UpdateCommunityRuleInput) (*ent.CommunityRule, error) {
+	return r.CommunityRuleUsecase.UpdateCommunityRule(ctx, &input)
+}
+
+// DeleteCommunityRule is the resolver for the deleteCommunityRule field.
+func (r *mutationResolver) DeleteCommunityRule(ctx context.Context, id string) (bool, error) {
+	return r.CommunityRuleUsecase.DeleteCommunityRule(ctx, id)
+}
+
 // PostStatus is the resolver for the postStatus field.
 func (r *postResolver) PostStatus(ctx context.Context, obj *ent.Post) (*models.PostStatus, error) {
 	// Берём текущего пользователя из контекста, для корректного isLiked/hasBookmark
@@ -1855,7 +1870,12 @@ func (r *queryResolver) CommunityModerator(ctx context.Context, communityID stri
 
 // CommunityRule is the resolver for the communityRule field.
 func (r *queryResolver) CommunityRule(ctx context.Context, id string) (*ent.CommunityRule, error) {
-	panic(fmt.Errorf("not implemented: CommunityRule - communityRule"))
+	return r.CommunityRuleUsecase.GetCommunityRule(ctx, id)
+}
+
+// CommunityRules is the resolver for the communityRules field.
+func (r *queryResolver) CommunityRules(ctx context.Context, communityID string) ([]*ent.CommunityRule, error) {
+	return r.CommunityRuleUsecase.GetCommunityRules(ctx, communityID)
 }
 
 // GetMe отдает текущего авторизованного пользователя.

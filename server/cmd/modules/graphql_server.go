@@ -35,6 +35,7 @@ import (
 	commentuc "stormlink/server/usecase/comment"
 	communityuc "stormlink/server/usecase/community"
 	communityroleuc "stormlink/server/usecase/communityrole"
+	communityruleuc "stormlink/server/usecase/communityrule"
 	hostroleuc "stormlink/server/usecase/hostrole"
 	postuc "stormlink/server/usecase/post"
 	useruc "stormlink/server/usecase/user"
@@ -100,6 +101,7 @@ func StartGraphQLServer(client *ent.Client) {
     commentUC := commentuc.NewCommentUsecase(client)
     hostRoleUC := hostroleuc.NewHostRoleUsecase(client)
     communityRoleUC := communityroleuc.NewCommunityRoleUsecase(client)
+    communityRuleUC := communityruleuc.NewCommunityRuleUsecase(client)
     banUC := banuc.NewBanUsecase(client)
     	profileTableInfoItemUC := profiletableinfoitem.NewProfileTableInfoItemUsecase(client)
 
@@ -145,6 +147,7 @@ func StartGraphQLServer(client *ent.Client) {
         CommentUC:       commentUC,
         HostRoleUC:      hostRoleUC,
         CommunityRoleUC: communityRoleUC,
+        CommunityRuleUsecase: communityRuleUC,
         BanUC:           banUC,
         AuthClient:      authClient,
         UserClient:      userClient,
