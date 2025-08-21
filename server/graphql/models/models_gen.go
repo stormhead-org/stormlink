@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+type AddUserToHostRoleInput struct {
+	RoleID string `json:"roleID"`
+	UserID string `json:"userID"`
+}
+
 type BanCommunityInput struct {
 	CommunityID string `json:"communityID"`
 }
@@ -775,6 +780,11 @@ type CreateHostRoleInput struct {
 	UserIDs                                []string `json:"userIDs,omitempty"`
 }
 
+type CreateHostRuleInput struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
 type CreatePostInput struct {
 	Title       string           `json:"title"`
 	Content     map[string]any   `json:"content"`
@@ -1070,13 +1080,13 @@ type HostRoleWhereInput struct {
 }
 
 type HostRule struct {
-	ID              string    `json:"id"`
-	RuleID          *string   `json:"ruleID,omitempty"`
-	NameRule        *string   `json:"nameRule,omitempty"`
-	DescriptionRule *string   `json:"descriptionRule,omitempty"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	Host            *ent.Host `json:"host,omitempty"`
+	ID          string    `json:"id"`
+	HostID      *string   `json:"hostID,omitempty"`
+	Title       *string   `json:"title,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Host        *ent.Host `json:"host,omitempty"`
 }
 
 func (HostRule) IsNode() {}
@@ -1096,45 +1106,45 @@ type HostRuleWhereInput struct {
 	IDGte   *string  `json:"idGTE,omitempty"`
 	IDLt    *string  `json:"idLT,omitempty"`
 	IDLte   *string  `json:"idLTE,omitempty"`
-	// rule_id field predicates
-	RuleID       *string  `json:"ruleID,omitempty"`
-	RuleIdneq    *string  `json:"ruleIDNEQ,omitempty"`
-	RuleIDIn     []string `json:"ruleIDIn,omitempty"`
-	RuleIDNotIn  []string `json:"ruleIDNotIn,omitempty"`
-	RuleIDIsNil  *bool    `json:"ruleIDIsNil,omitempty"`
-	RuleIDNotNil *bool    `json:"ruleIDNotNil,omitempty"`
-	// name_rule field predicates
-	NameRule             *string  `json:"nameRule,omitempty"`
-	NameRuleNeq          *string  `json:"nameRuleNEQ,omitempty"`
-	NameRuleIn           []string `json:"nameRuleIn,omitempty"`
-	NameRuleNotIn        []string `json:"nameRuleNotIn,omitempty"`
-	NameRuleGt           *string  `json:"nameRuleGT,omitempty"`
-	NameRuleGte          *string  `json:"nameRuleGTE,omitempty"`
-	NameRuleLt           *string  `json:"nameRuleLT,omitempty"`
-	NameRuleLte          *string  `json:"nameRuleLTE,omitempty"`
-	NameRuleContains     *string  `json:"nameRuleContains,omitempty"`
-	NameRuleHasPrefix    *string  `json:"nameRuleHasPrefix,omitempty"`
-	NameRuleHasSuffix    *string  `json:"nameRuleHasSuffix,omitempty"`
-	NameRuleIsNil        *bool    `json:"nameRuleIsNil,omitempty"`
-	NameRuleNotNil       *bool    `json:"nameRuleNotNil,omitempty"`
-	NameRuleEqualFold    *string  `json:"nameRuleEqualFold,omitempty"`
-	NameRuleContainsFold *string  `json:"nameRuleContainsFold,omitempty"`
-	// description_rule field predicates
-	DescriptionRule             *string  `json:"descriptionRule,omitempty"`
-	DescriptionRuleNeq          *string  `json:"descriptionRuleNEQ,omitempty"`
-	DescriptionRuleIn           []string `json:"descriptionRuleIn,omitempty"`
-	DescriptionRuleNotIn        []string `json:"descriptionRuleNotIn,omitempty"`
-	DescriptionRuleGt           *string  `json:"descriptionRuleGT,omitempty"`
-	DescriptionRuleGte          *string  `json:"descriptionRuleGTE,omitempty"`
-	DescriptionRuleLt           *string  `json:"descriptionRuleLT,omitempty"`
-	DescriptionRuleLte          *string  `json:"descriptionRuleLTE,omitempty"`
-	DescriptionRuleContains     *string  `json:"descriptionRuleContains,omitempty"`
-	DescriptionRuleHasPrefix    *string  `json:"descriptionRuleHasPrefix,omitempty"`
-	DescriptionRuleHasSuffix    *string  `json:"descriptionRuleHasSuffix,omitempty"`
-	DescriptionRuleIsNil        *bool    `json:"descriptionRuleIsNil,omitempty"`
-	DescriptionRuleNotNil       *bool    `json:"descriptionRuleNotNil,omitempty"`
-	DescriptionRuleEqualFold    *string  `json:"descriptionRuleEqualFold,omitempty"`
-	DescriptionRuleContainsFold *string  `json:"descriptionRuleContainsFold,omitempty"`
+	// host_id field predicates
+	HostID       *string  `json:"hostID,omitempty"`
+	HostIdneq    *string  `json:"hostIDNEQ,omitempty"`
+	HostIDIn     []string `json:"hostIDIn,omitempty"`
+	HostIDNotIn  []string `json:"hostIDNotIn,omitempty"`
+	HostIDIsNil  *bool    `json:"hostIDIsNil,omitempty"`
+	HostIDNotNil *bool    `json:"hostIDNotNil,omitempty"`
+	// title field predicates
+	Title             *string  `json:"title,omitempty"`
+	TitleNeq          *string  `json:"titleNEQ,omitempty"`
+	TitleIn           []string `json:"titleIn,omitempty"`
+	TitleNotIn        []string `json:"titleNotIn,omitempty"`
+	TitleGt           *string  `json:"titleGT,omitempty"`
+	TitleGte          *string  `json:"titleGTE,omitempty"`
+	TitleLt           *string  `json:"titleLT,omitempty"`
+	TitleLte          *string  `json:"titleLTE,omitempty"`
+	TitleContains     *string  `json:"titleContains,omitempty"`
+	TitleHasPrefix    *string  `json:"titleHasPrefix,omitempty"`
+	TitleHasSuffix    *string  `json:"titleHasSuffix,omitempty"`
+	TitleIsNil        *bool    `json:"titleIsNil,omitempty"`
+	TitleNotNil       *bool    `json:"titleNotNil,omitempty"`
+	TitleEqualFold    *string  `json:"titleEqualFold,omitempty"`
+	TitleContainsFold *string  `json:"titleContainsFold,omitempty"`
+	// description field predicates
+	Description             *string  `json:"description,omitempty"`
+	DescriptionNeq          *string  `json:"descriptionNEQ,omitempty"`
+	DescriptionIn           []string `json:"descriptionIn,omitempty"`
+	DescriptionNotIn        []string `json:"descriptionNotIn,omitempty"`
+	DescriptionGt           *string  `json:"descriptionGT,omitempty"`
+	DescriptionGte          *string  `json:"descriptionGTE,omitempty"`
+	DescriptionLt           *string  `json:"descriptionLT,omitempty"`
+	DescriptionLte          *string  `json:"descriptionLTE,omitempty"`
+	DescriptionContains     *string  `json:"descriptionContains,omitempty"`
+	DescriptionHasPrefix    *string  `json:"descriptionHasPrefix,omitempty"`
+	DescriptionHasSuffix    *string  `json:"descriptionHasSuffix,omitempty"`
+	DescriptionIsNil        *bool    `json:"descriptionIsNil,omitempty"`
+	DescriptionNotNil       *bool    `json:"descriptionNotNil,omitempty"`
+	DescriptionEqualFold    *string  `json:"descriptionEqualFold,omitempty"`
+	DescriptionContainsFold *string  `json:"descriptionContainsFold,omitempty"`
 	// created_at field predicates
 	CreatedAt      *time.Time   `json:"createdAt,omitempty"`
 	CreatedAtNeq   *time.Time   `json:"createdAtNEQ,omitempty"`
@@ -1733,9 +1743,17 @@ type MediaWhereInput struct {
 type Mutation struct {
 }
 
+type MuteCommunityInput struct {
+	CommunityID string `json:"communityID"`
+}
+
 type MuteUserInput struct {
 	UserID      string `json:"userID"`
 	CommunityID string `json:"communityID"`
+}
+
+type MuteUserOnHostInput struct {
+	UserID string `json:"userID"`
 }
 
 // Information about pagination in a connection.
@@ -2056,6 +2074,11 @@ type RegisterUserResponse struct {
 	Message string `json:"message"`
 }
 
+type RemoveUserFromHostRoleInput struct {
+	RoleID string `json:"roleID"`
+	UserID string `json:"userID"`
+}
+
 type ResendVerifyEmailInput struct {
 	Email string `json:"email"`
 }
@@ -2247,6 +2270,12 @@ type UpdateHostRoleInput struct {
 	HostCommunityRemovePostFromPublication *bool    `json:"hostCommunityRemovePostFromPublication,omitempty"`
 	HostCommunityDeleteComments            *bool    `json:"hostCommunityDeleteComments,omitempty"`
 	UserIDs                                []string `json:"userIDs,omitempty"`
+}
+
+type UpdateHostRuleInput struct {
+	ID          string  `json:"id"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 type UpdateHostSocialNavigationInput struct {

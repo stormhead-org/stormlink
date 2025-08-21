@@ -7,7 +7,9 @@ import (
 	"stormlink/server/usecase/community"
 	"stormlink/server/usecase/communityrole"
 	"stormlink/server/usecase/communityrule"
+	"stormlink/server/usecase/hostmute"
 	"stormlink/server/usecase/hostrole"
+	"stormlink/server/usecase/hostrule"
 	"stormlink/server/usecase/post"
 	"stormlink/server/usecase/profiletableinfoitem"
 	"stormlink/server/usecase/user"
@@ -27,6 +29,8 @@ type Resolver struct {
 	HostRoleUC hostrole.HostRoleUsecase
 	CommunityRoleUC communityrole.CommunityRoleUsecase
 	CommunityRuleUsecase communityrule.CommunityRuleUsecase
+	HostRuleUC hostrule.HostRuleUsecase
+	HostMuteUC hostmute.HostMuteUsecase
 	BanUC ban.BanUsecase
 	ProfileTableInfoItemUC profiletableinfoitem.ProfileTableInfoItemUsecase
 	AuthClient authpb.AuthServiceClient

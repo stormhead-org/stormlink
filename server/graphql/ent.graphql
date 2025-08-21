@@ -1295,9 +1295,9 @@ input HostRoleWhereInput {
 }
 type HostRule implements Node {
   id: ID!
-  ruleID: ID
-  nameRule: String
-  descriptionRule: String
+  hostID: ID
+  title: String
+  description: String
   createdAt: Time!
   updatedAt: Time!
   host: Host
@@ -1322,50 +1322,50 @@ input HostRuleWhereInput {
   idLT: ID
   idLTE: ID
   """
-  rule_id field predicates
+  host_id field predicates
   """
-  ruleID: ID
-  ruleIDNEQ: ID
-  ruleIDIn: [ID!]
-  ruleIDNotIn: [ID!]
-  ruleIDIsNil: Boolean
-  ruleIDNotNil: Boolean
+  hostID: ID
+  hostIDNEQ: ID
+  hostIDIn: [ID!]
+  hostIDNotIn: [ID!]
+  hostIDIsNil: Boolean
+  hostIDNotNil: Boolean
   """
-  name_rule field predicates
+  title field predicates
   """
-  nameRule: String
-  nameRuleNEQ: String
-  nameRuleIn: [String!]
-  nameRuleNotIn: [String!]
-  nameRuleGT: String
-  nameRuleGTE: String
-  nameRuleLT: String
-  nameRuleLTE: String
-  nameRuleContains: String
-  nameRuleHasPrefix: String
-  nameRuleHasSuffix: String
-  nameRuleIsNil: Boolean
-  nameRuleNotNil: Boolean
-  nameRuleEqualFold: String
-  nameRuleContainsFold: String
+  title: String
+  titleNEQ: String
+  titleIn: [String!]
+  titleNotIn: [String!]
+  titleGT: String
+  titleGTE: String
+  titleLT: String
+  titleLTE: String
+  titleContains: String
+  titleHasPrefix: String
+  titleHasSuffix: String
+  titleIsNil: Boolean
+  titleNotNil: Boolean
+  titleEqualFold: String
+  titleContainsFold: String
   """
-  description_rule field predicates
+  description field predicates
   """
-  descriptionRule: String
-  descriptionRuleNEQ: String
-  descriptionRuleIn: [String!]
-  descriptionRuleNotIn: [String!]
-  descriptionRuleGT: String
-  descriptionRuleGTE: String
-  descriptionRuleLT: String
-  descriptionRuleLTE: String
-  descriptionRuleContains: String
-  descriptionRuleHasPrefix: String
-  descriptionRuleHasSuffix: String
-  descriptionRuleIsNil: Boolean
-  descriptionRuleNotNil: Boolean
-  descriptionRuleEqualFold: String
-  descriptionRuleContainsFold: String
+  description: String
+  descriptionNEQ: String
+  descriptionIn: [String!]
+  descriptionNotIn: [String!]
+  descriptionGT: String
+  descriptionGTE: String
+  descriptionLT: String
+  descriptionLTE: String
+  descriptionContains: String
+  descriptionHasPrefix: String
+  descriptionHasSuffix: String
+  descriptionIsNil: Boolean
+  descriptionNotNil: Boolean
+  descriptionEqualFold: String
+  descriptionContainsFold: String
   """
   created_at field predicates
   """

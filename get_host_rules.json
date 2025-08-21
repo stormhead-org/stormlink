@@ -1,0 +1,3 @@
+{
+	"query": "query { hostRules { id title description createdAt } }"
+}

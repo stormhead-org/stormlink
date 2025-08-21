@@ -277,13 +277,13 @@ type ComplexityRoot struct {
 	}
 
 	HostRule struct {
-		CreatedAt       func(childComplexity int) int
-		DescriptionRule func(childComplexity int) int
-		Host            func(childComplexity int) int
-		ID              func(childComplexity int) int
-		NameRule        func(childComplexity int) int
-		RuleID          func(childComplexity int) int
-		UpdatedAt       func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		Description func(childComplexity int) int
+		Host        func(childComplexity int) int
+		HostID      func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Title       func(childComplexity int) int
+		UpdatedAt   func(childComplexity int) int
 	}
 
 	HostSidebarNavigation struct {
@@ -351,6 +351,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddBookmarkPost            func(childComplexity int, input models.BookmarkPostInput) int
+		AddUserToHostRole          func(childComplexity int, input models.AddUserToHostRoleInput) int
 		BanCommunityFromHost       func(childComplexity int, input models.BanCommunityInput) int
 		BanUserFromCommunity       func(childComplexity int, input models.BanUserInput) int
 		BanUserFromHost            func(childComplexity int, input models.BanUserInput) int
@@ -360,12 +361,14 @@ type ComplexityRoot struct {
 		CreateCommunityRole        func(childComplexity int, input models.CreateCommunityRoleInput) int
 		CreateCommunityRule        func(childComplexity int, input models.CreateCommunityRuleInput) int
 		CreateHostRole             func(childComplexity int, input models.CreateHostRoleInput) int
+		CreateHostRule             func(childComplexity int, input models.CreateHostRuleInput) int
 		CreatePost                 func(childComplexity int, input models.CreatePostInput) int
 		CreateProfileTableInfoItem func(childComplexity int, input models.CreateProfileTableInfoItemInput) int
 		DeleteBookmarkPost         func(childComplexity int, input models.DeleteBookmarkPostInput) int
 		DeleteCommunityRole        func(childComplexity int, id string) int
 		DeleteCommunityRule        func(childComplexity int, id string) int
 		DeleteHostRole             func(childComplexity int, id string) int
+		DeleteHostRule             func(childComplexity int, id string) int
 		DeleteProfileTableInfoItem func(childComplexity int, id string) int
 		FollowCommunity            func(childComplexity int, input models.FollowCommunityInput) int
 		FollowUser                 func(childComplexity int, input models.FollowUserInput) int
@@ -375,9 +378,12 @@ type ComplexityRoot struct {
 		LikePost                   func(childComplexity int, input models.LikePostInput) int
 		LoginUser                  func(childComplexity int, input models.LoginUserInput) int
 		LogoutUser                 func(childComplexity int) int
+		MuteCommunityOnHost        func(childComplexity int, input models.MuteCommunityInput) int
 		MuteUserInCommunity        func(childComplexity int, input models.MuteUserInput) int
+		MuteUserOnHost             func(childComplexity int, input models.MuteUserOnHostInput) int
 		Post                       func(childComplexity int, input models.UpdatePostInput) int
 		RegisterUser               func(childComplexity int, input models.RegisterUserInput) int
+		RemoveUserFromHostRole     func(childComplexity int, input models.RemoveUserFromHostRoleInput) int
 		ResendUserVerifyEmail      func(childComplexity int, input models.ResendVerifyEmailInput) int
 		UnbanCommunityFromHost     func(childComplexity int, banID string) int
 		UnbanUserFromCommunity     func(childComplexity int, banID string) int
@@ -386,11 +392,14 @@ type ComplexityRoot struct {
 		UnfollowUser               func(childComplexity int, input models.UnfollowUserInput) int
 		UnlikeComment              func(childComplexity int, input models.UnlikeCommentInput) int
 		UnlikePost                 func(childComplexity int, input models.UnlikePostInput) int
+		UnmuteCommunityOnHost      func(childComplexity int, muteID string) int
 		UnmuteUserInCommunity      func(childComplexity int, muteID string) int
+		UnmuteUserOnHost           func(childComplexity int, muteID string) int
 		UpdateComment              func(childComplexity int, input models.UpdateCommentInput) int
 		UpdateCommunityRole        func(childComplexity int, input models.UpdateCommunityRoleInput) int
 		UpdateCommunityRule        func(childComplexity int, input models.UpdateCommunityRuleInput) int
 		UpdateHostRole             func(childComplexity int, input models.UpdateHostRoleInput) int
+		UpdateHostRule             func(childComplexity int, input models.UpdateHostRuleInput) int
 		UpdateHostSocialNavigation func(childComplexity int, input models.UpdateHostSocialNavigationInput) int
 		UpdateProfileTableInfoItem func(childComplexity int, input models.UpdateProfileTableInfoItemInput) int
 		UpdateUser                 func(childComplexity int, input models.UpdateUserInput) int
@@ -491,12 +500,18 @@ type ComplexityRoot struct {
 		Host                       func(childComplexity int) int
 		HostCommunityBan           func(childComplexity int, id string) int
 		HostCommunityBans          func(childComplexity int) int
+		HostCommunityMute          func(childComplexity int, id string) int
+		HostCommunityMutes         func(childComplexity int) int
 		HostRole                   func(childComplexity int, id string) int
 		HostRoles                  func(childComplexity int) int
+		HostRule                   func(childComplexity int, id string) int
+		HostRules                  func(childComplexity int) int
 		HostSidebarNavigation      func(childComplexity int) int
 		HostSidebarNavigationItems func(childComplexity int) int
 		HostSocialNavigation       func(childComplexity int) int
 		HostUserBan                func(childComplexity int, id string) int
+		HostUserMute               func(childComplexity int, id string) int
+		HostUserMutes              func(childComplexity int) int
 		HostUsersBan               func(childComplexity int) int
 		Media                      func(childComplexity int, id string) int
 		Node                       func(childComplexity int, id string) int
@@ -703,9 +718,18 @@ type MutationResolver interface {
 	CreateHostRole(ctx context.Context, input models.CreateHostRoleInput) (*ent.HostRole, error)
 	UpdateHostRole(ctx context.Context, input models.UpdateHostRoleInput) (*ent.HostRole, error)
 	DeleteHostRole(ctx context.Context, id string) (bool, error)
+	AddUserToHostRole(ctx context.Context, input models.AddUserToHostRoleInput) (bool, error)
+	RemoveUserFromHostRole(ctx context.Context, input models.RemoveUserFromHostRoleInput) (bool, error)
 	CreateCommunityRole(ctx context.Context, input models.CreateCommunityRoleInput) (*ent.Role, error)
 	UpdateCommunityRole(ctx context.Context, input models.UpdateCommunityRoleInput) (*ent.Role, error)
 	DeleteCommunityRole(ctx context.Context, id string) (bool, error)
+	CreateHostRule(ctx context.Context, input models.CreateHostRuleInput) (*models.HostRule, error)
+	UpdateHostRule(ctx context.Context, input models.UpdateHostRuleInput) (*models.HostRule, error)
+	DeleteHostRule(ctx context.Context, id string) (bool, error)
+	MuteUserOnHost(ctx context.Context, input models.MuteUserOnHostInput) (*models.HostUserMute, error)
+	UnmuteUserOnHost(ctx context.Context, muteID string) (bool, error)
+	MuteCommunityOnHost(ctx context.Context, input models.MuteCommunityInput) (*models.HostCommunityMute, error)
+	UnmuteCommunityOnHost(ctx context.Context, muteID string) (bool, error)
 	BanUserFromHost(ctx context.Context, input models.BanUserInput) (*ent.HostUserBan, error)
 	UnbanUserFromHost(ctx context.Context, banID string) (bool, error)
 	BanCommunityFromHost(ctx context.Context, input models.BanCommunityInput) (*models.HostCommunityBan, error)
@@ -767,6 +791,12 @@ type QueryResolver interface {
 	HostSidebarNavigation(ctx context.Context) (*ent.HostSidebarNavigation, error)
 	HostSocialNavigation(ctx context.Context) (*ent.HostSocialNavigation, error)
 	Host(ctx context.Context) (*ent.Host, error)
+	HostRules(ctx context.Context) ([]*models.HostRule, error)
+	HostRule(ctx context.Context, id string) (*models.HostRule, error)
+	HostUserMutes(ctx context.Context) ([]*models.HostUserMute, error)
+	HostUserMute(ctx context.Context, id string) (*models.HostUserMute, error)
+	HostCommunityMutes(ctx context.Context) ([]*models.HostCommunityMute, error)
+	HostCommunityMute(ctx context.Context, id string) (*models.HostCommunityMute, error)
 	CommunityRoles(ctx context.Context, communityID string) ([]*ent.Role, error)
 	CommunityRole(ctx context.Context, id string) (*ent.Role, error)
 	HostCommunityBans(ctx context.Context) ([]*models.HostCommunityBan, error)
@@ -1941,12 +1971,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostRule.CreatedAt(childComplexity), true
 
-	case "HostRule.descriptionRule":
-		if e.complexity.HostRule.DescriptionRule == nil {
+	case "HostRule.description":
+		if e.complexity.HostRule.Description == nil {
 			break
 		}
 
-		return e.complexity.HostRule.DescriptionRule(childComplexity), true
+		return e.complexity.HostRule.Description(childComplexity), true
 
 	case "HostRule.host":
 		if e.complexity.HostRule.Host == nil {
@@ -1955,6 +1985,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostRule.Host(childComplexity), true
 
+	case "HostRule.hostID":
+		if e.complexity.HostRule.HostID == nil {
+			break
+		}
+
+		return e.complexity.HostRule.HostID(childComplexity), true
+
 	case "HostRule.id":
 		if e.complexity.HostRule.ID == nil {
 			break
@@ -1962,19 +1999,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HostRule.ID(childComplexity), true
 
-	case "HostRule.nameRule":
-		if e.complexity.HostRule.NameRule == nil {
+	case "HostRule.title":
+		if e.complexity.HostRule.Title == nil {
 			break
 		}
 
-		return e.complexity.HostRule.NameRule(childComplexity), true
-
-	case "HostRule.ruleID":
-		if e.complexity.HostRule.RuleID == nil {
-			break
-		}
-
-		return e.complexity.HostRule.RuleID(childComplexity), true
+		return e.complexity.HostRule.Title(childComplexity), true
 
 	case "HostRule.updatedAt":
 		if e.complexity.HostRule.UpdatedAt == nil {
@@ -2268,6 +2298,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.AddBookmarkPost(childComplexity, args["input"].(models.BookmarkPostInput)), true
 
+	case "Mutation.addUserToHostRole":
+		if e.complexity.Mutation.AddUserToHostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addUserToHostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AddUserToHostRole(childComplexity, args["input"].(models.AddUserToHostRoleInput)), true
+
 	case "Mutation.banCommunityFromHost":
 		if e.complexity.Mutation.BanCommunityFromHost == nil {
 			break
@@ -2376,6 +2418,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CreateHostRole(childComplexity, args["input"].(models.CreateHostRoleInput)), true
 
+	case "Mutation.createHostRule":
+		if e.complexity.Mutation.CreateHostRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createHostRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateHostRule(childComplexity, args["input"].(models.CreateHostRuleInput)), true
+
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
 			break
@@ -2447,6 +2501,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.DeleteHostRole(childComplexity, args["id"].(string)), true
+
+	case "Mutation.deleteHostRule":
+		if e.complexity.Mutation.DeleteHostRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteHostRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteHostRule(childComplexity, args["id"].(string)), true
 
 	case "Mutation.deleteProfileTableInfoItem":
 		if e.complexity.Mutation.DeleteProfileTableInfoItem == nil {
@@ -2551,6 +2617,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.LogoutUser(childComplexity), true
 
+	case "Mutation.muteCommunityOnHost":
+		if e.complexity.Mutation.MuteCommunityOnHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_muteCommunityOnHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MuteCommunityOnHost(childComplexity, args["input"].(models.MuteCommunityInput)), true
+
 	case "Mutation.muteUserInCommunity":
 		if e.complexity.Mutation.MuteUserInCommunity == nil {
 			break
@@ -2562,6 +2640,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.MuteUserInCommunity(childComplexity, args["input"].(models.MuteUserInput)), true
+
+	case "Mutation.muteUserOnHost":
+		if e.complexity.Mutation.MuteUserOnHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_muteUserOnHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MuteUserOnHost(childComplexity, args["input"].(models.MuteUserOnHostInput)), true
 
 	case "Mutation.post":
 		if e.complexity.Mutation.Post == nil {
@@ -2586,6 +2676,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RegisterUser(childComplexity, args["input"].(models.RegisterUserInput)), true
+
+	case "Mutation.removeUserFromHostRole":
+		if e.complexity.Mutation.RemoveUserFromHostRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeUserFromHostRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveUserFromHostRole(childComplexity, args["input"].(models.RemoveUserFromHostRoleInput)), true
 
 	case "Mutation.resendUserVerifyEmail":
 		if e.complexity.Mutation.ResendUserVerifyEmail == nil {
@@ -2683,6 +2785,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UnlikePost(childComplexity, args["input"].(models.UnlikePostInput)), true
 
+	case "Mutation.unmuteCommunityOnHost":
+		if e.complexity.Mutation.UnmuteCommunityOnHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unmuteCommunityOnHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnmuteCommunityOnHost(childComplexity, args["muteID"].(string)), true
+
 	case "Mutation.unmuteUserInCommunity":
 		if e.complexity.Mutation.UnmuteUserInCommunity == nil {
 			break
@@ -2694,6 +2808,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UnmuteUserInCommunity(childComplexity, args["muteID"].(string)), true
+
+	case "Mutation.unmuteUserOnHost":
+		if e.complexity.Mutation.UnmuteUserOnHost == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_unmuteUserOnHost_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UnmuteUserOnHost(childComplexity, args["muteID"].(string)), true
 
 	case "Mutation.updateComment":
 		if e.complexity.Mutation.UpdateComment == nil {
@@ -2742,6 +2868,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateHostRole(childComplexity, args["input"].(models.UpdateHostRoleInput)), true
+
+	case "Mutation.updateHostRule":
+		if e.complexity.Mutation.UpdateHostRule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateHostRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateHostRule(childComplexity, args["input"].(models.UpdateHostRuleInput)), true
 
 	case "Mutation.updateHostSocialNavigation":
 		if e.complexity.Mutation.UpdateHostSocialNavigation == nil {
@@ -3467,6 +3605,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.HostCommunityBans(childComplexity), true
 
+	case "Query.hostCommunityMute":
+		if e.complexity.Query.HostCommunityMute == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostCommunityMute_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostCommunityMute(childComplexity, args["id"].(string)), true
+
+	case "Query.hostCommunityMutes":
+		if e.complexity.Query.HostCommunityMutes == nil {
+			break
+		}
+
+		return e.complexity.Query.HostCommunityMutes(childComplexity), true
+
 	case "Query.hostRole":
 		if e.complexity.Query.HostRole == nil {
 			break
@@ -3485,6 +3642,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.HostRoles(childComplexity), true
+
+	case "Query.hostRule":
+		if e.complexity.Query.HostRule == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostRule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostRule(childComplexity, args["id"].(string)), true
+
+	case "Query.hostRules":
+		if e.complexity.Query.HostRules == nil {
+			break
+		}
+
+		return e.complexity.Query.HostRules(childComplexity), true
 
 	case "Query.hostSidebarNavigation":
 		if e.complexity.Query.HostSidebarNavigation == nil {
@@ -3518,6 +3694,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.HostUserBan(childComplexity, args["id"].(string)), true
+
+	case "Query.hostUserMute":
+		if e.complexity.Query.HostUserMute == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hostUserMute_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.HostUserMute(childComplexity, args["id"].(string)), true
+
+	case "Query.hostUserMutes":
+		if e.complexity.Query.HostUserMutes == nil {
+			break
+		}
+
+		return e.complexity.Query.HostUserMutes(childComplexity), true
 
 	case "Query.hostUsersBan":
 		if e.complexity.Query.HostUsersBan == nil {
@@ -4421,6 +4616,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAddUserToHostRoleInput,
 		ec.unmarshalInputBanCommunityInput,
 		ec.unmarshalInputBanUserInput,
 		ec.unmarshalInputBookmarkPostInput,
@@ -4438,6 +4634,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCommunityRoleInput,
 		ec.unmarshalInputCreateCommunityRuleInput,
 		ec.unmarshalInputCreateHostRoleInput,
+		ec.unmarshalInputCreateHostRuleInput,
 		ec.unmarshalInputCreatePostInput,
 		ec.unmarshalInputCreateProfileTableInfoItemInput,
 		ec.unmarshalInputDeleteBookmarkPostInput,
@@ -4458,11 +4655,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLikePostInput,
 		ec.unmarshalInputLoginUserInput,
 		ec.unmarshalInputMediaWhereInput,
+		ec.unmarshalInputMuteCommunityInput,
 		ec.unmarshalInputMuteUserInput,
+		ec.unmarshalInputMuteUserOnHostInput,
 		ec.unmarshalInputPostLikeWhereInput,
 		ec.unmarshalInputPostWhereInput,
 		ec.unmarshalInputProfileTableInfoItemWhereInput,
 		ec.unmarshalInputRegisterUserInput,
+		ec.unmarshalInputRemoveUserFromHostRoleInput,
 		ec.unmarshalInputResendVerifyEmailInput,
 		ec.unmarshalInputRoleWhereInput,
 		ec.unmarshalInputUnfollowCommunityInput,
@@ -4475,6 +4675,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateCommunityRuleInput,
 		ec.unmarshalInputUpdateHostInput,
 		ec.unmarshalInputUpdateHostRoleInput,
+		ec.unmarshalInputUpdateHostRuleInput,
 		ec.unmarshalInputUpdateHostSocialNavigationInput,
 		ec.unmarshalInputUpdatePostInput,
 		ec.unmarshalInputUpdateProfileTableInfoItemInput,
@@ -4628,6 +4829,17 @@ func (ec *executionContext) field_Mutation_addBookmarkPost_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addUserToHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddUserToHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐAddUserToHostRoleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_banCommunityFromHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4727,6 +4939,17 @@ func (ec *executionContext) field_Mutation_createHostRole_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createHostRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateHostRuleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateHostRuleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createPost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4783,6 +5006,17 @@ func (ec *executionContext) field_Mutation_deleteCommunityRule_args(ctx context.
 }
 
 func (ec *executionContext) field_Mutation_deleteHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteHostRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -4881,10 +5115,32 @@ func (ec *executionContext) field_Mutation_loginUser_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_muteCommunityOnHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNMuteCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteCommunityInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_muteUserInCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNMuteUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_muteUserOnHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNMuteUserOnHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserOnHostInput)
 	if err != nil {
 		return nil, err
 	}
@@ -4907,6 +5163,17 @@ func (ec *executionContext) field_Mutation_registerUser_args(ctx context.Context
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRegisterUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeUserFromHostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRemoveUserFromHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRemoveUserFromHostRoleInput)
 	if err != nil {
 		return nil, err
 	}
@@ -5002,7 +5269,29 @@ func (ec *executionContext) field_Mutation_unlikePost_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_unmuteCommunityOnHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "muteID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["muteID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_unmuteUserInCommunity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "muteID", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["muteID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_unmuteUserOnHost_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "muteID", ec.unmarshalNID2string)
@@ -5050,6 +5339,17 @@ func (ec *executionContext) field_Mutation_updateHostRole_args(ctx context.Conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRoleInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateHostRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateHostRuleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRuleInput)
 	if err != nil {
 		return nil, err
 	}
@@ -5518,6 +5818,17 @@ func (ec *executionContext) field_Query_hostCommunityBan_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_hostCommunityMute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_hostRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5529,7 +5840,29 @@ func (ec *executionContext) field_Query_hostRole_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_hostRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_hostUserBan_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_hostUserMute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -13186,12 +13519,12 @@ func (ec *executionContext) fieldContext_Host_rules(_ context.Context, field gra
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_HostRule_id(ctx, field)
-			case "ruleID":
-				return ec.fieldContext_HostRule_ruleID(ctx, field)
-			case "nameRule":
-				return ec.fieldContext_HostRule_nameRule(ctx, field)
-			case "descriptionRule":
-				return ec.fieldContext_HostRule_descriptionRule(ctx, field)
+			case "hostID":
+				return ec.fieldContext_HostRule_hostID(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRule_title(ctx, field)
+			case "description":
+				return ec.fieldContext_HostRule_description(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_HostRule_createdAt(ctx, field)
 			case "updatedAt":
@@ -14473,8 +14806,8 @@ func (ec *executionContext) fieldContext_HostRule_id(_ context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_ruleID(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostRule_ruleID(ctx, field)
+func (ec *executionContext) _HostRule_hostID(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostRule_hostID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14487,7 +14820,7 @@ func (ec *executionContext) _HostRule_ruleID(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.RuleID, nil
+		return obj.HostID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14501,7 +14834,7 @@ func (ec *executionContext) _HostRule_ruleID(ctx context.Context, field graphql.
 	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostRule_ruleID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostRule_hostID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostRule",
 		Field:      field,
@@ -14514,8 +14847,8 @@ func (ec *executionContext) fieldContext_HostRule_ruleID(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_nameRule(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostRule_nameRule(ctx, field)
+func (ec *executionContext) _HostRule_title(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostRule_title(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14528,7 +14861,7 @@ func (ec *executionContext) _HostRule_nameRule(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.NameRule, nil
+		return obj.Title, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14542,7 +14875,7 @@ func (ec *executionContext) _HostRule_nameRule(ctx context.Context, field graphq
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostRule_nameRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostRule_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostRule",
 		Field:      field,
@@ -14555,8 +14888,8 @@ func (ec *executionContext) fieldContext_HostRule_nameRule(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _HostRule_descriptionRule(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_HostRule_descriptionRule(ctx, field)
+func (ec *executionContext) _HostRule_description(ctx context.Context, field graphql.CollectedField, obj *models.HostRule) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_HostRule_description(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -14569,7 +14902,7 @@ func (ec *executionContext) _HostRule_descriptionRule(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.DescriptionRule, nil
+		return obj.Description, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -14583,7 +14916,7 @@ func (ec *executionContext) _HostRule_descriptionRule(ctx context.Context, field
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_HostRule_descriptionRule(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_HostRule_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "HostRule",
 		Field:      field,
@@ -18920,6 +19253,116 @@ func (ec *executionContext) fieldContext_Mutation_deleteHostRole(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_addUserToHostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_addUserToHostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AddUserToHostRole(rctx, fc.Args["input"].(models.AddUserToHostRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addUserToHostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addUserToHostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeUserFromHostRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeUserFromHostRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveUserFromHostRole(rctx, fc.Args["input"].(models.RemoveUserFromHostRoleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeUserFromHostRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeUserFromHostRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createCommunityRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createCommunityRole(ctx, field)
 	if err != nil {
@@ -19147,6 +19590,445 @@ func (ec *executionContext) fieldContext_Mutation_deleteCommunityRole(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteCommunityRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createHostRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createHostRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateHostRule(rctx, fc.Args["input"].(models.CreateHostRuleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostRule)
+	fc.Result = res
+	return ec.marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createHostRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRule_id(ctx, field)
+			case "hostID":
+				return ec.fieldContext_HostRule_hostID(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRule_title(ctx, field)
+			case "description":
+				return ec.fieldContext_HostRule_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRule_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRule_updatedAt(ctx, field)
+			case "host":
+				return ec.fieldContext_HostRule_host(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRule", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createHostRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateHostRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateHostRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateHostRule(rctx, fc.Args["input"].(models.UpdateHostRuleInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostRule)
+	fc.Result = res
+	return ec.marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateHostRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRule_id(ctx, field)
+			case "hostID":
+				return ec.fieldContext_HostRule_hostID(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRule_title(ctx, field)
+			case "description":
+				return ec.fieldContext_HostRule_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRule_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRule_updatedAt(ctx, field)
+			case "host":
+				return ec.fieldContext_HostRule_host(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRule", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateHostRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteHostRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteHostRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteHostRule(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteHostRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteHostRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_muteUserOnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_muteUserOnHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MuteUserOnHost(rctx, fc.Args["input"].(models.MuteUserOnHostInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostUserMute)
+	fc.Result = res
+	return ec.marshalNHostUserMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_muteUserOnHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserMute_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserMute_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_muteUserOnHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unmuteUserOnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unmuteUserOnHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnmuteUserOnHost(rctx, fc.Args["muteID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unmuteUserOnHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unmuteUserOnHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_muteCommunityOnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_muteCommunityOnHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MuteCommunityOnHost(rctx, fc.Args["input"].(models.MuteCommunityInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostCommunityMute)
+	fc.Result = res
+	return ec.marshalNHostCommunityMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_muteCommunityOnHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityMute_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityMute_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_muteCommunityOnHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_unmuteCommunityOnHost(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_unmuteCommunityOnHost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UnmuteCommunityOnHost(rctx, fc.Args["muteID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_unmuteCommunityOnHost(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_unmuteCommunityOnHost_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -25806,6 +26688,370 @@ func (ec *executionContext) fieldContext_Query_host(_ context.Context, field gra
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Host", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostRules(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostRules(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostRules(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.HostRule)
+	fc.Result = res
+	return ec.marshalNHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostRules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRule_id(ctx, field)
+			case "hostID":
+				return ec.fieldContext_HostRule_hostID(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRule_title(ctx, field)
+			case "description":
+				return ec.fieldContext_HostRule_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRule_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRule_updatedAt(ctx, field)
+			case "host":
+				return ec.fieldContext_HostRule_host(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRule", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostRule(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostRule(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostRule)
+	fc.Result = res
+	return ec.marshalOHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostRule_id(ctx, field)
+			case "hostID":
+				return ec.fieldContext_HostRule_hostID(ctx, field)
+			case "title":
+				return ec.fieldContext_HostRule_title(ctx, field)
+			case "description":
+				return ec.fieldContext_HostRule_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostRule_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostRule_updatedAt(ctx, field)
+			case "host":
+				return ec.fieldContext_HostRule_host(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostRule", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostUserMutes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostUserMutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostUserMutes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.HostUserMute)
+	fc.Result = res
+	return ec.marshalNHostUserMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostUserMutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserMute_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserMute_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserMute", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostUserMute(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostUserMute(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostUserMute(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostUserMute)
+	fc.Result = res
+	return ec.marshalOHostUserMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostUserMute(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostUserMute_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostUserMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostUserMute_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_HostUserMute_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostUserMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostUserMute_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostCommunityMutes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostCommunityMutes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostCommunityMutes(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.HostCommunityMute)
+	fc.Result = res
+	return ec.marshalNHostCommunityMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostCommunityMutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityMute_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityMute_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityMute", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hostCommunityMute(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_hostCommunityMute(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().HostCommunityMute(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*models.HostCommunityMute)
+	fc.Result = res
+	return ec.marshalOHostCommunityMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_hostCommunityMute(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HostCommunityMute_id(ctx, field)
+			case "communityID":
+				return ec.fieldContext_HostCommunityMute_communityID(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HostCommunityMute_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_HostCommunityMute_updatedAt(ctx, field)
+			case "community":
+				return ec.fieldContext_HostCommunityMute_community(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HostCommunityMute", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hostCommunityMute_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -34046,6 +35292,40 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAddUserToHostRoleInput(ctx context.Context, obj any) (models.AddUserToHostRoleInput, error) {
+	var it models.AddUserToHostRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"roleID", "userID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "roleID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roleID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoleID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBanCommunityInput(ctx context.Context, obj any) (models.BanCommunityInput, error) {
 	var it models.BanCommunityInput
 	asMap := map[string]any{}
@@ -38180,6 +39460,40 @@ func (ec *executionContext) unmarshalInputCreateHostRoleInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateHostRuleInput(ctx context.Context, obj any) (models.CreateHostRuleInput, error) {
+	var it models.CreateHostRuleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"title", "description"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreatePostInput(ctx context.Context, obj any) (models.CreatePostInput, error) {
 	var it models.CreatePostInput
 	asMap := map[string]any{}
@@ -39771,7 +41085,7 @@ func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "ruleID", "ruleIDNEQ", "ruleIDIn", "ruleIDNotIn", "ruleIDIsNil", "ruleIDNotNil", "nameRule", "nameRuleNEQ", "nameRuleIn", "nameRuleNotIn", "nameRuleGT", "nameRuleGTE", "nameRuleLT", "nameRuleLTE", "nameRuleContains", "nameRuleHasPrefix", "nameRuleHasSuffix", "nameRuleIsNil", "nameRuleNotNil", "nameRuleEqualFold", "nameRuleContainsFold", "descriptionRule", "descriptionRuleNEQ", "descriptionRuleIn", "descriptionRuleNotIn", "descriptionRuleGT", "descriptionRuleGTE", "descriptionRuleLT", "descriptionRuleLTE", "descriptionRuleContains", "descriptionRuleHasPrefix", "descriptionRuleHasSuffix", "descriptionRuleIsNil", "descriptionRuleNotNil", "descriptionRuleEqualFold", "descriptionRuleContainsFold", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasHost", "hasHostWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "hostID", "hostIDNEQ", "hostIDIn", "hostIDNotIn", "hostIDIsNil", "hostIDNotNil", "title", "titleNEQ", "titleIn", "titleNotIn", "titleGT", "titleGTE", "titleLT", "titleLTE", "titleContains", "titleHasPrefix", "titleHasSuffix", "titleIsNil", "titleNotNil", "titleEqualFold", "titleContainsFold", "description", "descriptionNEQ", "descriptionIn", "descriptionNotIn", "descriptionGT", "descriptionGTE", "descriptionLT", "descriptionLTE", "descriptionContains", "descriptionHasPrefix", "descriptionHasSuffix", "descriptionIsNil", "descriptionNotNil", "descriptionEqualFold", "descriptionContainsFold", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "hasHost", "hasHostWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -39855,258 +41169,258 @@ func (ec *executionContext) unmarshalInputHostRuleWhereInput(ctx context.Context
 				return it, err
 			}
 			it.IDLte = data
-		case "ruleID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleID"))
+		case "hostID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleID = data
-		case "ruleIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleIDNEQ"))
+			it.HostID = data
+		case "hostIDNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIDNEQ"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleIdneq = data
-		case "ruleIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleIDIn"))
+			it.HostIdneq = data
+		case "hostIDIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIDIn"))
 			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleIDIn = data
-		case "ruleIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleIDNotIn"))
+			it.HostIDIn = data
+		case "hostIDNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIDNotIn"))
 			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleIDNotIn = data
-		case "ruleIDIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleIDIsNil"))
+			it.HostIDNotIn = data
+		case "hostIDIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIDIsNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleIDIsNil = data
-		case "ruleIDNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ruleIDNotNil"))
+			it.HostIDIsNil = data
+		case "hostIDNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIDNotNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.RuleIDNotNil = data
-		case "nameRule":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRule"))
+			it.HostIDNotNil = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRule = data
-		case "nameRuleNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleNEQ"))
+			it.Title = data
+		case "titleNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleNeq = data
-		case "nameRuleIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleIn"))
+			it.TitleNeq = data
+		case "titleIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleIn = data
-		case "nameRuleNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleNotIn"))
+			it.TitleIn = data
+		case "titleNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleNotIn = data
-		case "nameRuleGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleGT"))
+			it.TitleNotIn = data
+		case "titleGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleGt = data
-		case "nameRuleGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleGTE"))
+			it.TitleGt = data
+		case "titleGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleGte = data
-		case "nameRuleLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleLT"))
+			it.TitleGte = data
+		case "titleLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleLt = data
-		case "nameRuleLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleLTE"))
+			it.TitleLt = data
+		case "titleLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleLte = data
-		case "nameRuleContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleContains"))
+			it.TitleLte = data
+		case "titleContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleContains = data
-		case "nameRuleHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleHasPrefix"))
+			it.TitleContains = data
+		case "titleHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleHasPrefix = data
-		case "nameRuleHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleHasSuffix"))
+			it.TitleHasPrefix = data
+		case "titleHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleHasSuffix = data
-		case "nameRuleIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleIsNil"))
+			it.TitleHasSuffix = data
+		case "titleIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleIsNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleIsNil = data
-		case "nameRuleNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleNotNil"))
+			it.TitleIsNil = data
+		case "titleNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleNotNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleNotNil = data
-		case "nameRuleEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleEqualFold"))
+			it.TitleNotNil = data
+		case "titleEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleEqualFold = data
-		case "nameRuleContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nameRuleContainsFold"))
+			it.TitleEqualFold = data
+		case "titleContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("titleContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.NameRuleContainsFold = data
-		case "descriptionRule":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRule"))
+			it.TitleContainsFold = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRule = data
-		case "descriptionRuleNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleNEQ"))
+			it.Description = data
+		case "descriptionNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionNEQ"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleNeq = data
-		case "descriptionRuleIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleIn"))
+			it.DescriptionNeq = data
+		case "descriptionIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleIn = data
-		case "descriptionRuleNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleNotIn"))
+			it.DescriptionIn = data
+		case "descriptionNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionNotIn"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleNotIn = data
-		case "descriptionRuleGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleGT"))
+			it.DescriptionNotIn = data
+		case "descriptionGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionGT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleGt = data
-		case "descriptionRuleGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleGTE"))
+			it.DescriptionGt = data
+		case "descriptionGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionGTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleGte = data
-		case "descriptionRuleLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleLT"))
+			it.DescriptionGte = data
+		case "descriptionLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionLT"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleLt = data
-		case "descriptionRuleLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleLTE"))
+			it.DescriptionLt = data
+		case "descriptionLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionLTE"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleLte = data
-		case "descriptionRuleContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleContains"))
+			it.DescriptionLte = data
+		case "descriptionContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionContains"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleContains = data
-		case "descriptionRuleHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleHasPrefix"))
+			it.DescriptionContains = data
+		case "descriptionHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionHasPrefix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleHasPrefix = data
-		case "descriptionRuleHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleHasSuffix"))
+			it.DescriptionHasPrefix = data
+		case "descriptionHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionHasSuffix"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleHasSuffix = data
-		case "descriptionRuleIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleIsNil"))
+			it.DescriptionHasSuffix = data
+		case "descriptionIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionIsNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleIsNil = data
-		case "descriptionRuleNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleNotNil"))
+			it.DescriptionIsNil = data
+		case "descriptionNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionNotNil"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleNotNil = data
-		case "descriptionRuleEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleEqualFold"))
+			it.DescriptionNotNil = data
+		case "descriptionEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionEqualFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleEqualFold = data
-		case "descriptionRuleContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionRuleContainsFold"))
+			it.DescriptionEqualFold = data
+		case "descriptionContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionContainsFold"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.DescriptionRuleContainsFold = data
+			it.DescriptionContainsFold = data
 		case "createdAt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
 			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
@@ -43638,6 +44952,33 @@ func (ec *executionContext) unmarshalInputMediaWhereInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputMuteCommunityInput(ctx context.Context, obj any) (models.MuteCommunityInput, error) {
+	var it models.MuteCommunityInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"communityID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "communityID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("communityID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CommunityID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputMuteUserInput(ctx context.Context, obj any) (models.MuteUserInput, error) {
 	var it models.MuteUserInput
 	asMap := map[string]any{}
@@ -43666,6 +45007,33 @@ func (ec *executionContext) unmarshalInputMuteUserInput(ctx context.Context, obj
 				return it, err
 			}
 			it.CommunityID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputMuteUserOnHostInput(ctx context.Context, obj any) (models.MuteUserOnHostInput, error) {
+	var it models.MuteUserOnHostInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"userID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		}
 	}
 
@@ -45278,6 +46646,40 @@ func (ec *executionContext) unmarshalInputRegisterUserInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRemoveUserFromHostRoleInput(ctx context.Context, obj any) (models.RemoveUserFromHostRoleInput, error) {
+	var it models.RemoveUserFromHostRoleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"roleID", "userID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "roleID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roleID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoleID = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputResendVerifyEmailInput(ctx context.Context, obj any) (models.ResendVerifyEmailInput, error) {
 	var it models.ResendVerifyEmailInput
 	asMap := map[string]any{}
@@ -46436,6 +47838,47 @@ func (ec *executionContext) unmarshalInputUpdateHostRoleInput(ctx context.Contex
 				return it, err
 			}
 			it.UserIDs = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateHostRuleInput(ctx context.Context, obj any) (models.UpdateHostRuleInput, error) {
+	var it models.UpdateHostRuleInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "title", "description"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "title":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Title = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		}
 	}
 
@@ -50598,12 +52041,12 @@ func (ec *executionContext) _HostRule(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ruleID":
-			out.Values[i] = ec._HostRule_ruleID(ctx, field, obj)
-		case "nameRule":
-			out.Values[i] = ec._HostRule_nameRule(ctx, field, obj)
-		case "descriptionRule":
-			out.Values[i] = ec._HostRule_descriptionRule(ctx, field, obj)
+		case "hostID":
+			out.Values[i] = ec._HostRule_hostID(ctx, field, obj)
+		case "title":
+			out.Values[i] = ec._HostRule_title(ctx, field, obj)
+		case "description":
+			out.Values[i] = ec._HostRule_description(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._HostRule_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -51426,6 +52869,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "addUserToHostRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addUserToHostRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeUserFromHostRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeUserFromHostRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createCommunityRole":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createCommunityRole(ctx, field)
@@ -51443,6 +52900,55 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteCommunityRole":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteCommunityRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createHostRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createHostRule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateHostRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateHostRule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteHostRule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteHostRule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "muteUserOnHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_muteUserOnHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unmuteUserOnHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unmuteUserOnHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "muteCommunityOnHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_muteCommunityOnHost(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unmuteCommunityOnHost":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_unmuteCommunityOnHost(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -53079,6 +54585,129 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_host(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostRules":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostRules(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostRule":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostRule(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostUserMutes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostUserMutes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostUserMute":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostUserMute(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostCommunityMutes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostCommunityMutes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hostCommunityMute":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hostCommunityMute(ctx, field)
 				return res
 			}
 
@@ -55208,6 +56837,11 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNAddUserToHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐAddUserToHostRoleInput(ctx context.Context, v any) (models.AddUserToHostRoleInput, error) {
+	res, err := ec.unmarshalInputAddUserToHostRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNBanCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐBanCommunityInput(ctx context.Context, v any) (models.BanCommunityInput, error) {
 	res, err := ec.unmarshalInputBanCommunityInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -55749,6 +57383,11 @@ func (ec *executionContext) unmarshalNCreateHostRoleInput2stormlinkᚋserverᚋg
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateHostRuleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreateHostRuleInput(ctx context.Context, v any) (models.CreateHostRuleInput, error) {
+	res, err := ec.unmarshalInputCreateHostRuleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreatePostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐCreatePostInput(ctx context.Context, v any) (models.CreatePostInput, error) {
 	res, err := ec.unmarshalInputCreatePostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -55866,6 +57505,64 @@ func (ec *executionContext) unmarshalNHostCommunityBanWhereInput2ᚖstormlinkᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNHostCommunityMute2stormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx context.Context, sel ast.SelectionSet, v models.HostCommunityMute) graphql.Marshaler {
+	return ec._HostCommunityMute(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostCommunityMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.HostCommunityMute) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostCommunityMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostCommunityMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx context.Context, sel ast.SelectionSet, v *models.HostCommunityMute) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HostCommunityMute(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNHostCommunityMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInput(ctx context.Context, v any) (*models.HostCommunityMuteWhereInput, error) {
 	res, err := ec.unmarshalInputHostCommunityMuteWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -55932,6 +57629,54 @@ func (ec *executionContext) marshalNHostRole2ᚖstormlinkᚋserverᚋentᚐHostR
 func (ec *executionContext) unmarshalNHostRoleWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRoleWhereInput(ctx context.Context, v any) (*models.HostRoleWhereInput, error) {
 	res, err := ec.unmarshalInputHostRoleWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostRule2stormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx context.Context, sel ast.SelectionSet, v models.HostRule) graphql.Marshaler {
+	return ec._HostRule(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostRule2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.HostRule) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx context.Context, sel ast.SelectionSet, v *models.HostRule) graphql.Marshaler {
@@ -56103,6 +57848,64 @@ func (ec *executionContext) marshalNHostUserBan2ᚖstormlinkᚋserverᚋentᚐHo
 func (ec *executionContext) unmarshalNHostUserBanWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserBanWhereInput(ctx context.Context, v any) (*models.HostUserBanWhereInput, error) {
 	res, err := ec.unmarshalInputHostUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostUserMute2stormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx context.Context, sel ast.SelectionSet, v models.HostUserMute) graphql.Marshaler {
+	return ec._HostUserMute(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHostUserMute2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.HostUserMute) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNHostUserMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHostUserMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx context.Context, sel ast.SelectionSet, v *models.HostUserMute) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HostUserMute(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNHostUserMuteWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInput(ctx context.Context, v any) (*models.HostUserMuteWhereInput, error) {
@@ -56277,8 +58080,18 @@ func (ec *executionContext) unmarshalNMediaWhereInput2ᚖstormlinkᚋserverᚋgr
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNMuteCommunityInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteCommunityInput(ctx context.Context, v any) (models.MuteCommunityInput, error) {
+	res, err := ec.unmarshalInputMuteCommunityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNMuteUserInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserInput(ctx context.Context, v any) (models.MuteUserInput, error) {
 	res, err := ec.unmarshalInputMuteUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNMuteUserOnHostInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐMuteUserOnHostInput(ctx context.Context, v any) (models.MuteUserOnHostInput, error) {
+	res, err := ec.unmarshalInputMuteUserOnHostInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -56418,20 +58231,13 @@ func (ec *executionContext) marshalNPostStatus2ᚖstormlinkᚋserverᚋgraphql�
 }
 
 func (ec *executionContext) unmarshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, v any) (post.Visibility, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := post.Visibility(tmp)
+	var res post.Visibility
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNPostVisibility2stormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, sel ast.SelectionSet, v post.Visibility) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(string(v))
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalNPostWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInput(ctx context.Context, v any) (*models.PostWhereInput, error) {
@@ -56498,20 +58304,13 @@ func (ec *executionContext) marshalNProfileTableInfoItem2ᚖstormlinkᚋserver�
 }
 
 func (ec *executionContext) unmarshalNProfileTableInfoItemType2stormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType(ctx context.Context, v any) (profiletableinfoitem.Type, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := profiletableinfoitem.Type(tmp)
+	var res profiletableinfoitem.Type
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNProfileTableInfoItemType2stormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType(ctx context.Context, sel ast.SelectionSet, v profiletableinfoitem.Type) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(string(v))
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalNProfileTableInfoItemWhereInput2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInput(ctx context.Context, v any) (*models.ProfileTableInfoItemWhereInput, error) {
@@ -56550,6 +58349,11 @@ func (ec *executionContext) marshalNRegisterUserResponse2ᚖstormlinkᚋserver�
 		return graphql.Null
 	}
 	return ec._RegisterUserResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRemoveUserFromHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐRemoveUserFromHostRoleInput(ctx context.Context, v any) (models.RemoveUserFromHostRoleInput, error) {
+	res, err := ec.unmarshalInputRemoveUserFromHostRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNResendVerifyEmailInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐResendVerifyEmailInput(ctx context.Context, v any) (models.ResendVerifyEmailInput, error) {
@@ -56735,6 +58539,11 @@ func (ec *executionContext) unmarshalNUpdateHostInput2stormlinkᚋserverᚋgraph
 
 func (ec *executionContext) unmarshalNUpdateHostRoleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRoleInput(ctx context.Context, v any) (models.UpdateHostRoleInput, error) {
 	res, err := ec.unmarshalInputUpdateHostRoleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateHostRuleInput2stormlinkᚋserverᚋgraphqlᚋmodelsᚐUpdateHostRuleInput(ctx context.Context, v any) (models.UpdateHostRuleInput, error) {
+	res, err := ec.unmarshalInputUpdateHostRuleInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -58191,6 +60000,13 @@ func (ec *executionContext) unmarshalOHostCommunityBanWhereInput2ᚖstormlinkᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOHostCommunityMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMute(ctx context.Context, sel ast.SelectionSet, v *models.HostCommunityMute) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostCommunityMute(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOHostCommunityMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostCommunityMuteWhereInputᚄ(ctx context.Context, v any) ([]*models.HostCommunityMuteWhereInput, error) {
 	if v == nil {
 		return nil, nil
@@ -58342,6 +60158,13 @@ func (ec *executionContext) marshalOHostRule2ᚕᚖstormlinkᚋserverᚋgraphql�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOHostRule2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRule(ctx context.Context, sel ast.SelectionSet, v *models.HostRule) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostRule(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostRuleWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostRuleWhereInputᚄ(ctx context.Context, v any) ([]*models.HostRuleWhereInput, error) {
@@ -58540,6 +60363,13 @@ func (ec *executionContext) unmarshalOHostUserBanWhereInput2ᚖstormlinkᚋserve
 	}
 	res, err := ec.unmarshalInputHostUserBanWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOHostUserMute2ᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMute(ctx context.Context, sel ast.SelectionSet, v *models.HostUserMute) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HostUserMute(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOHostUserMuteWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐHostUserMuteWhereInputᚄ(ctx context.Context, v any) ([]*models.HostUserMuteWhereInput, error) {
@@ -58986,19 +60816,16 @@ func (ec *executionContext) unmarshalOPostVisibility2ᚖstormlinkᚋserverᚋent
 	if v == nil {
 		return nil, nil
 	}
-	tmp, err := graphql.UnmarshalString(v)
-	res := post.Visibility(tmp)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	var res = new(post.Visibility)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOPostVisibility2ᚖstormlinkᚋserverᚋentᚋpostᚐVisibility(ctx context.Context, sel ast.SelectionSet, v *post.Visibility) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(string(*v))
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalOPostWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐPostWhereInputᚄ(ctx context.Context, v any) ([]*models.PostWhereInput, error) {
@@ -59150,19 +60977,16 @@ func (ec *executionContext) unmarshalOProfileTableInfoItemType2ᚖstormlinkᚋse
 	if v == nil {
 		return nil, nil
 	}
-	tmp, err := graphql.UnmarshalString(v)
-	res := profiletableinfoitem.Type(tmp)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	var res = new(profiletableinfoitem.Type)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOProfileTableInfoItemType2ᚖstormlinkᚋserverᚋentᚋprofiletableinfoitemᚐType(ctx context.Context, sel ast.SelectionSet, v *profiletableinfoitem.Type) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(string(*v))
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalOProfileTableInfoItemWhereInput2ᚕᚖstormlinkᚋserverᚋgraphqlᚋmodelsᚐProfileTableInfoItemWhereInputᚄ(ctx context.Context, v any) ([]*models.ProfileTableInfoItemWhereInput, error) {

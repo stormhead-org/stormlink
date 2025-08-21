@@ -1,0 +1,3 @@
+{
+	"query": "mutation { removeUserFromHostRole(input: { roleID: \"3\", userID: \"2\" }) }"
+}

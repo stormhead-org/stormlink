@@ -1,0 +1,3 @@
+{
+	"query": "query { hostRoles { id title color hostUserBan hostUserMute users { id name } } }"
+}

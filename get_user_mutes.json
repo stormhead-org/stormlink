@@ -1,0 +1,3 @@
+{
+	"query": "query { hostUserMutes { id createdAt } }"
+}

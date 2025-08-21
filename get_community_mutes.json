@@ -1,0 +1,3 @@
+{
+	"query": "query { hostCommunityMutes { id communityID createdAt } }"
+}

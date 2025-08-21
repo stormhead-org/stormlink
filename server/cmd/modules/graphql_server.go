@@ -36,7 +36,9 @@ import (
 	communityuc "stormlink/server/usecase/community"
 	communityroleuc "stormlink/server/usecase/communityrole"
 	communityruleuc "stormlink/server/usecase/communityrule"
+	hostmuteuc "stormlink/server/usecase/hostmute"
 	hostroleuc "stormlink/server/usecase/hostrole"
+	hostruleuc "stormlink/server/usecase/hostrule"
 	postuc "stormlink/server/usecase/post"
 	useruc "stormlink/server/usecase/user"
 	errorsx "stormlink/shared/errors"
@@ -102,8 +104,10 @@ func StartGraphQLServer(client *ent.Client) {
     hostRoleUC := hostroleuc.NewHostRoleUsecase(client)
     communityRoleUC := communityroleuc.NewCommunityRoleUsecase(client)
     communityRuleUC := communityruleuc.NewCommunityRuleUsecase(client)
+    hostRuleUC := hostruleuc.NewHostRuleUsecase(client)
+    hostMuteUC := hostmuteuc.NewHostMuteUsecase(client)
     banUC := banuc.NewBanUsecase(client)
-    	profileTableInfoItemUC := profiletableinfoitem.NewProfileTableInfoItemUsecase(client)
+    profileTableInfoItemUC := profiletableinfoitem.NewProfileTableInfoItemUsecase(client)
 
     // gRPC-клиенты к микросервисам (адреса из ENV)
     get := func(key, def string) string { v := os.Getenv(key); if v == "" { return def }; return v }
@@ -148,6 +152,8 @@ func StartGraphQLServer(client *ent.Client) {
         HostRoleUC:      hostRoleUC,
         CommunityRoleUC: communityRoleUC,
         CommunityRuleUsecase: communityRuleUC,
+        HostRuleUC:      hostRuleUC,
+        HostMuteUC:      hostMuteUC,
         BanUC:           banUC,
         AuthClient:      authClient,
         UserClient:      userClient,

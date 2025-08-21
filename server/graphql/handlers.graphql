@@ -272,6 +272,16 @@ extend type Query {
 
 	host: Host
 
+	# Правила платформы
+	hostRules: [HostRule!]!
+	hostRule(id: ID!): HostRule
+
+	# Муты платформы
+	hostUserMutes: [HostUserMute!]!
+	hostUserMute(id: ID!): HostUserMute
+	hostCommunityMutes: [HostCommunityMute!]!
+	hostCommunityMute(id: ID!): HostCommunityMute
+
 	# Новые Query для ролей и банов
 	communityRoles(communityID: ID!): [Role!]!
 	communityRole(id: ID!): Role
@@ -343,11 +353,24 @@ extend type Mutation {
 	createHostRole(input: CreateHostRoleInput!): HostRole!
 	updateHostRole(input: UpdateHostRoleInput!): HostRole!
 	deleteHostRole(id: ID!): Boolean!
+	addUserToHostRole(input: AddUserToHostRoleInput!): Boolean!
+	removeUserFromHostRole(input: RemoveUserFromHostRoleInput!): Boolean!
 
 	# Мутации для управления ролями сообщества
 	createCommunityRole(input: CreateCommunityRoleInput!): Role!
 	updateCommunityRole(input: UpdateCommunityRoleInput!): Role!
 	deleteCommunityRole(id: ID!): Boolean!
+
+	# Мутации для правил платформы
+	createHostRule(input: CreateHostRuleInput!): HostRule!
+	updateHostRule(input: UpdateHostRuleInput!): HostRule!
+	deleteHostRule(id: ID!): Boolean!
+
+	# Мутации для мутов платформы
+	muteUserOnHost(input: MuteUserOnHostInput!): HostUserMute!
+	unmuteUserOnHost(muteID: ID!): Boolean!
+	muteCommunityOnHost(input: MuteCommunityInput!): HostCommunityMute!
+	unmuteCommunityOnHost(muteID: ID!): Boolean!
 
 	# Мутации для банов хоста
 	banUserFromHost(input: BanUserInput!): HostUserBan!
@@ -649,4 +672,36 @@ input UpdateCommunityRuleInput {
 	id: ID!
 	title: String
 	description: String
+}
+
+# Входные типы для правил платформы
+input CreateHostRuleInput {
+	title: String!
+	description: String!
+}
+
+input UpdateHostRuleInput {
+	id: ID!
+	title: String
+	description: String
+}
+
+# Входные типы для мутов платформы
+input MuteUserOnHostInput {
+	userID: ID!
+}
+
+input MuteCommunityInput {
+	communityID: ID!
+}
+
+# Входные типы для управления пользователями в ролях платформы
+input AddUserToHostRoleInput {
+	roleID: ID!
+	userID: ID!
+}
+
+input RemoveUserFromHostRoleInput {
+	roleID: ID!
+	userID: ID!
 }

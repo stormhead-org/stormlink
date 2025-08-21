@@ -1134,6 +1134,74 @@ func (r *mutationResolver) DeleteHostRole(ctx context.Context, id string) (bool,
 	return true, nil
 }
 
+// AddUserToHostRole is the resolver for the addUserToHostRole field.
+func (r *mutationResolver) AddUserToHostRole(ctx context.Context, input models.AddUserToHostRoleInput) (bool, error) {
+	// Проверяем права: только владелец платформы
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return false, fmt.Errorf("unauthenticated")
+	}
+
+	// Проверяем, что пользователь является владельцем платформы
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil {
+		return false, fmt.Errorf("host not found: %w", err)
+	}
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		return false, fmt.Errorf("forbidden: only host owner can manage roles")
+	}
+
+	roleID, err := strconv.Atoi(input.RoleID)
+	if err != nil {
+		return false, fmt.Errorf("invalid role ID: %w", err)
+	}
+
+	userID, err := strconv.Atoi(input.UserID)
+	if err != nil {
+		return false, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	err = r.HostRoleUC.AddUsersToRole(ctx, roleID, []int{userID})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// RemoveUserFromHostRole is the resolver for the removeUserFromHostRole field.
+func (r *mutationResolver) RemoveUserFromHostRole(ctx context.Context, input models.RemoveUserFromHostRoleInput) (bool, error) {
+	// Проверяем права: только владелец платформы
+	currentUserID, err := auth.UserIDFromContext(ctx)
+	if err != nil {
+		return false, fmt.Errorf("unauthenticated")
+	}
+
+	// Проверяем, что пользователь является владельцем платформы
+	hostEntity, err := r.Client.Host.Get(ctx, 1)
+	if err != nil {
+		return false, fmt.Errorf("host not found: %w", err)
+	}
+	if hostEntity.OwnerID == nil || *hostEntity.OwnerID != currentUserID {
+		return false, fmt.Errorf("forbidden: only host owner can manage roles")
+	}
+
+	roleID, err := strconv.Atoi(input.RoleID)
+	if err != nil {
+		return false, fmt.Errorf("invalid role ID: %w", err)
+	}
+
+	userID, err := strconv.Atoi(input.UserID)
+	if err != nil {
+		return false, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	err = r.HostRoleUC.RemoveUserFromRole(ctx, roleID, userID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // CreateCommunityRole is the resolver for the createCommunityRole field.
 func (r *mutationResolver) CreateCommunityRole(ctx context.Context, input models.CreateCommunityRoleInput) (*ent.Role, error) {
 	// Проверяем права: владелец сообщества или менеджер ролей
@@ -1244,6 +1312,82 @@ func (r *mutationResolver) DeleteCommunityRole(ctx context.Context, id string) (
 		return false, err
 	}
 	return true, nil
+}
+
+// CreateHostRule создает новое правило платформы.
+func (r *mutationResolver) CreateHostRule(ctx context.Context, input models.CreateHostRuleInput) (*models.HostRule, error) {
+	rule, err := r.HostRuleUC.CreateHostRule(ctx, &input)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostRule{
+		ID:          strconv.Itoa(rule.ID),
+		Title:       rule.Title,
+		Description: rule.Description,
+		CreatedAt:   rule.CreatedAt,
+		UpdatedAt:   rule.UpdatedAt,
+	}, nil
+}
+
+// UpdateHostRule обновляет существующее правило платформы.
+func (r *mutationResolver) UpdateHostRule(ctx context.Context, input models.UpdateHostRuleInput) (*models.HostRule, error) {
+	rule, err := r.HostRuleUC.UpdateHostRule(ctx, &input)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostRule{
+		ID:          strconv.Itoa(rule.ID),
+		Title:       rule.Title,
+		Description: rule.Description,
+		CreatedAt:   rule.CreatedAt,
+		UpdatedAt:   rule.UpdatedAt,
+	}, nil
+}
+
+// DeleteHostRule удаляет правило платформы.
+func (r *mutationResolver) DeleteHostRule(ctx context.Context, id string) (bool, error) {
+	return r.HostRuleUC.DeleteHostRule(ctx, id)
+}
+
+// MuteUserOnHost мутит пользователя на платформе.
+func (r *mutationResolver) MuteUserOnHost(ctx context.Context, input models.MuteUserOnHostInput) (*models.HostUserMute, error) {
+	mute, err := r.HostMuteUC.MuteUser(ctx, input.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostUserMute{
+		ID:        strconv.Itoa(mute.ID),
+		CreatedAt: mute.CreatedAt,
+		UpdatedAt: mute.UpdatedAt,
+	}, nil
+}
+
+// UnmuteUserOnHost размучивает пользователя на платформе.
+func (r *mutationResolver) UnmuteUserOnHost(ctx context.Context, muteID string) (bool, error) {
+	return r.HostMuteUC.UnmuteUser(ctx, muteID)
+}
+
+// MuteCommunityOnHost мутит сообщество на платформе.
+func (r *mutationResolver) MuteCommunityOnHost(ctx context.Context, input models.MuteCommunityInput) (*models.HostCommunityMute, error) {
+	mute, err := r.HostMuteUC.MuteCommunity(ctx, input.CommunityID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostCommunityMute{
+		ID:          strconv.Itoa(mute.ID),
+		CommunityID: strconv.Itoa(mute.CommunityID),
+		CreatedAt:   mute.CreatedAt,
+		UpdatedAt:   mute.UpdatedAt,
+	}, nil
+}
+
+// UnmuteCommunityOnHost размучивает сообщество на платформе.
+func (r *mutationResolver) UnmuteCommunityOnHost(ctx context.Context, muteID string) (bool, error) {
+	return r.HostMuteUC.UnmuteCommunity(ctx, muteID)
 }
 
 // BanUserFromHost is the resolver for the banUserFromHost field.
@@ -2300,6 +2444,124 @@ func (r *queryResolver) HostSocialNavigation(ctx context.Context) (*ent.HostSoci
 // Host всегда отдаёт хост с ID 1.
 func (r *queryResolver) Host(ctx context.Context) (*ent.Host, error) {
 	return r.Client.Host.Get(ctx, 1)
+}
+
+// HostRules возвращает все правила платформы.
+func (r *queryResolver) HostRules(ctx context.Context) ([]*models.HostRule, error) {
+	rules, err := r.HostRuleUC.GetHostRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Конвертируем ent.HostRule в models.HostRule
+	var result []*models.HostRule
+	for _, rule := range rules {
+		result = append(result, &models.HostRule{
+			ID:          strconv.Itoa(rule.ID),
+			Title:       rule.Title,
+			Description: rule.Description,
+			CreatedAt:   rule.CreatedAt,
+			UpdatedAt:   rule.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+// HostRule возвращает конкретное правило платформы по ID.
+func (r *queryResolver) HostRule(ctx context.Context, id string) (*models.HostRule, error) {
+	rule, err := r.HostRuleUC.GetHostRule(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostRule{
+		ID:          strconv.Itoa(rule.ID),
+		Title:       rule.Title,
+		Description: rule.Description,
+		CreatedAt:   rule.CreatedAt,
+		UpdatedAt:   rule.UpdatedAt,
+	}, nil
+}
+
+// HostUserMutes возвращает все муты пользователей на платформе.
+func (r *queryResolver) HostUserMutes(ctx context.Context) ([]*models.HostUserMute, error) {
+	mutes, err := r.HostMuteUC.GetUserMutes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Конвертируем ent.HostUserMute в models.HostUserMute
+	var result []*models.HostUserMute
+	for _, mute := range mutes {
+		result = append(result, &models.HostUserMute{
+			ID:        strconv.Itoa(mute.ID),
+			CreatedAt: mute.CreatedAt,
+			UpdatedAt: mute.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+// HostUserMute возвращает конкретный мут пользователя по ID.
+func (r *queryResolver) HostUserMute(ctx context.Context, id string) (*models.HostUserMute, error) {
+	muteID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+
+	mute, err := r.Client.HostUserMute.Get(ctx, muteID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostUserMute{
+		ID:        strconv.Itoa(mute.ID),
+		CreatedAt: mute.CreatedAt,
+		UpdatedAt: mute.UpdatedAt,
+	}, nil
+}
+
+// HostCommunityMutes возвращает все муты сообществ на платформе.
+func (r *queryResolver) HostCommunityMutes(ctx context.Context) ([]*models.HostCommunityMute, error) {
+	mutes, err := r.HostMuteUC.GetCommunityMutes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Конвертируем ent.HostCommunityMute в models.HostCommunityMute
+	var result []*models.HostCommunityMute
+	for _, mute := range mutes {
+		result = append(result, &models.HostCommunityMute{
+			ID:          strconv.Itoa(mute.ID),
+			CommunityID: strconv.Itoa(mute.CommunityID),
+			CreatedAt:   mute.CreatedAt,
+			UpdatedAt:   mute.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+// HostCommunityMute возвращает конкретный мут сообщества по ID.
+func (r *queryResolver) HostCommunityMute(ctx context.Context, id string) (*models.HostCommunityMute, error) {
+	muteID, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+
+	mute, err := r.Client.HostCommunityMute.Get(ctx, muteID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.HostCommunityMute{
+		ID:          strconv.Itoa(mute.ID),
+		CommunityID: strconv.Itoa(mute.CommunityID),
+		CreatedAt:   mute.CreatedAt,
+		UpdatedAt:   mute.UpdatedAt,
+	}, nil
 }
 
 // CommunityRoles is the resolver for the communityRoles field.

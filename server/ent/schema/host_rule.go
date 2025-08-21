@@ -16,9 +16,9 @@ func (HostRule) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("id").Unique(),
 
-		field.Int("rule_id").Optional().Nillable(),
-		field.String("name_rule").Optional().Nillable(),
-		field.String("description_rule").Optional().Nillable(),
+		field.Int("host_id").Optional().Nillable(),
+		field.String("title").Optional().Nillable(),
+		field.String("description").Optional().Nillable(),
 
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
@@ -29,7 +29,7 @@ func (HostRule) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("host", Host.Type).
 			Ref("rules").
-			Field("rule_id").
+			Field("host_id").
 			Unique(),
 	}
 }

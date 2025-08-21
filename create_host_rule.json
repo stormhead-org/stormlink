@@ -1,0 +1,3 @@
+{
+	"query": "mutation { createHostRule(input: { title: \"Respect for participants\", description: \"Insults and discrimination are prohibited\" }) { id title description createdAt } }"
+}
