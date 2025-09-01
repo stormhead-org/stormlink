@@ -1,521 +1,197 @@
-# Stormlink Backend Test Suite
+# Структура тестов StormLink
 
-Comprehensive testing suite for the Stormlink backend application built with Go, Ent ORM, GraphQL, and gRPC.
+## Обзор
 
-## 🎯 Overview
+Этот каталог содержит все тесты для проекта StormLink. Тесты организованы по категориям и типам для удобства навигации и запуска.
 
-This test suite provides complete coverage for the Stormlink backend with multiple testing strategies:
-
-- **Unit Tests** - Fast, isolated tests for individual components
-- **Integration Tests** - Tests with real database and services
-- **Performance Tests** - Benchmarks and load testing
-- **End-to-End Tests** - Complete workflow testing
-
-## 📁 Test Structure
+## Структура каталогов
 
 ```
 tests/
-├── fixtures/           # Test data and utilities
-│   ├── user.go        # User test fixtures
-│   └── extended.go    # Additional fixtures
-├── integration/        # Integration tests
-│   ├── auth_service_test.go
-│   ├── e2e_test.go
-│   ├── graphql_resolver_test.go
-│   └── user_integration_test.go
-├── unit/              # Unit tests
-│   ├── comment_usecase_test.go
-│   ├── community_usecase_test.go
-│   ├── middleware_test.go
-│   └── post_usecase_test.go
-├── performance/       # Performance tests
-│   ├── load_test.go
-│   └── system_performance_test.go
-├── testcontainers/    # Docker container setup
-│   └── setup.go
-├── mocks/             # Generated mocks
-├── test_runner.go     # Test orchestration
-└── README.md          # This file
+├── unit/                    # Юнит-тесты бизнес-логики
+├── integration/             # Интеграционные тесты
+├── performance/             # Тесты производительности
+├── fixtures/                # Тестовые данные и вспомогательные функции
+└── testcontainers/          # Настройка Docker контейнеров для тестов
 ```
 
-## 🚀 Quick Start
+## Типы тестов
 
-### Prerequisites
+### 1. Юнит-тесты (`tests/unit/`)
+**Статус**: ⚠️ Частично работают (проблемы с foreign key constraints)
 
+Тесты отдельных компонентов в изоляции:
+- `comment_test.go` - Тестирование логики комментариев
+- `post_test.go` - Тестирование логики постов
+
+**Запуск**: 
 ```bash
-# Install Go (1.21+)
-go version
-
-# Install Docker (for integration tests)
-docker --version
-
-# Install test dependencies
-make install-tools
+go test ./tests/unit -v
 ```
 
-### Running Tests
+### 2. Интеграционные тесты (`tests/integration/`)
+**Статус**: ✅ Простые тесты работают / ❌ TestContainers требует Docker
 
+- `user_test.go` - ✅ Простые интеграционные тесты (SQLite в памяти)
+- `user_testcontainers_test.go` - ❌ Полные интеграционные тесты (PostgreSQL + Redis)
+
+**Запуск простых тестов**:
 ```bash
-# Quick unit tests
-make test-unit
-
-# All tests
-make test
-
-# With coverage
-make test-coverage
-
-# Performance tests
-make test-performance
+go test ./tests/integration -run Simple -v
 ```
 
-## 📋 Test Categories
-
-### Unit Tests
-
-Fast, isolated tests that don't require external dependencies.
-
+**Запуск полных тестов** (требует Docker):
 ```bash
-# Run all unit tests
-make test-unit
-
-# Run specific test suite
-go test ./tests/unit/user_usecase_test.go -v
-
-# Run with race detection
-make test-race
+go test ./tests/integration -v
 ```
 
-**Coverage:**
-- User usecase logic
-- Post operations
-- Comment functionality
-- Community management
-- Middleware behavior
-- JWT token handling
+### 3. Тесты производительности (`tests/performance/`)
+**Статус**: ❌ Требует Docker и TestContainers
 
-### Integration Tests
+- `system_performance_test.go` - Тесты производительности системы
 
-Tests with real databases and services using Docker containers.
-
+**Запуск** (требует Docker):
 ```bash
-# Run integration tests
-make test-integration
-
-# With test environment setup
-make test-with-env
+go test ./tests/performance -v
 ```
 
-**Features:**
-- Real PostgreSQL database
-- Redis integration
-- gRPC service communication
-- GraphQL resolver testing
-- Authentication flows
+### 4. Usecase тесты (`server/usecase/*/`)
+**Статус**: ✅ Работают / ⚠️ Частично работают
 
-### Performance Tests
+Тесты бизнес-логики на уровне use cases:
+- `server/usecase/user/user_test.go` - ✅ Полностью работает
+- `server/usecase/comment/comment_test.go` - ⚠️ Логические ошибки в тестах
+- `server/usecase/community/community_test.go` - ⚠️ Проблемы с assertions
+- `server/usecase/post/post_test.go` - ⚠️ Отсутствует поле slug
 
-Benchmarks and load testing to ensure system performance.
-
+**Запуск конкретного usecase**:
 ```bash
-# Run performance tests
-make test-performance
-
-# Run benchmarks only
-make test-benchmark
-
-# Memory profiling
-make test-memory
+go test ./server/usecase/user -v
+go test ./server/usecase/comment -v
 ```
 
-**Metrics:**
-- Request latency (< 50ms p95)
-- Throughput (> 1000 RPS)
-- Memory usage
-- Database connection pooling
-- Concurrent operation handling
+### 5. Service тесты (`services/*/internal/service/`)
+**Статус**: ✅ Работают / ⚠️ Частично работают
 
-### End-to-End Tests
+Тесты сервисов:
+- `services/auth/internal/service/service_test.go` - ✅ Полностью работает
+- `services/mail/internal/service/service_test.go` - ⚠️ Проблемы с SMTP подключением
+- `services/media/internal/service/service_test.go` - ⚠️ Nil pointer dereference
 
-Complete user journey testing.
-
+**Запуск**:
 ```bash
-# Run E2E tests
-make test-e2e
+go test ./services/auth/internal/service -v
+go test ./services/mail/internal/service -v
+go test ./services/media/internal/service -v
 ```
 
-**Scenarios:**
-- User registration and verification
-- Content creation workflow
-- Community interactions
-- Moderation processes
-- Multi-user scenarios
+## Тестовые данные и утилиты
 
-## 🔧 Test Configuration
+### Fixtures (`tests/fixtures/`)
+Содержит предопределенные тестовые данные и функции для их создания:
+- `user.go` - Фикстуры для пользователей
+- `extended.go` - Расширенные фикстуры для сложных сценариев
 
-### Environment Variables
+### TestContainers (`tests/testcontainers/`)
+Настройка Docker контейнеров для интеграционных тестов:
+- `setup.go` - Настройка PostgreSQL и Redis контейнеров
 
+## Быстрый запуск
+
+### Только работающие тесты
 ```bash
-# Test database
-export TEST_DB_HOST=localhost
-export TEST_DB_PORT=5432
-export TEST_DB_NAME=stormlink_test
-export TEST_DB_USER=test
-export TEST_DB_PASSWORD=test
-
-# Redis
-export TEST_REDIS_URL=redis://localhost:6379
-
-# Test settings
-export GO_ENV=test
-export LOG_LEVEL=error
+# Запустить все полностью работающие тесты
+go test ./server/usecase/user ./services/auth/internal/service -v
+go test ./tests/integration -run Simple -v
 ```
 
-### Test Fixtures
+### Все тесты (включая проблемные)
+```bash
+go test ./... -v
+```
 
-Test fixtures provide consistent test data:
+### Конкретная категория
+```bash
+go test ./tests/unit -v          # Юнит-тесты
+go test ./tests/integration -v   # Интеграционные тесты
+go test ./server/usecase/... -v  # Все usecase тесты
+go test ./services/.../service -v # Все service тесты
+```
 
+## Известные проблемы и их статус
+
+### ✅ ИСПРАВЛЕНО
+- **SQLite драйвер**: Все проблемы с `sql: unknown driver "sqlite3"` исправлены
+- **Структура файлов**: Убраны дублирующиеся файлы и .disabled файлы
+- **Нейминг**: Приведен к единообразному виду (service.go -> service_test.go)
+
+### ⚠️ ЧАСТИЧНО РАБОТАЕТ
+- **Comment тесты**: Проблемы с пагинацией и курсорами
+- **Community тесты**: Неправильные assertions для указателей
+- **Post тесты**: Отсутствует обязательное поле `slug`
+- **Mail service**: Проблемы подключения к SMTP серверу
+- **Media service**: Nil pointer dereference
+- **Unit тесты**: Foreign key constraint violations
+
+### ❌ НЕ РАБОТАЕТ
+- **TestContainers тесты**: Требует настройки Docker окружения
+- **Performance тесты**: Требует Docker и полную инфраструктуру
+
+## Окружение для тестов
+
+### Переменные окружения
+```bash
+export JWT_SECRET="test-jwt-secret-key-for-testing"
+```
+
+### Зависимости
+- Go 1.24.2+
+- SQLite (для простых тестов) - ✅ Работает
+- Docker (для TestContainers тестов) - ❌ Требует настройки
+- PostgreSQL (через Docker) - ❌ Требует настройки
+- Redis (через Docker) - ❌ Требует настройки
+
+## Рекомендации по разработке
+
+### Написание новых тестов
+1. **Юнит-тесты**: Размещайте рядом с тестируемым кодом (`package_test.go`)
+2. **Интеграционные тесты**: Используйте `tests/integration/`
+3. **Performance тесты**: Используйте `tests/performance/`
+
+### Нейминг файлов
+- Основной код: `service.go`
+- Тесты: `service_test.go`
+- НЕ используйте суффиксы типа `_simple_test.go`
+
+### Изоляция тестов
 ```go
-// Use predefined fixtures
-user := fixtures.TestUser1
-community := fixtures.TestCommunity1
-post := fixtures.TestPost1
-
-// Create custom fixtures
-customUser := fixtures.UserFixture{
-    Name:     "Custom User",
-    Email:    "custom@test.com",
-    Password: "password123",
-}
+// Используйте уникальные базы данных для каждого теста
+dbName := fmt.Sprintf("test_%s_%d", testName, time.Now().UnixNano())
+client := enttest.Open(t, "sqlite3", fmt.Sprintf("file:%s?mode=memory&cache=shared&_fk=1", dbName))
 ```
 
-### Test Containers
-
-Integration tests use Docker containers for isolation:
-
+### Fixtures
 ```go
-// Setup test containers
-containers, err := testcontainers.Setup(ctx)
-defer containers.Cleanup()
-
-// Get database client
-client := enttest.Open(t, "postgres", containers.PostgresDSN())
+// Создавайте уникальные тестовые данные
+testUser := fixtures.TestUser1
+testUser.Email = fmt.Sprintf("test-%d@example.com", time.Now().UnixNano())
+testUser.Slug = fmt.Sprintf("test-%d", time.Now().UnixNano())
 ```
 
-## 📊 Coverage Reports
-
-### Generate Coverage
-
-```bash
-# Generate HTML coverage report
-make test-coverage
-
-# View coverage in browser
-make coverage-html
-
-# Show coverage summary
-make coverage-summary
-```
-
-### Coverage Targets
-
-- **Overall**: > 80%
-- **Critical paths**: > 90%
-- **New code**: > 85%
-
-## 🎯 Testing Best Practices
-
-### 1. Test Organization
-
-```go
-func (suite *TestSuite) TestFeatureName() {
-    suite.Run("specific scenario", func() {
-        // Arrange
-        // Act  
-        // Assert
-    })
-}
-```
-
-### 2. Test Data Management
-
-```go
-func (suite *TestSuite) SetupTest() {
-    // Clean slate for each test
-    suite.client.User.Delete().ExecX(suite.ctx)
-    suite.client.Post.Delete().ExecX(suite.ctx)
-}
-```
-
-### 3. Assertions
-
-```go
-// Use testify assertions
-suite.NoError(err)
-suite.NotNil(result)
-suite.Equal(expected, actual)
-suite.Contains(slice, item)
-suite.True(condition)
-```
-
-### 4. Mocking
-
-```go
-// Mock external dependencies
-mockClient := &MockAuthClient{}
-mockClient.On("ValidateToken", token).Return(userID, nil)
-```
-
-## 🚀 Performance Benchmarks
-
-### Running Benchmarks
-
-```bash
-# All benchmarks
-go test ./tests/performance/... -bench=. -benchmem
-
-# Specific benchmark
-go test -bench=BenchmarkUserRetrieval -benchmem
-
-# Compare with previous results
-make benchmark-compare
-```
-
-### Performance Targets
-
-| Operation | Target | Current |
-|-----------|--------|---------|
-| User retrieval | < 10ms | ~5ms |
-| Post with relations | < 25ms | ~15ms |
-| Comment pagination | < 30ms | ~20ms |
-| GraphQL queries | < 50ms | ~35ms |
-| Authentication | < 5ms | ~2ms |
-
-## 🔍 Debugging Tests
-
-### Verbose Output
-
-```bash
-# Maximum verbosity
-make test-verbose
-
-# Debug specific test
-go test ./tests/unit/... -v -run=TestSpecificCase
-```
-
-### Test Debugging
-
-```go
-func TestDebugExample(t *testing.T) {
-    // Add debug logging
-    t.Logf("Debug info: %+v", data)
-    
-    // Use debugger breakpoints
-    _ = data // Set breakpoint here
-}
-```
-
-### Common Issues
-
-1. **Database connection failures**
-   ```bash
-   make setup-test-env  # Ensure test containers are running
-   ```
-
-2. **Test data conflicts**
-   ```bash
-   make cleanup-test-env  # Reset test environment
-   ```
-
-3. **Timeout issues**
-   ```bash
-   go test -timeout=60m  # Increase timeout
-   ```
-
-## 🔄 Continuous Integration
-
-### GitHub Actions
-
-```yaml
-# .github/workflows/test.yml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-      - run: make ci
-```
-
-### Pre-commit Hooks
-
-```bash
-# Install pre-commit hooks
-make pre-commit
-
-# Manual pre-commit check
-make dev-check
-```
-
-## 📈 Test Metrics
-
-### Automated Reporting
-
-```bash
-# Generate test report
-go test -json ./... | tee test-results.json
-
-# Coverage badge
-make coverage-badge
-```
-
-### Key Metrics
-
-- **Test execution time**: < 10 minutes
-- **Flaky test rate**: < 1%
-- **Code coverage**: > 80%
-- **Performance regression**: < 5%
-
-## 🛠️ Development Workflow
-
-### Adding New Tests
-
-1. **Create test file**
-   ```bash
-   touch tests/unit/new_feature_test.go
-   ```
-
-2. **Follow naming convention**
-   ```go
-   func TestNewFeature_SpecificBehavior(t *testing.T) {
-       // Test implementation
-   }
-   ```
-
-3. **Add to test suite**
-   ```go
-   type NewFeatureTestSuite struct {
-       suite.Suite
-       // Test dependencies
-   }
-   ```
-
-4. **Run tests**
-   ```bash
-   make test-unit
-   ```
-
-### Test-Driven Development
-
-1. Write failing test
-2. Implement minimal code to pass
-3. Refactor while keeping tests green
-4. Add edge cases and error scenarios
-
-## 🎭 Mock Generation
-
-### Generate Mocks
-
-```bash
-# Install mockery
-go install github.com/vektra/mockery/v2@latest
-
-# Generate mocks
-mockery --all --dir=./server/usecase --output=./tests/mocks
-```
-
-### Using Mocks
-
-```go
-// tests/mocks/UserUsecase.go (generated)
-mockUC := mocks.NewUserUsecase(t)
-mockUC.On("GetUserByID", ctx, 1).Return(user, nil)
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**1. Test Containers Not Starting**
-```bash
-# Check Docker
-docker ps
-
-# Restart containers
-make cleanup-test-env
-make setup-test-env
-```
-
-**2. Database Connection Errors**
-```bash
-# Check connection string
-echo $TEST_DB_DSN
-
-# Verify database is running
-psql $TEST_DB_DSN -c "SELECT 1"
-```
-
-**3. Test Timeouts**
-```bash
-# Increase timeout
-go test -timeout=30m ./...
-
-# Check for infinite loops or deadlocks
-go test -race ./...
-```
-
-### Debug Commands
-
-```bash
-# Show environment info
-make env-info
-
-# Run with debugging
-make debug-test
-
-# Check test coverage
-make coverage-summary
-```
-
-## 📚 Additional Resources
-
-### Documentation
-
-- [Go Testing Package](https://pkg.go.dev/testing)
-- [Testify Documentation](https://github.com/stretchr/testify)
-- [Ent Testing Guide](https://entgo.io/docs/testing)
-- [Test Containers Go](https://golang.testcontainers.org/)
-
-### Tools
-
-- **Testing**: `go test`, `testify`
-- **Mocking**: `mockery`, `gomock`
-- **Coverage**: `go tool cover`
-- **Benchmarking**: `benchstat`
-- **Containers**: `testcontainers-go`
-
-## 🤝 Contributing
-
-### Test Guidelines
-
-1. Write tests for all new features
-2. Maintain > 80% coverage
-3. Follow naming conventions
-4. Add integration tests for complex flows
-5. Include performance tests for critical paths
-
-### Code Review Checklist
-
-- [ ] Tests cover happy path and edge cases
-- [ ] Test names are descriptive
-- [ ] No flaky tests
-- [ ] Performance tests pass
-- [ ] Coverage maintains target levels
-
----
-
-**Happy Testing!** 🚀
-
-For questions or issues, please check the [troubleshooting section](#-troubleshooting) or create an issue.
+## Следующие шаги
+
+1. **Исправить логические ошибки** в частично работающих тестах
+2. **Настроить Docker окружение** для TestContainers
+3. **Добавить недостающие поля** в модели (например, `Post.slug`)
+4. **Реализовать моки** для внешних зависимостей
+5. **Настроить CI/CD** для автоматического запуска тестов
+
+## Контакты и поддержка
+
+При возникновении проблем с тестами:
+1. Проверьте статус в этом файле
+2. Убедитесь, что у вас установлены все зависимости
+3. Проверьте переменные окружения
+4. Для TestContainers убедитесь, что Docker запущен
+
+**Основной статус**: Инфраструктурные проблемы решены, фокус на логике тестов.

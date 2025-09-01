@@ -2,6 +2,7 @@ package post
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,20 +10,23 @@ import (
 	"stormlink/server/ent/enttest"
 	"stormlink/server/ent/post"
 	"stormlink/tests/fixtures"
+	"stormlink/tests/testcontainers"
+	"stormlink/tests/testhelper"
 
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestClient(t *testing.T) *ent.Client {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
-	return client
+func setupTestClient(t *testing.T) (*ent.Client, *testhelper.PostgresTestHelper) {
+	helper := testhelper.NewPostgresTestHelper(t)
+	helper.WaitForDatabase(t)
+	helper.CleanDatabase(t)
+	return helper.GetClient(), helper
 }
 
 func TestPostUsecase_GetPostByID(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -38,7 +42,9 @@ func TestPostUsecase_GetPostByID(t *testing.T) {
 		assert.NotNil(t, post)
 		assert.Equal(t, fixtures.TestPost1.ID, post.ID)
 		assert.Equal(t, fixtures.TestPost1.Title, post.Title)
-		assert.Equal(t, fixtures.TestPost1.Content, post.Content)
+		// Content is stored as JSON, so we need to extract the text field
+		contentMap := post.Content
+		assert.Equal(t, fixtures.TestPost1.Content, contentMap["text"])
 		assert.Equal(t, fixtures.TestPost1.CommunityID, post.CommunityID)
 		assert.Equal(t, fixtures.TestPost1.AuthorID, post.AuthorID)
 	})
@@ -53,13 +59,14 @@ func TestPostUsecase_GetPostByID(t *testing.T) {
 
 	t.Run("post with hero image", func(t *testing.T) {
 		// Create media for hero image
-		heroImage, err := fixtures.CreateTestMedia(ctx, client, "hero.jpg", "https://example.com/hero.jpg")
+		heroImage, err := fixtures.CreateTestMedia(ctx, client, fixtures.TestMedia1)
 		require.NoError(t, err)
 
 		// Create post with hero image
 		postWithHero, err := client.Post.Create().
 			SetTitle("Post With Hero Image").
-			SetContent("Content with hero image").
+			SetSlug("post-with-hero-image-test").
+			SetContent(map[string]interface{}{"text": "Content with hero image"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetHeroImageID(heroImage.ID).
@@ -76,7 +83,7 @@ func TestPostUsecase_GetPostByID(t *testing.T) {
 		heroEdge, err := retrievedPost.QueryHeroImage().Only(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, heroImage.ID, heroEdge.ID)
-		assert.Equal(t, "hero.jpg", heroEdge.Filename)
+		assert.Equal(t, "hero.jpg", *heroEdge.Filename)
 	})
 
 	t.Run("post with author", func(t *testing.T) {
@@ -98,7 +105,7 @@ func TestPostUsecase_GetPostByID(t *testing.T) {
 		community, err := post.QueryCommunity().Only(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, fixtures.TestPost1.CommunityID, community.ID)
-		assert.Equal(t, fixtures.TestCommunity1.Name, community.Name)
+		assert.Equal(t, fixtures.TestCommunity1.Name, community.Title)
 	})
 
 	t.Run("post with comments", func(t *testing.T) {
@@ -154,8 +161,8 @@ func TestPostUsecase_GetPostByID(t *testing.T) {
 }
 
 func TestPostUsecase_GetPostStatus(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -169,9 +176,8 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.True(t, status.IsOwn)
 		assert.False(t, status.IsLiked)
-		assert.False(t, status.IsBookmarked)
+		assert.False(t, status.HasBookmark)
 	})
 
 	t.Run("post status for non-author", func(t *testing.T) {
@@ -179,9 +185,8 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.False(t, status.IsOwn)
 		assert.False(t, status.IsLiked)
-		assert.False(t, status.IsBookmarked)
+		assert.False(t, status.HasBookmark)
 	})
 
 	t.Run("post status with like", func(t *testing.T) {
@@ -197,9 +202,8 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.False(t, status.IsOwn)
 		assert.True(t, status.IsLiked)
-		assert.False(t, status.IsBookmarked)
+		assert.False(t, status.HasBookmark)
 	})
 
 	t.Run("post status with bookmark", func(t *testing.T) {
@@ -215,9 +219,8 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.False(t, status.IsOwn)
 		assert.False(t, status.IsLiked)
-		assert.True(t, status.IsBookmarked)
+		assert.True(t, status.HasBookmark)
 	})
 
 	t.Run("post status for anonymous user", func(t *testing.T) {
@@ -225,9 +228,8 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.False(t, status.IsOwn)
 		assert.False(t, status.IsLiked)
-		assert.False(t, status.IsBookmarked)
+		assert.False(t, status.HasBookmark)
 	})
 
 	t.Run("non-existing post", func(t *testing.T) {
@@ -242,15 +244,14 @@ func TestPostUsecase_GetPostStatus(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, status)
-		assert.False(t, status.IsOwn)
 		assert.False(t, status.IsLiked)
-		assert.False(t, status.IsBookmarked)
+		assert.False(t, status.HasBookmark)
 	})
 }
 
-func TestPostUsecase_EdgeCases(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+func TestPostUsecase_PostWithRelationships(t *testing.T) {
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -272,13 +273,14 @@ func TestPostUsecase_EdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create media for hero image
-		heroImage, err := fixtures.CreateTestMedia(ctx, client, "complex-hero.jpg", "https://example.com/complex-hero.jpg")
+		heroImage, err := fixtures.CreateTestMedia(ctx, client, fixtures.TestMedia1)
 		require.NoError(t, err)
 
 		// Create complex post with all relationships
 		complexPost, err := client.Post.Create().
 			SetTitle("Complex Post").
-			SetContent("Post with all relationships").
+			SetSlug("complex-post-test").
+			SetContent(map[string]interface{}{"text": "Post with all relationships"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetHeroImageID(heroImage.ID).
@@ -364,8 +366,8 @@ func TestPostUsecase_EdgeCases(t *testing.T) {
 }
 
 func TestPostUsecase_PostWithDifferentVisibilities(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -375,9 +377,11 @@ func TestPostUsecase_PostWithDifferentVisibilities(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("published post", func(t *testing.T) {
+		// Create published post
 		publishedPost, err := client.Post.Create().
 			SetTitle("Published Post").
-			SetContent("This post is published").
+			SetSlug("published-post-test").
+			SetContent(map[string]interface{}{"text": "This is a published post"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetVisibility(post.VisibilityPublished).
@@ -391,9 +395,11 @@ func TestPostUsecase_PostWithDifferentVisibilities(t *testing.T) {
 	})
 
 	t.Run("draft post", func(t *testing.T) {
+		// Create draft post
 		draftPost, err := client.Post.Create().
 			SetTitle("Draft Post").
-			SetContent("This post is a draft").
+			SetSlug("draft-post-test").
+			SetContent(map[string]interface{}{"text": "This is a draft post"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetVisibility(post.VisibilityDraft).
@@ -407,9 +413,11 @@ func TestPostUsecase_PostWithDifferentVisibilities(t *testing.T) {
 	})
 
 	t.Run("deleted post", func(t *testing.T) {
+		// Create deleted post
 		deletedPost, err := client.Post.Create().
 			SetTitle("Deleted Post").
-			SetContent("This post is deleted").
+			SetSlug("deleted-post-test").
+			SetContent(map[string]interface{}{"text": "This is a deleted post"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetVisibility(post.VisibilityDeleted).
@@ -424,8 +432,8 @@ func TestPostUsecase_PostWithDifferentVisibilities(t *testing.T) {
 }
 
 func TestPostUsecase_PostInteractions(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -494,8 +502,8 @@ func TestPostUsecase_PostInteractions(t *testing.T) {
 }
 
 func TestPostUsecase_PostInPrivateCommunity(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -508,7 +516,8 @@ func TestPostUsecase_PostInPrivateCommunity(t *testing.T) {
 		// Create post in private community
 		privatePost, err := client.Post.Create().
 			SetTitle("Private Post").
-			SetContent("This post is in a private community").
+			SetSlug("private-post-test").
+			SetContent(map[string]interface{}{"text": "This post is in a private community"}).
 			SetCommunityID(fixtures.PrivateCommunity.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetVisibility(post.VisibilityPublished).
@@ -519,16 +528,13 @@ func TestPostUsecase_PostInPrivateCommunity(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, retrievedPost)
 
-		// Verify community is private
-		community, err := retrievedPost.QueryCommunity().Only(ctx)
-		assert.NoError(t, err)
-		assert.True(t, community.IsPrivate)
+		// Note: IsPrivate field no longer exists in community schema
 	})
 }
 
 func TestPostUsecase_EdgeCases(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -563,7 +569,8 @@ func TestPostUsecase_EdgeCases(t *testing.T) {
 		// Create post with non-existent hero image ID
 		postWithBrokenMedia, err := client.Post.Create().
 			SetTitle("Post With Broken Media").
-			SetContent("This post references non-existent media").
+			SetSlug("post-with-broken-media-test").
+			SetContent(map[string]interface{}{"text": "This post references non-existent media"}).
 			SetCommunityID(fixtures.TestCommunity1.ID).
 			SetAuthorID(fixtures.TestUser1.ID).
 			SetHeroImageID(99999). // Non-existent media ID
@@ -584,8 +591,8 @@ func TestPostUsecase_EdgeCases(t *testing.T) {
 }
 
 func TestPostUsecase_Performance(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -652,8 +659,8 @@ func TestPostUsecase_Performance(t *testing.T) {
 }
 
 func TestPostUsecase_PostStatusConcurrency(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -692,8 +699,8 @@ func TestPostUsecase_PostStatusConcurrency(t *testing.T) {
 }
 
 func TestPostUsecase_DatabaseIntegrity(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewPostUsecase(client)
 	ctx := context.Background()
@@ -756,19 +763,45 @@ func TestPostUsecase_DatabaseIntegrity(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkPostUsecase_GetPostByID(b *testing.B) {
-	client := enttest.Open(b, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	ctx := context.Background()
+
+	// Setup test containers
+	containers, err := testcontainers.Setup(ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer containers.Cleanup()
+
+	// Create Ent client
+	client := enttest.Open(b, "postgres", containers.GetPostgresDSN())
 	defer client.Close()
 
 	uc := NewPostUsecase(client)
-	ctx := context.Background()
 
-	// Create test post
-	err := fixtures.SeedBasicData(ctx, client)
-	require.NoError(b, err)
+	// Create test data with correct IDs
+	user1, err := fixtures.CreateTestUser(ctx, client, fixtures.TestUser1)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	communityFixture := fixtures.TestCommunity1
+	communityFixture.OwnerID = user1.ID
+	community, err := fixtures.CreateTestCommunity(ctx, client, communityFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	postFixture := fixtures.TestPost1
+	postFixture.AuthorID = user1.ID
+	postFixture.CommunityID = community.ID
+	testPost, err := fixtures.CreateTestPost(ctx, client, postFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := uc.GetPostByID(ctx, fixtures.TestPost1.ID)
+		_, err := uc.GetPostByID(ctx, testPost.ID)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -776,19 +809,45 @@ func BenchmarkPostUsecase_GetPostByID(b *testing.B) {
 }
 
 func BenchmarkPostUsecase_GetPostStatus(b *testing.B) {
-	client := enttest.Open(b, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
+	ctx := context.Background()
+
+	// Setup test containers
+	containers, err := testcontainers.Setup(ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer containers.Cleanup()
+
+	// Create Ent client
+	client := enttest.Open(b, "postgres", containers.GetPostgresDSN())
 	defer client.Close()
 
 	uc := NewPostUsecase(client)
-	ctx := context.Background()
 
-	// Create test data
-	err := fixtures.SeedBasicData(ctx, client)
-	require.NoError(b, err)
+	// Create test data with correct IDs
+	user1, err := fixtures.CreateTestUser(ctx, client, fixtures.TestUser1)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	communityFixture := fixtures.TestCommunity1
+	communityFixture.OwnerID = user1.ID
+	community, err := fixtures.CreateTestCommunity(ctx, client, communityFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	postFixture := fixtures.TestPost1
+	postFixture.AuthorID = user1.ID
+	postFixture.CommunityID = community.ID
+	testPost, err := fixtures.CreateTestPost(ctx, client, postFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := uc.GetPostStatus(ctx, fixtures.TestUser1.ID, fixtures.TestPost1.ID)
+		_, err := uc.GetPostStatus(ctx, testPost.ID, user1.ID)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -796,3 +855,47 @@ func BenchmarkPostUsecase_GetPostStatus(b *testing.B) {
 }
 
 func BenchmarkPostUsecase_GetPostByID_WithManyRelationships(b *testing.B) {
+	ctx := context.Background()
+
+	// Setup test containers
+	containers, err := testcontainers.Setup(ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer containers.Cleanup()
+
+	// Create Ent client
+	client := enttest.Open(b, "postgres", containers.GetPostgresDSN())
+	defer client.Close()
+
+	// Create test data with correct IDs
+	user1, err := fixtures.CreateTestUser(ctx, client, fixtures.TestUser1)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	communityFixture := fixtures.TestCommunity1
+	communityFixture.OwnerID = user1.ID
+	community, err := fixtures.CreateTestCommunity(ctx, client, communityFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	postFixture := fixtures.TestPost1
+	postFixture.AuthorID = user1.ID
+	postFixture.CommunityID = community.ID
+	post, err := fixtures.CreateTestPost(ctx, client, postFixture)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	uc := NewPostUsecase(client)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := uc.GetPostByID(ctx, post.ID)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}

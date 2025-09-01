@@ -4,29 +4,28 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
 	"stormlink/server/ent"
-	"stormlink/server/ent/enttest"
 	"stormlink/server/ent/post"
 	"stormlink/tests/fixtures"
+	"stormlink/tests/testhelper"
 
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
-func setupTestClient(t *testing.T) *ent.Client {
-	client := enttest.Open(t, "sqlite3", "file:ent?mode=memory&cache=shared&_fk=1")
-	return client
+func setupTestClient(t *testing.T) (*ent.Client, *testhelper.PostgresTestHelper) {
+	helper := testhelper.NewPostgresTestHelper(t)
+	helper.WaitForDatabase(t)
+	helper.CleanDatabase(t)
+	return helper.GetClient(), helper
 }
 
 func TestCommentUsecase_GetCommentsByPostID(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -92,8 +91,8 @@ func TestCommentUsecase_GetCommentsByPostID(t *testing.T) {
 }
 
 func TestCommentUsecase_GetCommentsByPostIDLight(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -118,8 +117,8 @@ func TestCommentUsecase_GetCommentsByPostIDLight(t *testing.T) {
 }
 
 func TestCommentUsecase_GetCommentsByPostIDLightPaginated(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -201,8 +200,8 @@ func TestCommentUsecase_GetCommentsByPostIDLightPaginated(t *testing.T) {
 }
 
 func TestCommentUsecase_GetCommentsFeed(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -267,8 +266,8 @@ func TestCommentUsecase_GetCommentsFeed(t *testing.T) {
 }
 
 func TestCommentUsecase_CommentByID(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -303,14 +302,13 @@ func TestCommentUsecase_CommentByID(t *testing.T) {
 }
 
 func TestCommentUsecase_CommentsByPostConnection(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
 
 	// Create test data with multiple comments
-	postID := 1
 	err := fixtures.SeedBasicData(ctx, client)
 	require.NoError(t, err)
 
@@ -412,8 +410,8 @@ func TestCommentUsecase_CommentsByPostConnection(t *testing.T) {
 }
 
 func TestCommentUsecase_CommentsWindow(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -535,8 +533,8 @@ func TestCommentUsecase_CommentsWindow(t *testing.T) {
 }
 
 func TestCommentUsecase_CommentsFeedConnection(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -725,8 +723,8 @@ func TestCommentUsecase_CursorEncoding(t *testing.T) {
 }
 
 func TestCommentUsecase_EdgeCases(t *testing.T) {
-	client := setupTestClient(t)
-	defer client.Close()
+	client, helper := setupTestClient(t)
+	defer helper.Cleanup()
 
 	uc := NewCommentUsecase(client)
 	ctx := context.Background()
@@ -754,3 +752,6 @@ func TestCommentUsecase_EdgeCases(t *testing.T) {
 		comments, err := uc.GetCommentsByPostIDLightPaginated(ctx, 1, nil, -1, -1)
 
 		assert.NoError(t, err)
+		assert.NotNil(t, comments)
+	})
+}
