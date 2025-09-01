@@ -1,3 +1,0 @@
-{
-	"query": "mutation { createHostRole(input: { title: \"Модератор платформы\", color: \"#ff6b6b\", hostUserBan: true, hostUserMute: true }) { id title color hostUserBan hostUserMute } }"
-}

@@ -1,3 +1,0 @@
-{
-	"query": "mutation { muteCommunityOnHost(input: { communityID: \"1\" }) { id communityID createdAt } }"
-}

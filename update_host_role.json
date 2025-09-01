@@ -1,3 +1,0 @@
-{
-	"query": "mutation { updateHostRole(input: { id: \"3\", title: \"Старший модератор платформы\", color: \"#4ecdc4\" }) { id title color hostUserBan hostUserMute } }"
-}

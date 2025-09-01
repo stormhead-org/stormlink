@@ -1,3 +1,0 @@
-{
-	"query": "mutation { addUserToHostRole(input: { roleID: \"3\", userID: \"2\" }) }"
-}

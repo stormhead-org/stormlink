@@ -1,3 +1,0 @@
-{
-	"query": "mutation { muteUserOnHost(input: { userID: \"2\" }) { id createdAt } }"
-}

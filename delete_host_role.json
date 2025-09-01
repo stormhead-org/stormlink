@@ -1,3 +1,0 @@
-{
-	"query": "mutation { deleteHostRole(id: \"3\") }"
-}
