@@ -1,729 +1,258 @@
-# Анализ backend кодовой базы: Stormlink⚡
+# Анализ backend кодовой базы: Stormlink
 
 ## 📁 Структура проекта
 
-```
+```text
 stormlink/
-├── server/                    # Основной GraphQL сервер
-│   ├── cmd/                   # Точка входа и модули инициализации
-│   ├── ent/                   # Ent ORM сгенерированный код и схемы
-│   ├── graphql/               # GraphQL резолверы и модели
-│   ├── grpc/                  # gRPC протобуф определения для клиентов
-│   ├── middleware/            # HTTP/gRPC middleware (auth, rate limiting, audit)
-│   ├── model/                 # Бизнес модели и DTO
-│   └── usecase/               # Слой бизнес-логики (use cases)
-├── services/                  # Микросервисы (auth, user, mail, media, workers)
-│   ├── auth/                  # Сервис аутентификации (JWT, login/logout)
-│   ├── mail/                  # Email сервис (SMTP, верификация)
-│   ├── media/                 # Медиа сервис (S3, файлы)
-│   ├── user/                  # Пользовательский сервис
-│   └── workers/               # Фоновые задачи
-├── shared/                    # Общие утилиты и библиотеки
-│   ├── auth/                  # Контекст аутентификации
-│   ├── errors/                # Нормализация ошибок gRPC/GraphQL
-│   ├── http/                  # HTTP контекст и работа с cookies
-│   ├── jwt/                   # JWT токены и хеширование
-│   ├── mail/                  # SMTP клиент
-│   ├── rabbitmq/              # Очереди сообщений
-│   ├── redis/                 # Redis клиент
-│   └── s3/                    # S3-совместимое хранилище
-├── proto/                     # gRPC протобуф схемы
-├── tests/                     # Тестовая инфраструктура
-│   ├── unit/                  # Юнит тесты
-│   ├── integration/           # Интеграционные тесты
-│   ├── performance/           # Нагрузочные тесты
-│   └── fixtures/              # Тестовые данные
-└── tools/                     # Утилиты разработки
+├── server/                    # GraphQL-gateway: HTTP/WS, маршруты, резолверы, usecase
+│   ├── cmd/                   # Bootstrap: env, DB, миграции, запуск GraphQL, S3, маршруты
+│   ├── ent/                   # Ent ORM (сгенерированные модели, билдеры запросов)
+│   ├── graphql/               # Схемы GraphQL, резолверы, модели, связка с usecase/gRPC
+│   ├── grpc/                  # gRPC клиенты и protobuf (auth, user, mail, media)
+│   ├── middleware/            # HTTP/gRPC middleware: аутентификация, rate limit, аудит
+│   ├── model/                 # Модели доменных прав/DTO над ent
+│   └── usecase/               # Бизнес-логика (User, Community, Post, Comment, Role, ...)
+├── services/                  # Микросервисы: auth, user, mail, media, workers
+│   ├── auth/                  # JWT, логин/логаут, refresh, ValidateToken, GetMe
+│   ├── user/                  # Регистрация, роли, первичная настройка Host
+│   ├── mail/                  # Подтверждение почты и повторная отправка
+│   ├── media/                 # Медиа-операции (интеграция с S3)
+│   └── workers/               # Фоновые обработчики (через RabbitMQ)
+├── shared/                    # Общий kernel: auth context, http cookies, jwt, s3, redis, mq
+│   ├── auth/ | http/ | jwt/ | s3/ | redis/ | rabbitmq/ | mapper/ | errors/
+├── tests/                     # Unit, integration (testcontainers), performance
+└── proto/                     # proto-схемы и buf-конфиги
 ```
 
-### Принципы организации кода
-
-- **Микросервисная архитектура**: Основной GraphQL сервер + специализированные gRPC микросервисы
-- **Clean Architecture**: Разделение на слои usecase, repository (через Ent), и transport (GraphQL/gRPC)  
-- **Domain-Driven Design**: Организация по доменным сущностям (User, Community, Post, Comment)
-- **Shared Kernel**: Общие утилиты вынесены в `shared/` для переиспользования
+- Организация: mix из Clean Architecture и DDD.
+  - Transport: GraphQL gateway (+ WebSocket), вход в gRPC-сервисы.
+  - Usecase: доменная логика в `server/usecase/*`.
+  - Data: доступ через Ent ORM (`server/ent`), без отдельного repository-слоя, но с чёткими usecase-границами.
+  - Shared kernel: `shared/*` — переиспользуемая инфраструктура.
+- Развёртывание: монорепозиторий с несколькими сервисами (gateway + микросервисы).
 
 ## 🛠 Технологический стек
 
-| Категория | Технология | Версия | Назначение |
-|-----------|------------|---------|------------|
-| **Runtime** | Go | 1.24.2 | Основной язык |
-| **ORM** | Ent | v0.14.4 | Type-safe ORM с кодогенерацией |
-| **GraphQL** | gqlgen | v0.17.78 | GraphQL сервер с кодогенерацией |
-| **gRPC** | google.golang.org/grpc | v1.70.0 | Межсервисное взаимодействие |
-| **gRPC Gateway** | grpc-gateway | v2.26.3 | REST API проксирование |
-| **Database** | PostgreSQL | - | Основная БД |
-| **Cache** | Redis | v9.12.0 | Кеширование и сессии |
-| **Message Queue** | RabbitMQ | v1.10.0 | Асинхронные задачи |
-| **Storage** | AWS S3 | v1.55.7 | Файловое хранилище |
-| **Authentication** | JWT | v5.2.2 | Токены доступа |
-| **Validation** | go-playground/validator | v10.26.0 | Валидация входных данных |
-| **WebSocket** | gorilla/websocket | v1.5.0 | Реальное время (GraphQL подписки) |
-| **Testing** | testify + testcontainers | v1.10.0 | Юнит и интеграционные тесты |
-| **Rate Limiting** | golang.org/x/time/rate | - | Защита от DDoS |
-| **CORS** | rs/cors | v1.11.1 | Cross-origin запросы |
+| Категория | Технология              | Версия/прим.      | Назначение                      |
+| --------- | ----------------------- | ----------------- | ------------------------------- |
+| Язык      | Go                      | go.mod: 1.24.2    | Основной runtime                |
+| ORM       | Ent                     | v0.14.4           | Типобезопасный доступ к БД      |
+| GraphQL   | gqlgen                  | v0.17.81          | Сервер и кодоген                |
+| gRPC      | google.golang.org/grpc  | v1.70.0           | Межсервисное API                |
+| Gateway   | grpc-gateway/v2         | v2.26.3           | REST proxy (заявлен)            |
+| БД        | PostgreSQL              | lib/pq            | Основная БД                     |
+| Кэш       | Redis                   | go-redis/v9       | Кэш/сессии refresh              |
+| Очереди   | RabbitMQ                | amqp091-go        | Рассылка писем и фоновые задачи |
+| Хранилище | AWS S3                  | aws-sdk-go        | Медиа и /storage прокси         |
+| JWT       | golang-jwt/jwt/v5       | v5.2.2            | Токены, валидация               |
+| Валидация | protoc-gen-validate     | v1.1.0            | Валидация gRPC входа            |
+| WebSocket | gorilla/websocket       | v1.5.0            | GraphQL Subscriptions           |
+| Тесты     | testify, testcontainers | v1.11.1 / v0.34.0 | Unit/Integration                |
+| Лимиты    | x/time/rate             | -                 | Rate limit HTTP/gRPC            |
+| Сборка    | Makefile                | -                 | Тесты/линт/билд/CI              |
+
+Примечание: Makefile объявляет GO_VERSION=1.21 для контейнера тестов; фактическая версия компилятора — 1.24.2 из go.mod.
 
 ## 🏗 Архитектура
 
-### Общая архитектура системы
+- Bootstrap (`server/cmd/main.go`): env → DB → миграции → запуск GraphQL → graceful shutdown.
+- GraphQL сервер (`server/cmd/modules/graphql_server.go`): маршруты `/query`, `/healthz`, `/readyz`, `/storage/*`, CORS, WebSocket, complexity limit, APQ, rate limit, аудит, CSRF.
+- Подключение к микросервисам по gRPC (auth, user, mail, media) с клиентским интерсептором, автоматом прокидывающим Authorization из HTTP-контекста в gRPC metadata.
+- Normalized error handling: единый маппинг gRPC/Ent ошибок в GraphQL extensions.code `shared/errors` + глобальный ErrorPresenter в gqlgen.
 
-```
-[Frontend NextJS] 
-    ↓ HTTP + WebSocket
-[GraphQL Gateway Server :8080]
-    ↓ gRPC calls
-[Микросервисы]
-    ├─ Auth Service :4001
-    ├─ User Service :4002  
-    ├─ Mail Service :4003
-    └─ Media Service :4004
-    ↓
-[Shared Infrastructure]
-    ├─ PostgreSQL (Ent ORM)
-    ├─ Redis (кеш, сессии)
-    ├─ RabbitMQ (очереди)
-    └─ S3 (файлы)
-```
+Кодовый пример — прокидывание авторизации в gRPC:
 
-### Архитектурные слои
-
-#### 1. Transport Layer (GraphQL/gRPC)
-```go
-// server/graphql/*.resolvers.go
-func (r *queryResolver) User(ctx context.Context, id int) (*ent.User, error) {
-    return r.UserUC.GetUserByID(ctx, id)
-}
-```
-
-#### 2. Use Case Layer 
-```go
-// server/usecase/user/user.go
-type UserUsecase interface {
-    GetUserByID(ctx context.Context, id int) (*ent.User, error)
-    GetPermissionsByCommunities(ctx context.Context, userID int, communityIDs []int) (map[int]*model.CommunityPermissions, error)
-}
-
-func (uc *userUsecase) GetUserByID(ctx context.Context, id int) (*ent.User, error) {
-    return uc.client.User.Query().
-        Where(user.IDEQ(id)).
-        WithAvatar().
-        WithUserInfo().
-        WithHostRoles().
-        WithCommunitiesRoles().
-        Only(ctx)
-}
-```
-
-#### 3. Repository Layer (Ent ORM)
-```go
-// server/ent/schema/user.go
-type User struct {
-    ent.Schema
-}
-
-func (User) Fields() []ent.Field {
-    return []ent.Field{
-        field.Int("id").Unique(),
-        field.String("name").NotEmpty(),
-        field.String("slug").Unique().NotEmpty(),
-        field.String("email").Unique().NotEmpty(),
-        field.String("password_hash").NotEmpty().Annotations(entgql.Skip(entgql.SkipAll)),
-        field.Bool("is_verified").Default(false),
-        field.Time("created_at").Default(time.Now),
-    }
-}
-```
-
-### Межсервисное взаимодействие
-
-#### gRPC с авто-авторизацией
-```go
-// server/cmd/modules/graphql_server.go
+```84:96:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/graphql_server.go
 func authClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-    if authHeader, ok := ctx.Value("authorization").(string); ok && authHeader != "" {
-        md := metadata.New(map[string]string{
-            "authorization": authHeader,
-        })
-        ctx = metadata.NewOutgoingContext(ctx, md)
-    }
-    return invoker(ctx, method, req, reply, cc, opts...)
+	if authHeader, ok := ctx.Value("authorization").(string); ok && authHeader != "" {
+		md := metadata.New(map[string]string{
+			"authorization": authHeader,
+		})
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+	return invoker(ctx, method, req, reply, cc, opts...)
 }
 ```
 
-#### Нормализация ошибок
-```go
-// shared/errors/errors.go
-func ToGraphQL(err error) *GraphQLError {
-    if s, ok := status.FromError(err); ok {
-        return &GraphQLError{
-            Message: s.Message(),
-            Code: s.Code().String(),
-        }
-    }
-    return &GraphQLError{Message: err.Error(), Code: "INTERNAL"}
-}
+Глобальный ErrorPresenter:
+
+```165:189:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/graphql_server.go
+srv := handler.New(graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}))
+srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
+	if ent.IsNotFound(err) {
+		// code=NotFound
+		e := gqlerror.Errorf("not found")
+		if e.Extensions == nil { e.Extensions = map[string]any{} }
+		e.Extensions["code"] = codes.NotFound.String()
+		return e
+	}
+	ge := errorsx.ToGraphQL(err)
+	if ge == nil { return gqlerror.Errorf("unknown error") }
+	e := gqlerror.Errorf("%s", ge.Message)
+	if e.Extensions == nil { e.Extensions = map[string]any{} }
+	e.Extensions["code"] = ge.Code
+	return e
+})
+```
+
+HTTP-цепочка безопасности:
+
+```271:307:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/graphql_server.go
+graphqlHandler := middleware.SecurityAuditMiddleware(
+	middleware.AuditMiddleware(
+		middleware.RateLimitMiddleware(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Origin/CSRF, ограничение тела, куки-контекст
+				ctx := httpWithCookies.WithHTTPContext(r.Context(), w, r)
+				r = r.WithContext(ctx)
+				middleware.HTTPAuthMiddleware(srv).ServeHTTP(w, r)
+			}),
+		),
+	),
+)
 ```
 
 ## 💾 Работа с данными
 
-### База данных (PostgreSQL + Ent ORM)
+Подключение к Postgres с управлением пулом соединений:
 
-#### Подключение с pool management
-```go
-// server/cmd/modules/database.go
+```20:56:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/database.go
 func ConnectDB() *ent.Client {
-    db, err := sql.Open("postgres", dsn)
-    
-    maxOpenConns := getEnvInt("DB_MAX_OPEN_CONNS", 15)
-    maxIdleConns := getEnvInt("DB_MAX_IDLE_CONNS", 5)
-    connMaxLifetime := getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 5)
-    
-    db.SetMaxOpenConns(maxOpenConns)
-    db.SetMaxIdleConns(maxIdleConns)
-    db.SetConnMaxLifetime(time.Duration(connMaxLifetime) * time.Minute)
-    
-    drv := entsql.OpenDB(dialect.Postgres, db)
-    return ent.NewClient(ent.Driver(drv))
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", ...)
+	db, err := sql.Open("postgres", dsn)
+	// pool tuning
+	db.SetMaxOpenConns(getEnvInt("DB_MAX_OPEN_CONNS", 15))
+	db.SetMaxIdleConns(getEnvInt("DB_MAX_IDLE_CONNS", 5))
+	db.SetConnMaxLifetime(time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MINUTES", 5)) * time.Minute)
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	return ent.NewClient(ent.Driver(drv))
 }
 ```
 
-#### Миграции
-```go
+Миграции Ent и сидинг:
+
+```68:98:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/database.go
 func MigrateDB(client *ent.Client, reset bool, seed bool) {
-    if reset {
-        if err := client.Schema.Create(context.Background(), 
-            schema.WithDropIndex(true),
-            schema.WithDropColumn(true)); err != nil {
-            log.Fatalf("ошибка сброса схемы: %v", err)
-        }
-    }
+	if reset { client.Schema.Create(ctx, schema.WithDropIndex(true), schema.WithDropColumn(true)) }
+	if seed { client.Schema.Create(ctx); Seed(client) } else { client.Schema.Create(ctx) }
 }
 ```
 
-### Схема данных (основные сущности)
+Usecase вместо repository: чтение пользователя с eager loading:
 
-#### User - центральная сущность
-```go
-func (User) Edges() []ent.Edge {
-    return []ent.Edge{
-        edge.To("avatar", Media.Type).Field("avatar_id").Unique(),
-        edge.To("posts", Post.Type),
-        edge.To("comments", Comment.Type),
-        edge.To("following", UserFollow.Type),
-        edge.To("communities_owner", Community.Type),
-        edge.To("communities_moderator", CommunityModerator.Type),
-        edge.To("posts_likes", PostLike.Type),
-        edge.To("bookmarks", Bookmark.Type),
-    }
+```25:34:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/usecase/user/user.go
+func (uc *userUsecase) GetUserByID(ctx context.Context, id int) (*ent.User, error) {
+	return uc.client.User.Query().Where(user.IDEQ(id)).WithAvatar().WithUserInfo().WithHostRoles().WithCommunitiesRoles().Only(ctx)
 }
 ```
 
-#### Community - сообщества
-```go 
-func (Community) Fields() []ent.Field {
-    return []ent.Field{
-        field.Int("id").Unique(),
-        field.Int("owner_id"),
-        field.String("title").NotEmpty(),
-        field.String("slug").Unique().NotEmpty(),
-        field.String("description").Optional().Nillable(),
-        field.Bool("community_has_banned").Default(false),
-    }
-}
-```
+Кэш/сессии в Redis (refresh-токены, ротация):
 
-### Кеширование (Redis)
-```go
-// shared/redis/client.go - инициализация клиента
-// services/auth/internal/service/service.go - сессии и refresh токены
+```176:195:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/services/auth/internal/service/service.go
+newAccess, _ := jwt.GenerateAccessToken(userID)
+newRefresh, _ := jwt.GenerateRefreshToken(userID)
 if s.redis != nil {
-    ttl := 7 * 24 * time.Hour
-    _ = s.redis.Set(ctx, "refresh:"+refreshToken, userID, ttl).Err()
+	_ = s.redis.Del(ctx, "refresh:"+refreshToken).Err()
+	_ = s.redis.Set(ctx, "refresh:"+newRefresh, userID, 7*24*time.Hour).Err()
 }
+httpCookies.SetAuthCookies(w, newAccess, newRefresh)
 ```
 
-### Очереди (RabbitMQ)
-```go
-// shared/rabbitmq/ - публикация задач email верификации
-// services/workers/ - обработчики фоновых задач
+Асинхронная почта: постановка задач в очередь и отправка SMTP:
+
+```62:79:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/shared/rabbitmq/publisher.go
+err = ch.Publish("", q.Name, false, false, amqp.Publishing{DeliveryMode: amqp.Persistent, ContentType: "application/json", Body: body})
+```
+
+```10:29:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/shared/mail/send.go
+addr := fmt.Sprintf("%s:%d", config.SMTPHost, config.SMTPPort)
+auth := smtp.PlainAuth("", config.SMTPUsername, config.SMTPPassword, config.SMTPHost)
+_ = smtp.SendMail(addr, auth, config.FromEmail, []string{to}, message)
 ```
 
 ## ✅ Качество кода
 
-### Стандарты и соглашения
-
-#### Структурирование пакетов
-- **Интерфейсы в usecase**: Определение контрактов бизнес-логики
-- **Реализация в отдельных файлах**: `user.go`, `user_permissions.go`, `user_status.go`
-- **Тесты рядом**: `user_test.go` в том же пакете
-
-#### Нейминг
-- **CamelCase** для публичных методов и типов
-- **camelCase** для приватных
-- **Описательные имена**: `GetPermissionsByCommunities`, `ValidateToken`
-- **Контекстные префиксы**: `userUsecase`, `authClient`
-
-### Обработка ошибок
-
-#### Wrapping и типизация
-```go
-// shared/errors/errors.go
-func FromGRPCCode(code codes.Code, message string, cause error) error {
-    return status.Error(code, message)
-}
-
-// Использование в сервисах  
-if err := jwt.ComparePassword(u.PasswordHash, password, u.Salt); err != nil {
-    return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "invalid credentials", nil)
-}
-```
-
-#### GraphQL Error Presenter
-```go
-srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
-    if ent.IsNotFound(err) {
-        e := gqlerror.Errorf("not found")
-        e.Extensions["code"] = codes.NotFound.String()
-        return e
-    }
-    ge := errorsx.ToGraphQL(err)
-    // нормализация через shared/errors
-})
-```
-
-### Безопасность
-
-#### Middleware Stack
-```go
-// Rate limiting per IP
-middleware.RateLimitMiddleware(
-    // Security audit logging  
-    middleware.SecurityAuditMiddleware(
-        // General request logging
-        middleware.AuditMiddleware(
-            // JWT validation
-            middleware.HTTPAuthMiddleware(srv)
-        )
-    )
-)
-```
-
-#### CSRF Protection
-```go
-if os.Getenv("CSRF_ENABLE") == "true" {
-    c, err := r.Cookie("csrf_token")
-    tokenHeader := r.Header.Get("X-CSRF-Token")
-    if tokenHeader != c.Value {
-        http.Error(w, "invalid csrf token", http.StatusForbidden)
-    }
-}
-```
-
-### Валидация
-
-#### protobuf validation
-```go
-func (s *AuthService) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
-    if err := req.Validate(); err != nil {
-        return nil, errorsx.FromGRPCCode(codes.InvalidArgument, "validation error", err)
-    }
-}
-```
-
-### Тестирование
-
-#### Комплексная test suite
-```
-tests/
-├── unit/           # Быстрые изолированные тесты
-├── integration/    # Тесты с реальной БД  
-├── performance/    # Бенчмарки и нагрузочные тесты
-└── fixtures/       # Тестовые данные
-```
-
-#### Test containers для изоляции
-```go
-// tests/testcontainers/setup.go
-func Setup(ctx context.Context) (*TestContainers, error) {
-    postgres, err := postgres.RunContainer(ctx, 
-        testcontainers.WithImage("postgres:15"),
-        postgres.WithDatabase("testdb"))
-    
-    redis, err := redis.RunContainer(ctx,
-        testcontainers.WithImage("redis:7-alpine"))
-}
-```
+- Линтер: Makefile содержит цели `lint`/`ci-lint` с golangci-lint.
+- Нейминг: описательные имена, интерфейсы в `usecase`, отсутствие 1-2 символных идентификаторов.
+- Документация: README и `server/README.md` подробно описывают эндпоинты, безопасность и ENV.
+- Тесты: unit, integration (testcontainers), performance присутствуют. Покрытие собирается через `make test-coverage`.
+- Изоляция логики: usecase слой отделяет бизнес-правила от транспорта/инфраструктуры.
+- Логирование/метрики: логирование детальное (аудит/безопасность), метрик/трейсинга нет — рекомендация добавить.
 
 ## 🔧 Ключевые модули
 
-### 1. Authentication Service (services/auth/)
+1. HTTP Auth middleware (контекст + куки + валидация через gRPC auth):
 
-**Назначение**: Централизованная аутентификация и авторизация с JWT токенами
-
-**Ключевые интерфейсы**:
-```go
-type AuthService interface {
-    Login(ctx context.Context, req *LoginRequest) (*LoginResponse, error)
-    ValidateToken(ctx context.Context, req *ValidateTokenRequest) (*ValidateTokenResponse, error)
-    RefreshToken(ctx context.Context, req *RefreshTokenRequest) (*RefreshTokenResponse, error)
-}
-```
-
-**Пример использования**:
-```go
-// Валидация токена с ротацией refresh
-claims, err := jwt.ParseRefreshToken(refreshToken)
-if s.redis != nil {
-    // Проверяем, что refresh не отозван
-    if _, err := s.redis.Get(ctx, "refresh:"+refreshToken).Result(); err != nil {
-        return nil, errorsx.FromGRPCCode(codes.Unauthenticated, "refresh token revoked", nil)
-    }
-    // Инвалидируем старый токен
-    _ = s.redis.Del(ctx, "refresh:"+refreshToken).Err()
-}
-newAccess, _ := jwt.GenerateAccessToken(userID)
-newRefresh, _ := jwt.GenerateRefreshToken(userID)
-```
-
-### 2. User Usecase (server/usecase/user/)
-
-**Назначение**: Бизнес-логика работы с пользователями и правами доступа
-
-**Основные методы**:
-```go
-func (uc *userUsecase) GetUserByID(ctx context.Context, id int) (*ent.User, error) {
-    return uc.client.User.Query().
-        Where(user.IDEQ(id)).
-        WithAvatar().            // Eager loading аватара
-        WithUserInfo().          // Профильная информация  
-        WithHostRoles().         // Роли хоста
-        WithCommunitiesRoles().  // Роли в сообществах
-        Only(ctx)
-}
-
-func (uc *userUsecase) GetPermissionsByCommunities(ctx context.Context, userID int, communityIDs []int) (map[int]*model.CommunityPermissions, error) {
-    // Сложная логика вычисления разрешений на основе ролей
-}
-```
-
-### 3. GraphQL Resolver Layer (server/graphql/)
-
-**Назначение**: Адаптация бизнес-логики для GraphQL API с поддержкой subscriptions
-
-**Пример резолвера**:
-```go
-func (r *queryResolver) User(ctx context.Context, id int) (*ent.User, error) {
-    // Проверка авторизации через shared/auth
-    currentUserID, err := auth.UserIDFromContext(ctx)
-    if err != nil {
-        return nil, fmt.Errorf("unauthorized")
-    }
-    
-    user, err := r.UserUC.GetUserByID(ctx, id) 
-    if err != nil {
-        return nil, err // Автоматическая нормализация через ErrorPresenter
-    }
-    
-    return user, nil
-}
-```
-
-### 4. HTTP/Auth Middleware (server/middleware/)
-
-**Назначение**: Безопасность, аудит, rate limiting для HTTP запросов
-
-**Цепочка middleware**:
-```go
-func HTTPAuthMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        ctx := httpCookies.WithHTTPContext(r.Context(), w, r)
-        
-        // Извлечение токена из Authorization header или cookie
-        authHeader := r.Header.Get("Authorization")
-        if authHeader == "" {
-            if c, err := r.Cookie("auth_token"); err == nil && c.Value != "" {
-                authHeader = "Bearer " + c.Value
-            }
-        }
-        
-        // Удаленная валидация через auth-service
-        resp, err := authClient.ValidateToken(ctx, &protobuf.ValidateTokenRequest{
-            Token: strings.TrimPrefix(authHeader, "Bearer "),
-        })
-        
-        if err == nil && resp.GetValid() {
-            ctx = sharedauth.WithUserID(ctx, int(resp.GetUserId()))
-        }
-        
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
-```
-
-### 5. Shared Utilities (shared/)
-
-**Назначение**: Переиспользуемые компоненты без бизнес-логики
-
-**JWT утилиты**:
-```go
-// shared/jwt/jwtutil.go
-func GenerateAccessToken(userID int) (string, error) {
-    claims := jwt.MapClaims{
-        "user_id": strconv.Itoa(userID),
-        "exp":     time.Now().Add(15 * time.Minute).Unix(),
-        "type":    "access",
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(getJWTSecret())
-}
-```
-
-**S3 интеграция**:
-```go
-// shared/s3/client.go
-func (c *S3Client) UploadFile(ctx context.Context, dir, filename string, content []byte) (string, string, error) {
-    sanitized := sanitizeFilename(filename)
-    key := fmt.Sprintf("%s/%s_%s", dir, uuid.New().String(), sanitized)
-    
-    _, err := c.client.PutObject(ctx, &s3.PutObjectInput{
-        Bucket: aws.String(c.bucket),
-        Key:    aws.String(key), 
-        Body:   bytes.NewReader(content),
-    })
-    
-    return c.constructURL(key), sanitized, err
-}
-```
-
-## 📋 Паттерны и Best Practices
-
-### 1. Context Propagation
-
-**Передача контекста через все слои**:
-```go
-// HTTP Context обертка
+```28:91:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/middleware/http_auth.go
 ctx := httpCookies.WithHTTPContext(r.Context(), w, r)
-
-// Авторизация в контексте
-ctx = sharedauth.WithUserID(ctx, userID)
-
-// gRPC metadata
-if authHeader, ok := ctx.Value("authorization").(string); ok {
-    md := metadata.New(map[string]string{"authorization": authHeader})
-    ctx = metadata.NewOutgoingContext(ctx, md)
-}
+authHeader := r.Header.Get("Authorization") // fallback на cookie auth_token
+resp, err := authClient.ValidateToken(ctx, &protobuf.ValidateTokenRequest{Token: token})
+if err == nil && resp.GetValid() { ctx = sharedauth.WithUserID(ctx, int(resp.GetUserId())) }
+next.ServeHTTP(w, r.WithContext(ctx))
 ```
 
-### 2. Error Handling
+2. Rate limiting (HTTP): разные лимиты для анонимных/авторизованных:
 
-**Единообразная обработка ошибок**:
-```go
-// shared/errors - нормализация gRPC → GraphQL
-func ToGraphQL(err error) *GraphQLError {
-    if s, ok := status.FromError(err); ok {
-        return &GraphQLError{Message: s.Message(), Code: s.Code().String()}
-    }
-    return &GraphQLError{Message: err.Error(), Code: "INTERNAL"}
-}
-
-// Ent NotFound специальная обработка
-if ent.IsNotFound(err) {
-    e := gqlerror.Errorf("not found")
-    e.Extensions["code"] = codes.NotFound.String()
-    return e
-}
+```46:111:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/middleware/rate_limit.go
+if isAuthenticated { limiter = rate.NewLimiter(20, 50) } else { limiter = rate.NewLimiter(5, 10) }
+if !limiter.limiter.Allow() { http.Error(w, "Too many requests", http.StatusTooManyRequests); return }
 ```
 
-### 3. Connection Pooling & Performance
+3. GraphQL security и health:
 
-**Оптимизация подключений к БД**:
-```go
-db.SetMaxOpenConns(15)      // Лимит открытых соединений
-db.SetMaxIdleConns(5)       // Idle соединения в пуле  
-db.SetConnMaxLifetime(5 * time.Minute) // Переиспользование соединений
+```221:343:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/server/cmd/modules/graphql_server.go
+// /readyz: БД, S3, gRPC health checks; CORS; WS CheckOrigin; APQ; complexity limit
 ```
 
-**Eager Loading в Ent**:
-```go
-return uc.client.User.Query().
-    WithAvatar().WithUserInfo().WithHostRoles().  // Одним запросом
-    Only(ctx)
+4. Auth service (gRPC) — login/refresh с куками и Redis:
+
+```42:91:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/services/auth/internal/service/service.go
+u := s.client.User.Query().Where(entuser.EmailEQ(email)).WithAvatar().Only(ctx)
+accessToken, _ := jwt.GenerateAccessToken(u.ID)
+refreshToken, _ := jwt.GenerateRefreshToken(u.ID)
+if s.redis != nil { _ = s.redis.Set(ctx, "refresh:"+refreshToken, u.ID, 7*24*time.Hour).Err() }
+httpCookies.SetAuthCookies(w, accessToken, refreshToken)
 ```
 
-### 4. Security & Rate Limiting
+5. User service — регистрация, первичная инициализация Host, верификация e-mail:
 
-**IP-based rate limiting**:
-```go
-var ipLimiters = struct {
-    mu       sync.Mutex
-    limiters map[string]*rate.Limiter
-}{limiters: make(map[string]*rate.Limiter)}
-
-func getRateLimiter(ip string) *rate.Limiter {
-    ipLimiters.mu.Lock()
-    defer ipLimiters.mu.Unlock()
-    
-    if limiter, exists := ipLimiters.limiters[ip]; exists {
-        return limiter
-    }
-    
-    limiter := rate.NewLimiter(rate.Limit(100), 200) // 100 req/sec, burst 200
-    ipLimiters.limiters[ip] = limiter
-    return limiter
-}
+```33:88:/mnt/hp_nvme_1tb/Projects/GitHub/stormlink/services/user/internal/service/service.go
+exists := s.client.User.Query().Where(entu.EmailEQ(req.GetEmail())).Exist(ctx)
+passwordHash := bcrypt.GenerateFromPassword([]byte(req.GetPassword()+salt), ...)
+// Назначение ролей, генерация verification token и постановка EmailJob в RabbitMQ
 ```
 
-### 5. Graceful Shutdown
+## Паттерны и best practices
 
-**Корректное завершение серверов**:
-```go
-func main() {
-    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-    defer stop()
-    
-    modules.StartGraphQLServer(client)
-    
-    <-ctx.Done()
-    log.Println("👋 graphql server stopping...")
-    shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
-    _ = modules.ShutdownGraphQLServer(shutdownCtx)
-}
-```
+- Context propagation: `shared/http` хранит `http.Request`/`ResponseWriter` в контексте, `shared/auth` — `userID`. gRPC metadata заполняется из контекста.
+- Ошибки: централизованный маппинг `shared/errors` для gRPC и GraphQL, спец‑обработка `ent.IsNotFound`.
+- Асинхронность: goroutine-очистка карт лимитеров; RabbitMQ для задач; WebSocket подписки.
+- Производительность: connection pooling в БД, APQ, complexity limit, eager loading Ent.
+- Валидация: `protoc-gen-validate` на уровне gRPC; `go-playground/validator` в зависимостях — можно задействовать шире.
 
 ## 🏗 Инфраструктура разработки
 
-### Build System (Makefile)
-
-**Комплексная система сборки с 50+ командами**:
-```makefile
-# Быстрая разработка
-make dev-check      # format + vet + unit tests
-make quick-test     # только unit тесты
-make pre-commit     # полная проверка перед коммитом
-
-# Тестирование
-make test-unit      # юнит тесты
-make test-integration # интеграционные тесты с Docker
-make test-coverage  # отчет по покрытию
-make test-performance # бенчмарки
-
-# CI/CD
-make ci             # полный CI pipeline
-make docker-build   # Docker образ
-```
-
-### Environment Configuration
-
-**Конфигурация через переменные окружения**:
-```bash
-# База данных
-DB_HOST=localhost
-DB_MAX_OPEN_CONNS=15
-DB_MAX_IDLE_CONNS=5
-
-# Микросервисы
-AUTH_GRPC_ADDR=localhost:4001
-USER_GRPC_ADDR=localhost:4002
-GRPC_INSECURE=true
-
-# Безопасность
-JWT_SECRET=secret
-CSRF_ENABLE=true
-GRAPHQL_MAX_COMPLEXITY=300
-```
-
-### Docker & Orchestration
-
-**Testcontainers для изоляции тестов**:
-```go
-containers, err := testcontainers.Setup(ctx)
-defer containers.Cleanup()
-
-postgres := testcontainers.GenericContainer{
-    Image: "postgres:15",
-    ExposedPorts: []string{"5432/tcp"},
-    Env: map[string]string{
-        "POSTGRES_DB": "testdb",
-        "POSTGRES_USER": "test", 
-        "POSTGRES_PASSWORD": "test",
-    },
-}
-```
-
-### Monitoring & Health Checks
-
-**Комплексные health checks**:
-```go
-mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-    ctx, cancel := context.WithTimeout(r.Context(), 800*time.Millisecond)
-    defer cancel()
-    
-    // Database probe
-    if _, err := client.User.Query().Limit(1).All(ctx); err != nil {
-        w.WriteHeader(http.StatusServiceUnavailable)
-        return
-    }
-    
-    // S3 probe
-    if err := s3client.HealthCheck(); err != nil {
-        w.WriteHeader(http.StatusServiceUnavailable)
-        return  
-    }
-    
-    // gRPC upstream health checks
-    for _, conn := range []*grpc.ClientConn{authConn, userConn, mailConn} {
-        if resp, err := healthpb.NewHealthClient(conn).Check(ctx, &healthpb.HealthCheckRequest{}); 
-           err != nil || resp.GetStatus() != healthpb.HealthCheckResponse_SERVING {
-            w.WriteHeader(http.StatusServiceUnavailable)
-            return
-        }
-    }
-    
-    w.WriteHeader(http.StatusOK)
-})
-```
+- Makefile: полноценный набор целей (fmt, vet, lint, test, coverage, docker, ci, fuzz, bench).
+- ENV: `server/README.md` перечисляет ключевые переменные; `.env` подгружается опционально.
+- CI/CD: цели `ci-*`; явных GitHub Actions в репозитории не обнаружено — можно добавить.
+- Контейнеризация: цели docker присутствуют, testcontainers — для интеграционных тестов.
+- Наблюдаемость: есть healthz/readyz; отсутствуют метрики/трейсинг — рекомендовано добавить OTel + Prometheus.
 
 ## 📋 Выводы и рекомендации
 
-### ✅ Сильные стороны проекта
+Сильные стороны:
 
-1. **Современная архитектура**: Правильное разделение на микросервисы с четкими границами
-2. **Type Safety**: Использование Ent ORM и gqlgen обеспечивает compile-time безопасность
-3. **Comprehensive Testing**: 4-уровневая система тестирования (unit/integration/performance/e2e)
-4. **Security First**: Многослойная защита с JWT, CSRF, rate limiting, audit trail
-5. **Developer Experience**: Отличный DX с подробным Makefile, автогенерацией кода
-6. **Production Ready**: Graceful shutdown, health checks, connection pooling, monitoring
+- Чёткие границы слоёв, хорошая модульность и повторное использование `shared/*`.
+- Безопасность на уровне gateway: CSRF, CORS, APQ, complexity limit, JWT, rate limits, аудит.
+- Микросервисы для auth/user/mail/media; согласованный error handling; единый cookie‑флоу.
+- Богатый Makefile и тестовая инфраструктура (incl. testcontainers).
 
-### 🔄 Области для улучшения
+Зоны роста:
 
-1. **Observability**: 
-   - Добавить distributed tracing (OpenTelemetry)
-   - Метрики Prometheus для мониторинга производительности
-   - Структурированное логирование (zap/logrus)
+- Добавить OpenTelemetry (traces + metrics) и структурированное логирование (zap).
+- Ввести миграции с версионированием (например, atlas migrate/goose) вместо «reset» mode для prod.
+- Больше кеширования (Redis) на read‑трафике (профили, ленты) и кеш GraphQL.
+- Политики rate limiting на операцию/пользователя (не только per IP).
+- Синхронизировать версии Go между Makefile и go.mod.
 
-2. **Caching Strategy**:
-   - Implementовать более агрессивное кеширование на уровне GraphQL
-   - Redis cache для часто запрашиваемых данных (пользователи, сообщества)
-
-3. **Database Optimization**:
-   - Добавить database migrations с версионированием
-   - Индексы для performance-critical запросов
-   - Read replicas для масштабирования чтения
-
-4. **API Evolution**:
-   - GraphQL schema versioning и deprecation strategy
-   - API rate limiting per user/operation
-   - Request/response compression
-
-### 🚀 Рекомендации по развитию
-
-1. **Микросервисы**: Добавить service mesh (Istio) для продакшена
-2. **CI/CD**: Автоматизировать деплой через GitOps (ArgoCD)  
-3. **Monitoring**: Интегрировать APM (Datadog/New Relic)
-4. **Documentation**: Добавить OpenAPI specs для REST endpoints
-5. **Performance**: Implements GraphQL query complexity analysis и caching
-
----
-
-**Stormlink** представляет собой хорошо архитектурированное, современное backend-приложение на Go с правильным разделением ответственности, комплексным тестированием и готовностью к продакшен деплою. Проект демонстрирует best practices разработки на Go и может служить референсом для similar проектов.
+Уровень сложности проекта: уверенный middle → senior-friendly (микросервисы, GraphQL, Ent, безопасность, очереди, testcontainers).
