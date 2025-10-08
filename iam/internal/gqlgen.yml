@@ -1,15 +1,14 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - server/graphql/ent.graphql
-  - server/graphql/handlers.graphql
+  - graph/*.graphqls
 
 # Where should the generated server code go?
 exec:
-  package: graphql
+  package: graph
   layout: single-file # Only other option is "follow-schema," ie multi-file.
 
   # Only for single-file layout:
-  filename: server/graphql/generated.go
+  filename: graph/generated.go
 
   # Only for follow-schema layout:
   # dir: graph
@@ -28,23 +27,23 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: server/graphql/models/models_gen.go
-  package: models
+  filename: graph/model/models_gen.go
+  package: model
 
   # Optional: Pass in a path to a new gotpl template to use for generating the models
   # model_template: [your/path/model.gotpl]
 
 # Where should the resolver implementations go?
 resolver:
-  package: graphql
+  package: graph
   layout: follow-schema # Only other option is "single-file."
 
   # Only for single-file layout:
   # filename: graph/resolver.go
 
   # Only for follow-schema layout:
-  dir: server/graphql
-  filename_template: '{name}.resolvers.go'
+  dir: graph
+  filename_template: "{name}.resolvers.go"
 
   # Optional: turn on to not generate template comments above resolvers
   # omit_template_comment: false
@@ -122,7 +121,7 @@ call_argument_directives_with_null: true
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
 autobind:
-#  - "stormlink/graph/model"
+#  - "github.com/stormhead-org/stormic-backend/iam/graph/model"
 
 # This section declares type mapping between the GraphQL and go type systems
 #
@@ -136,7 +135,7 @@ models:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
-  # gqlgen provides a default GraphQL UUID convenience wrapper for github.com/google/uuid
+  # gqlgen provides a default GraphQL UUID convenience wrapper for github.com/google/uuid 
   # but you can override this to provide your own GraphQL UUID implementation
   UUID:
     model:
@@ -158,53 +157,3 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
-  JSON:
-    model:
-      - github.com/99designs/gqlgen/graphql.Map
-  Community:
-    model: stormlink/server/ent.Community
-  CommunityPermissions:
-    model: stormlink/server/model.CommunityPermissions
-  CommunityUserBan:
-    model: stormlink/server/ent.CommunityUserBan
-  CommunityUserMute:
-    model: stormlink/server/ent.CommunityUserMute
-  CommunityModerator:
-    model: stormlink/server/ent.CommunityModerator
-  CommunityRule:
-    model: stormlink/server/ent.CommunityRule
-  User:
-    model: stormlink/server/ent.User
-  Post:
-    model:
-      - stormlink/server/ent.Post
-  Comment:
-    model:
-      - stormlink/server/ent.Comment
-  Role:
-    model:
-      - stormlink/server/ent.Role
-  HostRole:
-    model:
-      - stormlink/server/ent.HostRole
-  Host:
-    model:
-      - stormlink/server/ent.Host
-  Media:
-    model:
-      - stormlink/server/ent.Media
-  HostSidebarNavigation:
-    model:
-      - stormlink/server/ent.HostSidebarNavigation
-  HostSidebarNavigationItem:
-    model:
-      - stormlink/server/ent.HostSidebarNavigationItem
-  HostSocialNavigation:
-    model:
-      - stormlink/server/ent.HostSocialNavigation
-  HostUserBan:
-    model:
-      - stormlink/server/ent.HostUserBan
-  ProfileTableInfoItem:
-    model:
-      - stormlink/server/ent.ProfileTableInfoItem

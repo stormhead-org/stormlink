@@ -1,0 +1,12 @@
+fqdn: "api.stormic.app"
+
+image:
+  iam: "latest"
+  migration: "latest"
+
+postgres:
+  host: "postgres"
+  port: 5432
+  user: "postgres"
+  password: ""
+  database: "iam"

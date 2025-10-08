@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-create
+  labels:
+    application: iam
+spec:
+  template:
+    spec:
+      containers:
+        - name: migration
+          image: gdemojkod/stormic-iam-migration:{{ $.Values.image.migration }}
+          command:
+            - "psql"
+          args:
+            - "--host"
+            - "{{ .Values.postgres.host }}"
+            - "--port"
+            - "{{ .Values.postgres.port }}"
+            - "--user"
+            - "{{ .Values.postgres.user }}"
+            - "-w"
+            - "-c"
+            - "CREATE DATABASE iam;"
+      restartPolicy: Never

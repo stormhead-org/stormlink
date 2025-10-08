@@ -23,5 +23,3 @@ func NewEmailConfig() *EmailConfig {
         FromEmail:    os.Getenv("SMTP_USERNAME"),
     }
 }
-
-

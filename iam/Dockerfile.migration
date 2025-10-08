@@ -1,0 +1,3 @@
+FROM arigaio/atlas:0.37.0-community-alpine
+RUN apk add -U postgresql-client
+COPY migrations /migrations

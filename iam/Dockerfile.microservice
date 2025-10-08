@@ -1,0 +1,10 @@
+FROM golang:1.25.2-alpine3.22 AS build
+RUN apk add -U make binutils
+WORKDIR /build
+RUN --mount=type=bind,source=.,destination=/build,rw \
+    make binary-build && \
+    mv iam /usr/bin/iam
+
+FROM alpine:3.22.1
+COPY --from=build /usr/bin/iam /usr/bin/iam
+ENTRYPOINT [ "iam", "server" ]

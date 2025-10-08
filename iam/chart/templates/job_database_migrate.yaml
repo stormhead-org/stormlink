@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migrate
+  labels:
+    application: iam
+spec:
+  template:
+    spec:
+      containers:
+        - name: migration
+          image: gdemojkod/stormic-iam-migration:{{ $.Values.image.migration }}
+          command:
+            - "migrate"
+          args:
+            - "apply"
+            - "--dir"
+            - "file:///migrations"
+            - "--url"
+            - "postgres://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/iam?sslmode=disable"
+      restartPolicy: Never

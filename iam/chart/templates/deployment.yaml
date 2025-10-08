@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iam
+  labels:
+    application: iam
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      application: iam
+  template:
+    metadata:
+      labels:
+        application: iam
+        app.kubernetes.io/component: iam
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: iam
+          image: gdemojkod/stormic-iam-microservice:{{ $.Values.image.iam }}
+          imagePullPolicy: IfNotPresent
+          command: ["iam"]
+          args:
+            - "server"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: VERSION
+              value: "0.1.0"
+
+            - name: GQL_HOST
+              value: "0.0.0.0"
+
+            - name: GQL_PORT
+              value: "8080"
+
+            - name: POSTGRES_HOST
+              value: "{{ $.Values.postgres.host }}"
+
+            - name: POSTGRES_PORT
+              value: "{{ $.Values.postgres.port }}"
+
+            - name: POSTGRES_USER
+              value: "{{ $.Values.postgres.user }}"
+            
+            - name: POSTGRES_PASSWORD
+              value: "{{ $.Values.postgres.password }}"
+            
+            - name: POSTGRES_DATABASE
+              value: "{{ $.Values.postgres.database }}"
+
+          resources:
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+            requests:
+              cpu: "1"
+              memory: "512Mi"
+
+          # The kubelet uses startup probes to know when a container application has started.
+          startupProbe:
+            httpGet:
+              path: /probe/startup
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+
+          # The kubelet uses readiness probes to know when a container is ready to start accepting traffic.
+          readinessProbe:
+            httpGet:
+              path: /probe/readiness
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 1
+
+          # The kubelet uses liveness probes to know when to restart a container.
+          livenessProbe:
+            httpGet:
+              path: /probe/liveness
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10

@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iam
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.fqdn }}
+      http:
+        paths:
+          - path: /iam
+            pathType: Prefix
+            backend:
+              service:
+                name: iam
+                port:
+                  number: 8080
